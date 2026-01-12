@@ -1,0 +1,41 @@
+/* =========================
+   GLOBAL RESET
+   ========================= */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* =========================
+   BODY – ΟΧΙ FLEX CENTER
+   ========================= */
+body {
+  display: block;            /* ⬅️ ΤΟ ΠΙΟ ΣΗΜΑΝΤΙΚΟ */
+  min-height: 100vh;
+  background-color: #ffffff;
+  color: #0d2c54;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* =========================
+   LINKS
+   ========================= */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* =========================
+   BOX SIZING
+   ========================= */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+
+

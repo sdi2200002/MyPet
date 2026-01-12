@@ -1,0 +1,13 @@
+{
+  "users": [
+    { "id": 1, "role": "owner", "email": "owner@test.gr", "password": "1234", "name": "Μυρτώ", "address": "Αθήνα", "phone": "6980218346" },
+    { "id": 2, "role": "vet", "email": "vet@test.gr", "password": "1234", "name": "Δρ. Νικολάου" }
+  ],
+  "pets": [
+    { "id": 1, "ownerId": 1, "birthDate": "01-01-2020", "name": "Μπρούνο", "species": "Σκύλος", "sex": "Αρσενικό", "color": "Καστανό", "microchip": "123456789" }
+  ],
+  "lostDeclarations": [
+    { "id": 1, "petName": "Λούνα", "species": "Γάτα", "location": "Ζωγράφου", "date": "2025-12-30", "status": "submitted" }
+  ],
+  "appointments": []
+}

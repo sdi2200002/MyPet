@@ -1,0 +1,388 @@
+import { useMemo, useState } from "react";
+import { Box, Button, Container, Paper, Stack, Typography } from "@mui/material";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import PublicNavbar from "../../components/PublicNavbar";
+import OwnerNavbar from "../../components/OwnerNavbar";
+import Footer from "../../components/Footer";
+import AppBreadcrumbs from "../../components/Breadcrumbs";
+
+const PRIMARY = "#0b3d91";
+const PRIMARY_HOVER = "#08316f";
+const BORDER = "#8fb4e8";
+const MUTED = "#6b7a90";
+const TITLE = "#0d2c54";
+
+const VETS_KEY = "mypet_vets";
+const PETS_KEY = "mypet_owner_pets";
+const APPTS_KEY = "mypet_appointments";
+
+function safeLoad(key, fallback = []) {
+  try {
+    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+  } catch {
+    return fallback;
+  }
+}
+function safeSave(key, data) {
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+function formatDate(iso) {
+  if (!iso || !iso.includes("-")) return "—";
+  const [y, m, d] = iso.split("-");
+  return `${d} / ${m} / ${y}`;
+}
+
+function PetPick({ pet, active, onClick }) {
+  const photo = pet.photo || "/images/dog1.png";
+
+  return (
+    <Paper
+      elevation={0}
+      onClick={onClick}
+      sx={{
+        cursor: "pointer",
+        borderRadius: 2,
+        // ✅ ίδιο πάχος border πάντα, για να μη “πετάγεται” το layout
+        border: `3px solid ${active ? PRIMARY : "rgba(199,212,232,1)"}`,
+        bgcolor: active ? "rgba(11,61,145,0.06)" : "#fff",
+        p: 1.2,
+        width: 120,
+        height: 140, // ✅ σταθερό ύψος
+        boxSizing: "border-box",
+        textAlign: "center",
+        boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+        transition: "transform 120ms ease, box-shadow 120ms ease",
+        display: "grid",
+        justifyItems: "center",
+        alignContent: "start",
+        "&:hover": {
+          transform: "translateY(-1px)",
+          boxShadow: "0 12px 24px rgba(0,0,0,0.14)",
+        },
+      }}
+    >
+      <Box
+        component="img"
+        src={photo}
+        alt={pet.name}
+        onError={(e) => {
+          e.currentTarget.src = "/images/dog1.png";
+        }}
+        sx={{
+          width: 64,
+          height: 64,
+          borderRadius: 2,
+          objectFit: "cover",
+          border: "1px solid rgba(0,0,0,0.15)",
+          bgcolor: "#fff",
+          display: "block",
+          mt: 0.2,
+        }}
+      />
+      <Typography sx={{ mt: 0.8, fontWeight: 900, fontSize: 12, color: "#111" }}>
+        {pet.name || "—"}
+      </Typography>
+    </Paper>
+  );
+}
+
+export default function VetNewAppointment() {
+  const { vetId } = useParams();
+  const [sp] = useSearchParams();
+  const navigate = useNavigate();
+
+  const dateIso = sp.get("date") || "2025-11-18";
+  const time = sp.get("time") || "12:00";
+
+  const vet = useMemo(() => safeLoad(VETS_KEY, []).find((v) => v.id === vetId) || null, [vetId]);
+  const pets = useMemo(() => safeLoad(PETS_KEY, []), []);
+
+  const services = [
+    "Βασική Κλινική Εξέταση",
+    "Εμβολιασμοί",
+    "Αποπαρασίτωση",
+    "Διαγνωστικές Εξετάσεις",
+    "Μικροεπεμβάσεις",
+    "Μικροτσίπ & Έγγραφα",
+    "Στείρωση",
+    "Γέννηση",
+  ];
+
+  const [service, setService] = useState("Βασική Κλινική Εξέταση");
+  const [petId, setPetId] = useState(pets?.[0]?.id || "");
+
+  if (!vet) {
+    return (
+      <Box sx={{ minHeight: "100vh", bgcolor: "#fff" }}>
+        <PublicNavbar />
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+          <Typography sx={{ fontWeight: 900 }}>Δεν βρέθηκε κτηνίατρος.</Typography>
+        </Container>
+        <Footer />
+      </Box>
+    );
+  }
+
+  const chosenPet = pets.find((p) => p.id === petId) || null;
+
+  const confirm = () => {
+    if (!chosenPet) return;
+
+    const appts = safeLoad(APPTS_KEY, []);
+
+    // Φτιάχνουμε ISO datetime (αυτό διαβάζει το calendar)
+    const when = new Date(`${dateIso}T${time}:00`).toISOString();
+
+    // έλεγχος διπλού booking
+    const clash = appts.some(
+      (a) =>
+        a.vetId === vetId &&
+        a.when === when &&
+        ["Εκκρεμές", "Επιβεβαιωμένο"].includes(a.status)
+    );
+
+    if (clash) {
+      alert("Η ώρα δεν είναι πλέον διαθέσιμη.");
+      return;
+    }
+
+    const newAppt = {
+      id: `appt_${Date.now()}`,
+      vetId,
+      vetName: vet.name,
+
+      petId: chosenPet.id,
+      petName: chosenPet.name,
+      petPhoto: chosenPet.photo ,
+      petMicrochip: chosenPet.microchip,
+
+      service,
+      when,
+      status: "Εκκρεμές",
+
+      clinicAddress: vet.address,
+      createdAt: new Date().toISOString(),
+    };
+
+
+    appts.push(newAppt);
+    safeSave(APPTS_KEY, appts);
+
+    // ➜ σελίδα επιτυχίας
+    navigate(
+      `/owner/appointments/success?apptId=${encodeURIComponent(newAppt.id)}&vetId=${encodeURIComponent(
+        vetId
+      )}`
+    );
+  };
+
+  return (
+    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
+      <PublicNavbar />
+
+      <Box sx={{ flex: 1 }}>
+        <Container maxWidth="lg" sx={{ py: 2.5 }}>
+          <Box>
+            <AppBreadcrumbs />
+          </Box>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1.1fr 0.9fr" },
+              gap: 3,
+              alignItems: "start",
+            }}
+          >
+            {/* Left */}
+            <Paper
+              elevation={0}
+              sx={{
+                borderRadius: 2,
+                border: `2px solid ${BORDER}`,
+                boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+                p: 2,
+              }}
+            >
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Box
+                  component="img"
+                  src={vet.photo || "/images/demo-vet-avatar.png"}
+                  alt={vet.name}
+                  onError={(e) => (e.currentTarget.src = "/images/demo-vet-avatar.png")}
+                  sx={{
+                    width: 98,
+                    height: 98,
+                    borderRadius: 2,
+                    objectFit: "cover",
+                    border: "1px solid rgba(0,0,0,0.15)",
+                  }}
+                />
+                <Box>
+                  <Typography sx={{ fontWeight: 900, color: "#111", fontSize: 16 }}>{vet.name}</Typography>
+                  <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>{vet.clinic}</Typography>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.8 }}>
+                    <Typography sx={{ fontWeight: 900, fontSize: 12 }}>⭐ {vet.rating}</Typography>
+                    <Typography sx={{ color: MUTED, fontWeight: 800, fontSize: 12 }}>({vet.reviewsCount})</Typography>
+                  </Stack>
+                </Box>
+              </Stack>
+
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                  gap: 3,
+                  mt: 2.5,
+                }}
+              >
+                {/* Services */}
+                <Box>
+                  <Typography sx={{ fontWeight: 900, color: TITLE, mb: 1.2 }}>Επιλογή Υπηρεσίας</Typography>
+                  <Stack spacing={1}>
+                    {services.map((s) => (
+                      <Paper
+                        key={s}
+                        elevation={0}
+                        onClick={() => setService(s)}
+                        sx={{
+                          cursor: "pointer",
+                          borderRadius: 2,
+                          px: 1.4,
+                          py: 1.1,
+                          border: s === service ? `2px solid ${PRIMARY}` : "1px solid rgba(0,0,0,0.10)",
+                          bgcolor: s === service ? "rgba(11,61,145,0.06)" : "#fff",
+                        }}
+                      >
+                        <Typography sx={{ fontWeight: 900, fontSize: 12, color: s === service ? PRIMARY : "#111" }}>
+                          {s}
+                        </Typography>
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Box>
+
+                {/* Pets */}
+                <Box>
+                  <Typography sx={{ fontWeight: 900, color: TITLE, mb: 0.6 }}>Επιλογή Κατοικιδίου</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED, fontWeight: 700, mb: 1.4 }}>
+                    Διάλεξε το κατοικίδιο για το οποίο θα κλείσεις ραντεβού.
+                  </Typography>
+
+                  {pets.length === 0 ? (
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        borderRadius: 2,
+                        p: 1.6,
+                        bgcolor: "#eef1f4",
+                        border: "1px solid rgba(0,0,0,0.08)",
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: 900, color: "#111", fontSize: 12 }}>
+                        Δεν έχεις καταχωρήσει κατοικίδια.
+                      </Typography>
+                      <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12, mt: 0.6 }}>
+                        Πήγαινε στα «Τα Κατοικίδια μου» για να προσθέσεις.
+                      </Typography>
+                    </Paper>
+                  ) : (
+                    // ✅ GRID για τέλεια ευθυγράμμιση
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(2, 120px)",
+                        gap: 1.6,
+                        justifyContent: "start",
+                        alignItems: "start",
+                      }}
+                    >
+                      {pets.map((p) => (
+                        <PetPick key={p.id} pet={p} active={p.id === petId} onClick={() => setPetId(p.id)} />
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+            </Paper>
+
+            {/* Right details */}
+            <Paper
+              elevation={0}
+              sx={{
+                borderRadius: 2,
+                border: `2px solid ${BORDER}`,
+                boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+                p: 2,
+                minHeight: 509,
+              }}
+            >
+              <Typography sx={{ fontWeight: 900, color: TITLE, mb: 5 }}>Λεπτομέρειες Ραντεβού</Typography>
+
+              <Stack spacing={1.4}>
+                <Typography sx={{ color: "#111", fontWeight: 900 }}>
+                  Κτηνίατρος: <span style={{ fontWeight: 700, color: MUTED }}>{vet.name}</span>
+                </Typography>
+                <Typography sx={{ color: "#111", fontWeight: 900 }}>
+                  Ημερομηνία: <span style={{ fontWeight: 700, color: MUTED }}>{formatDate(dateIso)}</span>
+                </Typography>
+                <Typography sx={{ color: "#111", fontWeight: 900 }}>
+                  Ώρα: <span style={{ fontWeight: 700, color: MUTED }}>{time}</span>
+                </Typography>
+                <Typography sx={{ color: "#111", fontWeight: 900 }}>
+                  Υπηρεσία: <span style={{ fontWeight: 700, color: MUTED }}>{service}</span>
+                </Typography>
+                <Typography sx={{ color: "#111", fontWeight: 900 }}>
+                  Κατοικίδιο: <span style={{ fontWeight: 700, color: MUTED }}>{chosenPet?.name || "—"}</span>
+                </Typography>
+                <Typography sx={{ color: "#111", fontWeight: 900 }}>
+                  Μικροτσίπ: <span style={{ fontWeight: 700, color: MUTED }}>{chosenPet?.microchip || "—"}</span>
+                </Typography>
+                <Typography sx={{ color: "#111", fontWeight: 900 }}>
+                  Ιατρείο: <span style={{ fontWeight: 700, color: MUTED }}>{vet.address}</span>
+                </Typography>
+              </Stack>
+
+              <Stack direction="row" justifyContent="right" spacing={2} sx={{ mt: 25 }}>
+                <Button
+                  onClick={() => navigate(-1)}
+                  variant="contained"
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: 2,
+                    px: 4,
+                    bgcolor: "#b7bcc3",
+                    color: "#000",
+                    "&:hover": { bgcolor: "#a9aeb6" },
+                  }}
+                >
+                  Ακύρωση
+                </Button>
+                <Button
+                  variant="contained"
+                  disabled={!chosenPet}
+                  onClick={confirm}
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: 2,
+                    bgcolor: PRIMARY,
+                    "&:hover": { bgcolor: PRIMARY_HOVER },
+                    fontWeight: 900,
+                    px: 3,
+                    boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
+                    opacity: chosenPet ? 1 : 0.6,
+                  }}
+                >
+                  Επιβεβαίωση Ραντεβού
+                </Button>
+              </Stack>
+            </Paper>
+          </Box>
+        </Container>
+      </Box>
+
+      <Footer />
+    </Box>
+  );
+}
