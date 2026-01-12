@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Box, Button, Container, Paper, Stack, Typography } from "@mui/material";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+
 import PublicNavbar from "../../components/PublicNavbar";
-import OwnerNavbar from "../../components/OwnerNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
+import { useAuth } from "../../auth/AuthContext"; // ✅ όπως MyPets
 
 const PRIMARY = "#0b3d91";
 const PRIMARY_HOVER = "#08316f";
@@ -12,19 +13,10 @@ const BORDER = "#8fb4e8";
 const MUTED = "#6b7a90";
 const TITLE = "#0d2c54";
 
-const VETS_KEY = "mypet_vets";
-const PETS_KEY = "mypet_owner_pets";
-const APPTS_KEY = "mypet_appointments";
-
-function safeLoad(key, fallback = []) {
-  try {
-    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
-  } catch {
-    return fallback;
-  }
-}
-function safeSave(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
+async function fetchJSON(path, options) {
+  const res = await fetch(path, options);
+  if (!res.ok) throw new Error(`HTTP ${res.status} on ${path}`);
+  return res.json();
 }
 
 function formatDate(iso) {
@@ -34,7 +26,7 @@ function formatDate(iso) {
 }
 
 function PetPick({ pet, active, onClick }) {
-  const photo = pet.photo || "/images/dog1.png";
+  const photo = pet.photo;
 
   return (
     <Paper
@@ -43,12 +35,11 @@ function PetPick({ pet, active, onClick }) {
       sx={{
         cursor: "pointer",
         borderRadius: 2,
-        // ✅ ίδιο πάχος border πάντα, για να μη “πετάγεται” το layout
         border: `3px solid ${active ? PRIMARY : "rgba(199,212,232,1)"}`,
         bgcolor: active ? "rgba(11,61,145,0.06)" : "#fff",
         p: 1.2,
         width: 120,
-        height: 140, // ✅ σταθερό ύψος
+        height: 140,
         boxSizing: "border-box",
         textAlign: "center",
         boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
@@ -67,6 +58,7 @@ function PetPick({ pet, active, onClick }) {
         src={photo}
         alt={pet.name}
         onError={(e) => {
+          e.currentTarget.onerror = null;
           e.currentTarget.src = "/images/dog1.png";
         }}
         sx={{
@@ -89,14 +81,13 @@ function PetPick({ pet, active, onClick }) {
 
 export default function VetNewAppointment() {
   const { vetId } = useParams();
+  const id = Number(vetId); // ✅ json-server numeric ids
   const [sp] = useSearchParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const dateIso = sp.get("date") || "2025-11-18";
   const time = sp.get("time") || "12:00";
-
-  const vet = useMemo(() => safeLoad(VETS_KEY, []).find((v) => v.id === vetId) || null, [vetId]);
-  const pets = useMemo(() => safeLoad(PETS_KEY, []), []);
 
   const services = [
     "Βασική Κλινική Εξέταση",
@@ -110,7 +101,154 @@ export default function VetNewAppointment() {
   ];
 
   const [service, setService] = useState("Βασική Κλινική Εξέταση");
-  const [petId, setPetId] = useState(pets?.[0]?.id || "");
+  const [petId, setPetId] = useState("");
+
+  const [vet, setVet] = useState(null);
+  const [pets, setPets] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      setLoading(true);
+      setErr("");
+
+      if (!user?.id) {
+        if (!alive) return;
+        setVet(null);
+        setPets([]);
+        setErr("Δεν υπάρχει συνδεδεμένος χρήστης.");
+        setLoading(false);
+        return;
+      }
+
+      // 1) vet
+      const v = await fetchJSON(`/api/vets/${id}`);
+
+      // 2) pets αυτού του owner
+      const p = await fetchJSON(`/api/pets?ownerId=${encodeURIComponent(String(user.id))}`);
+
+      if (!alive) return;
+
+      const petsArr = Array.isArray(p) ? p : [];
+      setVet(v || null);
+      setPets(petsArr);
+
+      // default select 1ο pet
+      setPetId((prev) => prev || (petsArr[0]?.id ?? ""));
+
+      setLoading(false);
+    })().catch((e) => {
+      console.error(e);
+      if (!alive) return;
+      setErr("Αποτυχία φόρτωσης δεδομένων (κτηνίατρος/κατοικίδια).");
+      setVet(null);
+      setPets([]);
+      setLoading(false);
+    });
+
+    return () => {
+      alive = false;
+    };
+  }, [id, user?.id]);
+
+  const chosenPet = useMemo(() => pets.find((p) => p.id === petId) || null, [pets, petId]);
+
+  const confirm = async () => {
+    if (!vet || !chosenPet || !user?.id) return;
+
+    // ISO datetime (αυτό διαβάζει το calendar)
+    const when = new Date(`${dateIso}T${time}:00`).toISOString();
+
+    // ✅ clash check στον server
+    // json-server υποστηρίζει querystring filtering
+    const existing = await fetchJSON(
+      `/api/appointments?vetId=${encodeURIComponent(String(id))}&when=${encodeURIComponent(when)}`
+    );
+
+    const clash = (Array.isArray(existing) ? existing : []).some((a) =>
+      ["Εκκρεμές", "Επιβεβαιωμένο"].includes(a.status)
+    );
+
+    if (clash) {
+      alert("Η ώρα δεν είναι πλέον διαθέσιμη.");
+      return;
+    }
+
+    const newAppt = {
+      // json-server μπορεί να βάλει id μόνο του, αλλά δεν πειράζει αν το στέλνεις
+      // id: `appt_${Date.now()}`,
+
+      vetId: id,
+      vetName: vet.name,
+
+      ownerId: user.id,
+
+      petId: chosenPet.id,
+      petName: chosenPet.name,
+      petPhoto: chosenPet.photo,
+      petMicrochip: chosenPet.microchip,
+
+      service,
+      when,
+      status: "Εκκρεμές",
+
+      clinicAddress: vet.address,
+      createdAt: new Date().toISOString(),
+    };
+
+    // ✅ POST create appointment
+    const created = await fetchJSON(`/api/appointments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newAppt),
+    });
+
+    // ➜ σελίδα επιτυχίας
+    navigate(
+      `/owner/appointments/success?apptId=${encodeURIComponent(String(created?.id))}&vetId=${encodeURIComponent(
+        String(id)
+      )}`
+    );
+  };
+
+  // ------- UI STATES -------
+  if (loading) {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
+        <PublicNavbar />
+        <Container maxWidth="lg" sx={{ py: 4, flex: 1 }}>
+          <Paper
+            elevation={0}
+            sx={{ borderRadius: 2, p: 2, bgcolor: "#f6f8fb", border: "1px solid rgba(0,0,0,0.12)" }}
+          >
+            <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
+          </Paper>
+        </Container>
+        <Footer />
+      </Box>
+    );
+  }
+
+  if (!loading && err) {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
+        <PublicNavbar />
+        <Container maxWidth="lg" sx={{ py: 4, flex: 1 }}>
+          <Paper
+            elevation={0}
+            sx={{ borderRadius: 2, p: 2, bgcolor: "#fff3f3", border: "1px solid rgba(0,0,0,0.12)" }}
+          >
+            <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
+          </Paper>
+        </Container>
+        <Footer />
+      </Box>
+    );
+  }
 
   if (!vet) {
     return (
@@ -123,59 +261,6 @@ export default function VetNewAppointment() {
       </Box>
     );
   }
-
-  const chosenPet = pets.find((p) => p.id === petId) || null;
-
-  const confirm = () => {
-    if (!chosenPet) return;
-
-    const appts = safeLoad(APPTS_KEY, []);
-
-    // Φτιάχνουμε ISO datetime (αυτό διαβάζει το calendar)
-    const when = new Date(`${dateIso}T${time}:00`).toISOString();
-
-    // έλεγχος διπλού booking
-    const clash = appts.some(
-      (a) =>
-        a.vetId === vetId &&
-        a.when === when &&
-        ["Εκκρεμές", "Επιβεβαιωμένο"].includes(a.status)
-    );
-
-    if (clash) {
-      alert("Η ώρα δεν είναι πλέον διαθέσιμη.");
-      return;
-    }
-
-    const newAppt = {
-      id: `appt_${Date.now()}`,
-      vetId,
-      vetName: vet.name,
-
-      petId: chosenPet.id,
-      petName: chosenPet.name,
-      petPhoto: chosenPet.photo ,
-      petMicrochip: chosenPet.microchip,
-
-      service,
-      when,
-      status: "Εκκρεμές",
-
-      clinicAddress: vet.address,
-      createdAt: new Date().toISOString(),
-    };
-
-
-    appts.push(newAppt);
-    safeSave(APPTS_KEY, appts);
-
-    // ➜ σελίδα επιτυχίας
-    navigate(
-      `/owner/appointments/success?apptId=${encodeURIComponent(newAppt.id)}&vetId=${encodeURIComponent(
-        vetId
-      )}`
-    );
-  };
 
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
@@ -210,7 +295,10 @@ export default function VetNewAppointment() {
                   component="img"
                   src={vet.photo || "/images/demo-vet-avatar.png"}
                   alt={vet.name}
-                  onError={(e) => (e.currentTarget.src = "/images/demo-vet-avatar.png")}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = "/images/demo-vet-avatar.png";
+                  }}
                   sx={{
                     width: 98,
                     height: 98,
@@ -288,7 +376,6 @@ export default function VetNewAppointment() {
                       </Typography>
                     </Paper>
                   ) : (
-                    // ✅ GRID για τέλεια ευθυγράμμιση
                     <Box
                       sx={{
                         display: "grid",
@@ -344,7 +431,7 @@ export default function VetNewAppointment() {
                 </Typography>
               </Stack>
 
-              <Stack direction="row" justifyContent="right" spacing={2} sx={{ mt: 25 }}>
+              <Stack direction="row" justifyContent="right" spacing={2} sx={{ mt: 20 }}>
                 <Button
                   onClick={() => navigate(-1)}
                   variant="contained"
@@ -362,7 +449,10 @@ export default function VetNewAppointment() {
                 <Button
                   variant="contained"
                   disabled={!chosenPet}
-                  onClick={confirm}
+                  onClick={() => confirm().catch((e) => {
+                    console.error(e);
+                    alert("Αποτυχία δημιουργίας ραντεβού.");
+                  })}
                   sx={{
                     textTransform: "none",
                     borderRadius: 2,

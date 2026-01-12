@@ -17,8 +17,6 @@ import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useAuth } from "../../auth/AuthContext"; // ✅ το δικό σου AuthContext
 
-const dog1 = "/images/dog1.png";
-const cat1 = "/images/cat1.png";
 
 const TITLE = "#0d2c54";
 const PRIMARY = "#0b3d91";
@@ -28,16 +26,9 @@ const MUTED = "#6b7a90";
 function isValidPhoto(p) {
   return typeof p === "string" && (p.startsWith("/") || p.startsWith("data:") || p.startsWith("http"));
 }
-function isCatSpecies(species) {
-  const s = (species || "").toString().trim().toLowerCase();
-  return s.includes("γάτ") || s.includes("cat");
-}
+
 function getPetPhoto(pet) {
   if (isValidPhoto(pet?.photo)) return pet.photo;
-  return isCatSpecies(pet?.species) ? cat1 : dog1;
-}
-function getFallbackPhoto(pet) {
-  return isCatSpecies(pet?.species) ? cat1 : dog1;
 }
 
 async function fetchJSON(path) {

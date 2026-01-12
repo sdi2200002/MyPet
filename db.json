@@ -1,13 +1,235 @@
 {
   "users": [
-    { "id": 1, "role": "owner", "email": "owner@test.gr", "password": "1234", "name": "Μυρτώ", "address": "Αθήνα", "phone": "6980218346" },
-    { "id": 2, "role": "vet", "email": "vet@test.gr", "password": "1234", "name": "Δρ. Νικολάου" }
+    {
+      "id": "1",
+      "role": "owner",
+      "email": "owner@test.gr",
+      "password": "1234",
+      "name": "Μυρτώ",
+      "address": "Αθήνα",
+      "phone": "6980218346"
+    },
+    {
+      "id": "2",
+      "role": "vet",
+      "email": "vet@test.gr",
+      "password": "1234",
+      "name": "Δρ. Νικολάου"
+    }
   ],
   "pets": [
-    { "id": 1, "ownerId": 1, "birthDate": "01-01-2020", "name": "Μπρούνο", "species": "Σκύλος", "sex": "Αρσενικό", "color": "Καστανό", "microchip": "123456789" }
+    {
+      "id": "1",
+      "ownerId": 1,
+      "birthDate": "01-01-2020",
+      "name": "Μπρούνο",
+      "species": "Σκύλος",
+      "sex": "Αρσενικό",
+      "color": "Καστανό",
+      "microchip": "123456789",
+      "photo": "/images/dog1.png"
+    }
   ],
   "lostDeclarations": [
-    { "id": 1, "petName": "Λούνα", "species": "Γάτα", "location": "Ζωγράφου", "date": "2025-12-30", "status": "submitted" }
+    {
+      "id": "1",
+      "petName": "Λούνα",
+      "species": "Γάτα",
+      "location": "Ζωγράφου",
+      "date": "2025-12-30",
+      "status": "submitted"
+    }
   ],
-  "appointments": []
+  "appointments": [
+    {
+      "id": "3f36",
+      "vetId": 1,
+      "vetName": "Δρ. Κυριακή Νικολάου",
+      "ownerId": "1",
+      "petId": "1",
+      "petName": "Μπρούνο",
+      "petMicrochip": "123456789",
+      "service": "Εμβολιασμοί",
+      "when": "2026-01-12T18:00:00.000Z",
+      "status": "Εκκρεμές",
+      "clinicAddress": "Λεωφόρος Κηφισίας 124, Αμπελόκηποι",
+      "createdAt": "2026-01-12T18:02:07.050Z"
+    },
+    {
+      "id": "fc1b",
+      "vetId": 1,
+      "vetName": "Δρ. Κυριακή Νικολάου",
+      "ownerId": "1",
+      "petId": "1",
+      "petName": "Μπρούνο",
+      "petMicrochip": "123456789",
+      "service": "Βασική Κλινική Εξέταση",
+      "when": "2026-01-13T12:00:00.000Z",
+      "status": "Εκκρεμές",
+      "clinicAddress": "Λεωφόρος Κηφισίας 124, Αμπελόκηποι",
+      "createdAt": "2026-01-12T18:07:29.933Z"
+    },
+    {
+      "id": "e4b7",
+      "vetId": 1,
+      "vetName": "Δρ. Κυριακή Νικολάου",
+      "ownerId": "1",
+      "petId": "1",
+      "petName": "Μπρούνο",
+      "petPhoto": "/images/vet1.png",
+      "petMicrochip": "123456789",
+      "service": "Βασική Κλινική Εξέταση",
+      "when": "2026-01-14T10:00:00.000Z",
+      "status": "Εκκρεμές",
+      "clinicAddress": "Λεωφόρος Κηφισίας 124, Αμπελόκηποι",
+      "createdAt": "2026-01-12T18:31:10.182Z"
+    },
+    {
+      "id": "94ed",
+      "vetId": 1,
+      "vetName": "Δρ. Κυριακή Νικολάου",
+      "ownerId": "1",
+      "petId": "1",
+      "petName": "Μπρούνο",
+      "petPhoto": "/images/vet1.png",
+      "petMicrochip": "123456789",
+      "service": "Αποπαρασίτωση",
+      "when": "2026-01-15T12:00:00.000Z",
+      "status": "Ακυρωμένο",
+      "clinicAddress": "Λεωφόρος Κηφισίας 124, Αμπελόκηποι",
+      "createdAt": "2026-01-12T18:53:11.618Z"
+    },
+    {
+      "id": "3dea",
+      "vetId": 1,
+      "vetName": "Δρ. Κυριακή Νικολάου",
+      "ownerId": "1",
+      "petId": "1",
+      "petName": "Μπρούνο",
+      "petPhoto": "/images/vet1.png",
+      "petMicrochip": "123456789",
+      "service": "Βασική Κλινική Εξέταση",
+      "when": "2026-01-15T08:00:00.000Z",
+      "status": "Εκκρεμές",
+      "clinicAddress": "Λεωφόρος Κηφισίας 124, Αμπελόκηποι",
+      "createdAt": "2026-01-12T19:08:39.832Z"
+    }
+  ],
+  "vets": [
+    {
+      "id": "1",
+      "name": "Δρ. Κυριακή Νικολάου",
+      "clinic": "Κλινική Μικρών Ζώων",
+      "specialty": "Γενικός",
+      "area": "Αθήνα",
+      "rating": 4.8,
+      "reviewsCount": 120,
+      "priceRange": "40€ - 50€",
+      "address": "Λεωφόρος Κηφισίας 124, Αμπελόκηποι",
+      "phone": "6900000000",
+      "email": "doc1@test.gr",
+      "experience": "10+ χρόνια",
+      "studies": "Πτυχίο Κτηνιατρικής – ΑΠΘ",
+      "photo": "/images/vet1.png"
+    },
+    {
+      "id": "2",
+      "name": "Αλέξανδρος Παπαδόπουλος",
+      "clinic": "VetCare Center",
+      "specialty": "Χειρουργός",
+      "area": "Αθήνα",
+      "rating": 4.6,
+      "reviewsCount": 84,
+      "priceRange": "45€ - 70€",
+      "address": "Πατησίων 210, Αθήνα",
+      "phone": "6900000002",
+      "email": "doc2@test.gr",
+      "experience": "8 χρόνια",
+      "studies": "MSc Χειρουργικής Μικρών Ζώων – ΕΚΠΑ",
+      "photo": "/images/demo-vet-avatar.png"
+    },
+    {
+      "id": "3",
+      "name": "Ελένη Κωνσταντίνου",
+      "clinic": "Animal Health Clinic",
+      "specialty": "Δερματολόγος",
+      "area": "Θεσσαλονίκη",
+      "rating": 4.7,
+      "reviewsCount": 62,
+      "priceRange": "35€ - 60€",
+      "address": "Τσιμισκή 88, Θεσσαλονίκη",
+      "phone": "6900000003",
+      "email": "doc3@test.gr",
+      "experience": "6 χρόνια",
+      "studies": "MSc Δερματολογίας Ζώων – ΑΠΘ",
+      "photo": "/images/demo-vet-avatar.png"
+    },
+    {
+      "id": "4",
+      "name": "Νικόλαος Μάνθος",
+      "clinic": "PetLife Ιατρείο",
+      "specialty": "Γενικός",
+      "area": "Πειραιάς",
+      "rating": 4.4,
+      "reviewsCount": 38,
+      "priceRange": "30€ - 45€",
+      "address": "Ηρώων Πολυτεχνείου 56, Πειραιάς",
+      "phone": "6900000004",
+      "email": "doc4@test.gr",
+      "experience": "5 χρόνια",
+      "studies": "Πτυχίο Κτηνιατρικής – Θεσσαλία",
+      "photo": "/images/demo-vet-avatar.png"
+    }
+  ],
+  "reviews": [
+  {
+    "id": "r101",
+    "vetId": 1,
+    "rating": 5,
+    "name": "Μαρία Κ.",
+    "date": "2026-01-05T12:10:00.000Z",
+    "text": "Εξαιρετική κτηνίατρος! Πολύ προσεκτική και μας εξήγησε τα πάντα αναλυτικά."
+  },
+  {
+    "id": "r102",
+    "vetId": 1,
+    "rating": 4,
+    "name": "Γιάννης Π.",
+    "date": "2025-12-20T17:45:00.000Z",
+    "text": "Άμεση εξυπηρέτηση και σωστή διάγνωση. Θα ξαναπάω."
+  },
+  {
+    "id": "r103",
+    "vetId": 1,
+    "rating": 5,
+    "name": "Ελένη Μ.",
+    "date": "2025-11-28T09:30:00.000Z",
+    "text": "Πολύ γλυκιά με το σκυλάκι μου και φάνηκε να νοιάζεται πραγματικά."
+  },
+  {
+    "id": "r104",
+    "vetId": 1,
+    "rating": 3,
+    "name": "Γιώργος Α.",
+    "date": "2025-10-10T14:05:00.000Z",
+    "text": "Καλή εμπειρία γενικά, αλλά είχε λίγο αναμονή."
+  },
+  {
+    "id": "r105",
+    "vetId": 1,
+    "rating": 5,
+    "name": "Αναστασία Δ.",
+    "date": "2025-09-02T18:20:00.000Z",
+    "text": "Μας έσωσε σε επείγον περιστατικό. Επαγγελματισμός και ανθρωπιά."
+  },
+  {
+    "id": "r106",
+    "vetId": 1,
+    "rating": 4,
+    "name": "Νίκος Σ.",
+    "date": "2025-08-15T11:55:00.000Z",
+    "text": "Πολύ καλή και οργανωμένη κλινική. Ευγενικό προσωπικό."
+  }
+]
+
 }

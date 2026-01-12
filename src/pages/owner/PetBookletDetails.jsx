@@ -6,15 +6,20 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 
-const dog1 = "/images/dog1.png";
-const cat1 = "/images/cat1.png";
-
 const TITLE = "#0d2c54";
 const PRIMARY = "#0b3d91";
 const PRIMARY_HOVER = "#08316f";
 const PANEL_BG = "#dfeeff";
 const BORDER = "#8fb4e8";
 const MUTED = "#6b7a90";
+
+function isValidPhoto(p) {
+  return typeof p === "string" && (p.startsWith("/") || p.startsWith("data:") || p.startsWith("http"));
+}
+
+function getPetPhoto(pet) {
+  if (isValidPhoto(pet?.photo)) return pet.photo;
+}
 
 async function fetchJSON(path) {
   const res = await fetch(path);
@@ -113,10 +118,7 @@ export default function PetBookletDetails() {
     };
   }, [petId]);
 
-  const photo = useMemo(() => {
-    if (!pet) return dog1;
-    return pet.photo || (pet.name === "Λούνα" ? cat1 : dog1);
-  }, [pet]);
+  const photo = useMemo(() => getPetPhoto(pet), [pet]);
 
   const speciesOrBreed = pet?.breed || pet?.species || "-";
 
@@ -171,10 +173,6 @@ export default function PetBookletDetails() {
                       component="img"
                       src={photo}
                       alt={pet?.name || "pet"}
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = dog1;
-                      }}
                       sx={{
                         maxWidth: "100%",
                         maxHeight: "100%",

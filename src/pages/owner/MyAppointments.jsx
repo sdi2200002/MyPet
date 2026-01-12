@@ -17,60 +17,34 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext"; // ✅ όπως MyPets
 
-const APPOINTMENTS_KEY = "mypet_appointments";
-
-function safeLoad(key) {
-  try {
-    return JSON.parse(localStorage.getItem(key) || "[]");
-  } catch {
-    return [];
-  }
-}
-function safeSave(key, items) {
-  localStorage.setItem(key, JSON.stringify(items));
+async function fetchJSON(path, options) {
+  const res = await fetch(path, options);
+  if (!res.ok) throw new Error(`HTTP ${res.status} on ${path}`);
+  return res.json();
 }
 
-function makeId() {
-  return `ap_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+function isValidPhoto(p) {
+  return typeof p === "string" && (p.startsWith("/") || p.startsWith("data:") || p.startsWith("http"));
 }
 
-// (προαιρετικό) demo data για να μοιάζει με screenshot
-function seedAppointmentsIfMissing() {
-  const existing = safeLoad(APPOINTMENTS_KEY);
-  if (existing.length) return;
+function getPetPhotoFromProfile(pet) {
+  // ✅ πάρε από pet profile (δοκίμασε και εναλλακτικά keys)
+  const candidate =
+    pet?.photo ||
+    pet?.photoUrl ||
+    pet?.image ||
+    pet?.avatar ||
+    pet?.img ||
+    "";
 
-  const demo = [
-    {
-      id: makeId(),
-      petName: "Λούνα",
-      service: "Εμβολιασμός",
-      vetName: "Κυριακή Νικολάου",
-      status: "Επιβεβαιωμένο",
-      when: "2025-11-18T12:00:00", // σε 3 μέρες
-      photoDataUrl: "",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: makeId(),
-      petName: "",
-      service: "Πληροφορίες",
-      vetName: "",
-      status: "Εκκρεμές",
-      when: "2025-11-18T12:00:00", // σε 7 μέρες
-      photoDataUrl: "",
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
-  safeSave(APPOINTMENTS_KEY, demo);
+  return isValidPhoto(candidate) ? candidate : "";
 }
 
 function StatusChip({ status }) {
   const label = status || "Εκκρεμές";
 
-  // χρώματα κοντά στο screenshot
-  // Επιβεβαιωμένο = πράσινο, Εκκρεμές = πορτοκαλί, Ακυρωμένο/Ολοκληρωμένο = γκρι
   const color =
     label === "Επιβεβαιωμένο"
       ? "success"
@@ -96,22 +70,17 @@ function fmtTime(iso) {
   return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
 }
 
-function AppointmentRow({ item, onView, onCancel }) {
+function AppointmentRow({ item, pet, onView, onCancel }) {
   const now = Date.now();
   const t = new Date(item?.when || 0).getTime();
 
   const rawStatus = item?.status || "Εκκρεμές";
-
-  // ✅ Αν έχει περάσει και δεν είναι ακυρωμένο -> το δείχνουμε ως Ολοκληρωμένο
   const status =
-    rawStatus === "Ακυρωμένο"
-      ? "Ακυρωμένο"
-      : t && t < now
-      ? "Ολοκληρωμένο"
-      : rawStatus;
+    rawStatus === "Ακυρωμένο" ? "Ακυρωμένο" : t && t < now ? "Ολοκληρωμένο" : rawStatus;
 
-  // Ακύρωση μόνο αν δεν είναι ήδη ακυρωμένο/ολοκληρωμένο
   const canCancel = status !== "Ακυρωμένο" && status !== "Ολοκληρωμένο";
+
+  const petPhoto = getPetPhotoFromProfile(pet);
 
   return (
     <Paper
@@ -125,7 +94,6 @@ function AppointmentRow({ item, onView, onCancel }) {
       }}
     >
       <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-        {/* left: image + info */}
         <Stack direction="row" spacing={2} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
           <Box
             sx={{
@@ -140,12 +108,17 @@ function AppointmentRow({ item, onView, onCancel }) {
               placeItems: "center",
             }}
           >
-            {item?.petPhoto  ? (
+            {petPhoto ? (
               <Box
                 component="img"
-                src={item.petPhoto }
-                alt="pet"
+                src={petPhoto}
+                alt={item?.petName || "pet"}
                 sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                onError={(e) => {
+                  // ✅ δεν θέλεις fallback, άρα αν σπάσει -> κρύψ'το και δείξε text
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.style.display = "none";
+                }}
               />
             ) : (
               <Typography sx={{ fontSize: 11, color: "#6b7a90", fontWeight: 700 }}>
@@ -157,7 +130,7 @@ function AppointmentRow({ item, onView, onCancel }) {
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography sx={{ fontWeight: 900, color: "#0d2c54" }} noWrap>
-                {item?.petName || "Κατοικίδιο"}
+                {item?.petName || pet?.name || "Κατοικίδιο"}
               </Typography>
 
               <Typography sx={{ fontSize: 12, color: "#6b7a90" }}>
@@ -181,7 +154,6 @@ function AppointmentRow({ item, onView, onCancel }) {
           </Box>
         </Stack>
 
-        {/* right: actions */}
         <Stack direction="column" spacing={1} alignItems="flex-end">
           <Typography sx={{ fontSize: 12, color: "#0d2c54", mr: 1, display: { xs: "none", md: "block" } }}>
             Υποβλήθηκε: {item?.createdAt ? new Date(item.createdAt).toLocaleDateString("el-GR") : "—"}
@@ -189,18 +161,18 @@ function AppointmentRow({ item, onView, onCancel }) {
 
           <Stack direction="row" spacing={1} alignItems="center">
             {canCancel && (
-                <Button
-                    onClick={() => onCancel(item)}
-                    variant="contained"
-                    sx={{
-                    textTransform: "none",
-                    borderRadius: 2,
-                    bgcolor: "#d32f2f",
-                    "&:hover": { bgcolor: "#b71c1c" },
-                    }}
-                >
-                    Ακύρωση
-                </Button>
+              <Button
+                onClick={() => onCancel(item)}
+                variant="contained"
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                  bgcolor: "#d32f2f",
+                  "&:hover": { bgcolor: "#b71c1c" },
+                }}
+              >
+                Ακύρωση
+              </Button>
             )}
 
             <Button
@@ -225,70 +197,113 @@ function AppointmentRow({ item, onView, onCancel }) {
 
 export default function MyAppointments() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // tab: 0=Επερχόμενα, 1=Ιστορικό
   const [tab, setTab] = useState(0);
 
   const [appointments, setAppointments] = useState([]);
+  const [pets, setPets] = useState([]);
 
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  // ✅ Load appointments + pets από server (μόνο του owner)
   useEffect(() => {
-    seedAppointmentsIfMissing();
-    setAppointments(safeLoad(APPOINTMENTS_KEY));
-  }, []);
+    let alive = true;
+
+    (async () => {
+      setLoading(true);
+      setErr("");
+
+      if (!user?.id) {
+        if (!alive) return;
+        setAppointments([]);
+        setPets([]);
+        setErr("Δεν υπάρχει συνδεδεμένος χρήστης.");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ parallel fetch
+      const [apptsData, petsData] = await Promise.all([
+        fetchJSON(`/api/appointments?ownerId=${encodeURIComponent(String(user.id))}`),
+        fetchJSON(`/api/pets?ownerId=${encodeURIComponent(String(user.id))}`),
+      ]);
+
+      if (!alive) return;
+      setAppointments(Array.isArray(apptsData) ? apptsData : []);
+      setPets(Array.isArray(petsData) ? petsData : []);
+      setLoading(false);
+    })().catch((e) => {
+      console.error(e);
+      if (!alive) return;
+      setErr("Αποτυχία φόρτωσης ραντεβού από τον server.");
+      setLoading(false);
+    });
+
+    return () => {
+      alive = false;
+    };
+  }, [user?.id]);
+
+  const petMap = useMemo(() => {
+    return new Map((pets || []).map((p) => [String(p.id), p]));
+  }, [pets]);
 
   const all = useMemo(() => {
     const merged = [...appointments];
-    // sort: πιο κοντινά πρώτα για Επερχόμενα, αλλά γενικά κρατάμε newest-ish
     merged.sort((a, b) => new Date(a?.when || 0).getTime() - new Date(b?.when || 0).getTime());
     return merged;
   }, [appointments]);
 
-    const filtered = useMemo(() => {
-        const now = Date.now();
+  const filtered = useMemo(() => {
+    const now = Date.now();
 
-        const getTime = (x) => {
-            const t = new Date(x?.when || 0).getTime();
-            return Number.isFinite(t) ? t : 0;
-        };
+    const getTime = (x) => {
+      const t = new Date(x?.when || 0).getTime();
+      return Number.isFinite(t) ? t : 0;
+    };
 
-        if (tab === 0) {
-            // Επερχόμενα: μελλοντικά ΚΑΙ όχι ακυρωμένα
-            return all.filter((x) => {
-            const t = getTime(x);
-            const status = x?.status || "Εκκρεμές";
-            return t >= now && status !== "Ακυρωμένο";
-            });
-        }
+    if (tab === 0) {
+      // Επερχόμενα: μελλοντικά ΚΑΙ όχι ακυρωμένα
+      return all.filter((x) => {
+        const t = getTime(x);
+        const status = x?.status || "Εκκρεμές";
+        return t >= now && status !== "Ακυρωμένο";
+      });
+    }
 
-        // Ιστορικό: όσα έχουν περάσει Ή είναι ακυρωμένα
-        return all.filter((x) => {
-            const t = getTime(x);
-            return t < now || x?.status === "Ακυρωμένο";
-        });
-    }, [all, tab]);
+    // Ιστορικό: όσα έχουν περάσει Ή είναι ακυρωμένα
+    return all.filter((x) => {
+      const t = getTime(x);
+      return t < now || x?.status === "Ακυρωμένο";
+    });
+  }, [all, tab]);
 
+  const handleCreate = () => navigate("/owner/vets");
+  const handleView = (item) => navigate(`/owner/appointments/${item.id}`);
 
-
-  const handleCreate = () => {
-    // + Νέο Ραντεβού (route δικό σου)
-    navigate("/owner/vets");
-  };
-
-  const handleView = (item) => {
-    // Προβολή ραντεβού (route δικό σου)
-    navigate(`/owner/appointments/${item.id}`);
-  };
-
-  const handleCancel = (item) => {
+  const handleCancel = async (item) => {
     const status = item?.status || "Εκκρεμές";
     if (status === "Ακυρωμένο" || status === "Ολοκληρωμένο") return;
 
     const ok = confirm("Θες σίγουρα να ακυρώσεις το ραντεβού;");
     if (!ok) return;
 
-    const next = appointments.map((x) => (x.id === item.id ? { ...x, status: "Ακυρωμένο" } : x));
-    setAppointments(next);
-    safeSave(APPOINTMENTS_KEY, next);
+    try {
+      const updated = await fetchJSON(`/api/appointments/${encodeURIComponent(String(item.id))}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "Ακυρωμένο" }),
+      });
+
+      setAppointments((prev) =>
+        prev.map((x) => (String(x.id) === String(item.id) ? { ...x, ...updated } : x))
+      );
+    } catch (e) {
+      console.error(e);
+      alert("Αποτυχία ακύρωσης. Δοκίμασε ξανά.");
+    }
   };
 
   return (
@@ -341,7 +356,6 @@ export default function MyAppointments() {
               boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
             }}
           >
-            {/* Tabs like screenshot: Επερχόμενα / Ιστορικό */}
             <Box sx={{ bgcolor: "#ffffff" }}>
               <Tabs
                 value={tab}
@@ -369,7 +383,31 @@ export default function MyAppointments() {
             <Divider />
 
             <Box sx={{ p: 2 }}>
-              {filtered.length === 0 ? (
+              {loading ? (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    border: "1px solid #e6edf7",
+                    bgcolor: "#ffffff",
+                  }}
+                >
+                  <Typography sx={{ color: "#6b7a90", fontWeight: 800 }}>Φόρτωση...</Typography>
+                </Paper>
+              ) : err ? (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    bgcolor: "#fff3f3",
+                  }}
+                >
+                  <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
+                </Paper>
+              ) : filtered.length === 0 ? (
                 <Paper
                   elevation={0}
                   sx={{
@@ -393,6 +431,7 @@ export default function MyAppointments() {
                     <AppointmentRow
                       key={item.id}
                       item={item}
+                      pet={petMap.get(String(item?.petId))}
                       onView={handleView}
                       onCancel={handleCancel}
                     />
