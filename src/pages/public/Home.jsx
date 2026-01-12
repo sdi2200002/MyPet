@@ -32,6 +32,15 @@ import Footer from "../../components/Footer";
 import PublicNavbar from "../../components/PublicNavbar";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 
+import MedicalServicesOutlinedIcon from "@mui/icons-material/MedicalServicesOutlined";
+import EventAvailableOutlinedIcon from "@mui/icons-material/EventAvailableOutlined";
+import PersonAddAltOutlinedIcon from "@mui/icons-material/PersonAddAltOutlined";
+
+import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
+import LocalHospitalOutlinedIcon from "@mui/icons-material/LocalHospitalOutlined";
+
+
 const LOST_KEY = "mypet_lost_declarations";
 
 function safeLoad(key) {
@@ -216,293 +225,412 @@ export default function Home() {
             height: "auto",
           }}
         />
-      </Box>
+            </Box>
 
-      {/* SEARCH + CAROUSEL */}
-      <Container maxWidth="lg" sx={{ mt: 4, pb: 6 }}>
-        {/* SEARCH BAR */}
-        <Paper
-          elevation={0}
-          sx={{
-            bgcolor: "#cfe0f7",
-            borderRadius: 4,
-            p: 2.5,
-          }}
-        >
-          <Typography sx={{ fontWeight: 800, mb: 1.8, color: "#1c2b39" }}>
-            Αναζήτηση απολεσθέντων κατοικιδίων
-          </Typography>
+{/* WHAT YOU CAN DO (NEW SECTION) */}
+<Container maxWidth="lg" sx={{ mt: { xs: 7, md: 9 }, mb: 6 }}>
+  <Typography sx={{ fontSize: 24, fontWeight: 900, color: "#0d2c54" }}>
+    Τι μπορείτε να κάνετε στο MyPet
+  </Typography>
 
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1.6} alignItems="center">
-            <FormControl
-              size="small"
-              hiddenLabel
-              sx={{
-                minWidth: 170,
-                bgcolor: "white",
-                borderRadius: 999,
-                "& .MuiOutlinedInput-root": { borderRadius: 999 },
-              }}
-            >
-              <Select
-                value={area}
-                onChange={(e) => setArea(e.target.value)}
-                displayEmpty
-                startAdornment={
-                  <InputAdornment position="start">
-                    <LocationOnOutlinedIcon sx={{ color: "#6b7a90", ml: 0.5 }} />
-                  </InputAdornment>
-                }
-                renderValue={(selected) => (
-                  <span style={{ color: selected ? "#1c2b39" : "#6b7a90" }}>
-                    {selected || "Περιοχή"}
-                  </span>
-                )}
-              >
-                <MenuItem value="">Όλες</MenuItem>
-                <MenuItem value="Αθήνα">Αθήνα</MenuItem>
-                <MenuItem value="Πειραιάς">Πειραιάς</MenuItem>
-                <MenuItem value="Ζωγράφου">Ζωγράφου</MenuItem>
-              </Select>
-            </FormControl>
+  <Typography sx={{ mt: 0.8, color: "text.secondary", maxWidth: 900 }}>
+    Η πλατφόρμα προσφέρει προσωποποιημένες λειτουργίες για Ιδιοκτήτες και Κτηνιάτρους, ενώ η αναζήτηση
+    απολεσθέντων είναι διαθέσιμη και χωρίς σύνδεση.
+  </Typography>
 
-            <FormControl
-              size="small"
-              hiddenLabel
-              sx={{
-                minWidth: 170,
-                bgcolor: "white",
-                borderRadius: 999,
-                "& .MuiOutlinedInput-root": { borderRadius: 999 },
-              }}
-            >
-              <Select
-                value={species}
-                onChange={(e) => setSpecies(e.target.value)}
-                displayEmpty
-                startAdornment={
-                  <InputAdornment position="start">
-                    <PetsOutlinedIcon sx={{ color: "#6b7a90", ml: 0.5 }} />
-                  </InputAdornment>
-                }
-                renderValue={(selected) => (
-                  <span style={{ color: selected ? "#1c2b39" : "#6b7a90" }}>
-                    {selected || "Είδος Ζώου"}
-                  </span>
-                )}
-              >
-                <MenuItem value="">Όλα</MenuItem>
-                <MenuItem value="Σκύλος">Σκύλος</MenuItem>
-                <MenuItem value="Γάτα">Γάτα</MenuItem>
-              </Select>
-            </FormControl>
-
-            <FormControl
-              size="small"
-              hiddenLabel
-              sx={{
-                minWidth: 150,
-                bgcolor: "white",
-                borderRadius: 999,
-                "& .MuiOutlinedInput-root": { borderRadius: 999 },
-              }}
-            >
-              <Select
-                value={sex}
-                onChange={(e) => setSex(e.target.value)}
-                displayEmpty
-                startAdornment={
-                  <InputAdornment position="start">
-                    <WcOutlinedIcon sx={{ color: "#6b7a90", ml: 0.5 }} />
-                  </InputAdornment>
-                }
-                renderValue={(selected) => (
-                  <span style={{ color: selected ? "#1c2b39" : "#6b7a90" }}>
-                    {selected || "Φύλο"}
-                  </span>
-                )}
-              >
-                <MenuItem value="">Όλα</MenuItem>
-                <MenuItem value="Αρσενικό">Αρσενικό</MenuItem>
-                <MenuItem value="Θηλυκό">Θηλυκό</MenuItem>
-              </Select>
-            </FormControl>
-
-            <TextField
-              size="small"
-              placeholder="Χρώμα"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              sx={{
-                bgcolor: "white",
-                borderRadius: 999,
-                minWidth: 200,
-                "& .MuiOutlinedInput-root": { borderRadius: 999 },
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <PaletteOutlinedIcon sx={{ color: "#6b7a90" }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-
-            <Button
-              variant="contained"
-              startIcon={<SearchIcon />}
-              onClick={() => navigate("/lost")}
-              sx={{
-                textTransform: "none",
-                borderRadius: 999,
-                px: 3.2,
-                ml: { md: "auto" },
-                bgcolor: "#0b3d91",
-                "&:hover": { bgcolor: "#08316f" },
-                boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
-              }}
-            >
-              Αναζήτηση
-            </Button>
-          </Stack>
-        </Paper>
-
-        {/* CAROUSEL AREA (REAL DATA) */}
-        <Paper
-          elevation={0}
-          sx={{
-            mt: 2.2,
-            bgcolor: "#8f9fb0",
-            borderRadius: 3,
-            p: 2.2,
-            position: "relative",
-          }}
-        >
-          <IconButton
-            onClick={goPrev}
-            disabled={!canPrev}
+  <Grid container spacing={2.2} sx={{ mt: 2 }}>
+    {/* OWNER CARD */}
+    <Grid item xs={12} md={6}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.2, // ⬅️ λίγο πιο μικρή
+          borderRadius: 3,
+          border: "1px solid rgba(13,44,84,0.12)",
+          bgcolor: "#f7faff", // ⬅️ ίδιο χρώμα και στις 2
+          height: "100%",
+          minHeight: 250, // ⬅️ λίγο πιο μικρή
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <Stack direction="row" spacing={1.4} alignItems="center" sx={{ mb: 1 }}>
+          <Paper
+            elevation={0}
             sx={{
-              position: "absolute",
-              left: 14,
-              top: "50%",
-              transform: "translateY(-50%)",
-              bgcolor: "rgba(255,255,255,0.35)",
-              width: 46,
-              height: 46,
-              "&:hover": { bgcolor: "rgba(255,255,255,0.55)" },
+              width: 48,
+              height: 48,
+              borderRadius: 2,
+              bgcolor: "#dbe9ff",
+              display: "grid",
+              placeItems: "center",
             }}
           >
-            <ChevronLeftIcon />
-          </IconButton>
-
-          <IconButton
-            onClick={goNext}
-            disabled={!canNext}
-            sx={{
-              position: "absolute",
-              right: 14,
-              top: "50%",
-              transform: "translateY(-50%)",
-              bgcolor: "rgba(255,255,255,0.35)",
-              width: 46,
-              height: 46,
-              "&:hover": { bgcolor: "rgba(255,255,255,0.55)" },
-            }}
-          >
-            <ChevronRightIcon />
-          </IconButton>
-
-          <Stack direction="row" spacing={3} justifyContent="center" sx={{ py: 1.5, minHeight: 170 }}>
-            {visibleLost.length === 0 ? (
-              <Paper
-                elevation={0}
-                sx={{
-                  borderRadius: 2,
-                  p: 2.5,
-                  bgcolor: "rgba(255,255,255,0.85)",
-                  minWidth: 520,
-                  textAlign: "center",
-                }}
-              >
-                <Typography sx={{ fontWeight: 900, color: "#0d2c54" }}>
-                  Δεν υπάρχουν χαμένα κατοικίδια ακόμη
-                </Typography>
-                <Typography sx={{ mt: 0.6, color: "#0d2c54", opacity: 0.75 }}>
-                  Όταν γίνει οριστική υποβολή δήλωσης απώλειας, θα εμφανιστεί εδώ.
-                </Typography>
-              </Paper>
-            ) : (
-              visibleLost.map((item) => (
-                <LostCard key={item.id} item={item} onOpen={() => navigate(`/lost/${item.id}`)} />
-              ))
-            )}
-          </Stack>
-        </Paper>
-
-        <Stack alignItems="flex-end" sx={{ mt: 2 }}>
-          <Button
-            variant="outlined"
-            onClick={() => navigate("/lost")}
-            sx={{ textTransform: "none", borderRadius: 2 }}
-          >
-            Δείτε όλα τα χαμένα κατοικίδια
-          </Button>
+            <PetsOutlinedIcon sx={{ color: "#0b3d91" }} />
+          </Paper>
+          <Box>
+            <Typography sx={{ fontWeight: 900, color: "#0d2c54" }}>Για Ιδιοκτήτες</Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              Υγεία, δηλώσεις, ραντεβού — όλα σε ένα μέρος.
+            </Typography>
+          </Box>
         </Stack>
 
-        {/* FIND PET SECTION */}
-        <Box sx={{ mt: 8 }}>
-          <Container maxWidth="lg">
-            <Typography
-              sx={{
-                fontSize: 26,
-                fontWeight: 900,
-                color: "#0d2c54",
-                mb: 5,
-              }}
-            >
-              Εύρεση κατοικιδίου
+        <Stack spacing={0.9} sx={{ mt: 1.2 }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <MedicalServicesOutlinedIcon sx={{ color: "#0b3d91" }} />
+            <Typography variant="body2" sx={{ color: "#1c2b39", lineHeight: 1.35 }}>
+              Βιβλιάριο υγείας & ιατρικές πράξεις (προβολή/εκτύπωση)
             </Typography>
+          </Stack>
 
-            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={4}>
-              <StepCard
-                icon={<SearchIcon sx={{ fontSize: 52, color: "#0b3d91" }} />}
-                title="1. Συγκέντρωση Στοιχείων"
-                text="Δείτε αν το ζώο που βρήκατε έχει κάποια ιδιαίτερα χαρακτηριστικά και καταγράψτε τα."
-              />
+          <Stack direction="row" spacing={1} alignItems="center">
+            <CampaignIcon sx={{ color: "#0b3d91" }} />
+            <Typography variant="body2" sx={{ color: "#1c2b39", lineHeight: 1.35 }}>
+              Δήλωση απώλειας/εύρεσης & ιστορικό δηλώσεων
+            </Typography>
+          </Stack>
 
-              <StepCard
-                icon={<EditNoteIcon sx={{ fontSize: 52, color: "#0b3d91" }} />}
-                title="2. Συνθήκες Εύρεσης"
-                text="Τραβήξτε μια καθαρή φωτογραφία και σημειώστε την τοποθεσία και την ημερομηνία εύρεσης."
-              />
+          <Stack direction="row" spacing={1} alignItems="center">
+            <EventAvailableOutlinedIcon sx={{ color: "#0b3d91" }} />
+            <Typography variant="body2" sx={{ color: "#1c2b39", lineHeight: 1.35 }}>
+              Αναζήτηση κτηνιάτρων & προγραμματισμός ραντεβού
+            </Typography>
+          </Stack>
 
-              <StepCard
-                icon={<CampaignIcon sx={{ fontSize: 52, color: "#0b3d91" }} />}
-                title="3. Κάντε αναφορά εύρεσης"
-                text="Συμπληρώστε τη σύντομη φόρμα για να ενημερωθεί ο ιδιοκτήτης."
-              />
-            </Stack>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <EditNoteIcon sx={{ color: "#0b3d91" }} />
+            <Typography variant="body2" sx={{ color: "#1c2b39", lineHeight: 1.35 }}>
+              Πρόχειρη/Οριστική υποβολή δηλώσεων & ιστορικό ραντεβού
+            </Typography>
+          </Stack>
+        </Stack>
 
-            <Stack alignItems="center" sx={{ mt: 5 }}>
-              <Button
-                variant="contained"
-                onClick={() => navigate("/lost/new")}
-                sx={{
-                  textTransform: "none",
-                  borderRadius: 2,
-                  px: 3,
-                  bgcolor: "#0b3d91",
-                  "&:hover": { bgcolor: "#08316f" },
-                  boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
-                }}
-              >
-                + Δήλωση Εύρεσης
-              </Button>
-            </Stack>
-          </Container>
-        </Box>
+        <Stack direction="row" justifyContent="flex-end" sx={{ mt: "auto", pt: 1.6 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => navigate("/register/owner")}
+            sx={{ textTransform: "none", borderRadius: 999, px: 2.2 }}
+          >
+            Εγγραφή ως Ιδιοκτήτης
+          </Button>
+        </Stack>
+      </Paper>
+    </Grid>
 
-      </Container>
+    {/* VET CARD */}
+    <Grid item xs={12} md={6}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.2, // ⬅️ ίδιο padding
+          borderRadius: 3,
+          border: "1px solid rgba(13,44,84,0.12)",
+          bgcolor: "#f7faff", // ⬅️ ίδιο χρώμα
+          height: "100%",
+          minHeight: 250, // ⬅️ ίδιο ύψος
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <Stack direction="row" spacing={1.4} alignItems="center" sx={{ mb: 1 }}>
+          <Paper
+            elevation={0}
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: 2,
+              bgcolor: "#dbe9ff",
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            <MedicalServicesOutlinedIcon sx={{ color: "#0b3d91" }} />
+          </Paper>
+          <Box>
+            <Typography sx={{ fontWeight: 900, color: "#0d2c54" }}>Για Κτηνιάτρους</Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              Προφίλ, καταγραφές, διαθεσιμότητα & ραντεβού.
+            </Typography>
+          </Box>
+        </Stack>
+
+        <Stack spacing={0.9} sx={{ mt: 1.2 }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <EditNoteIcon sx={{ color: "#0b3d91" }} />
+            <Typography variant="body2" sx={{ color: "#1c2b39", lineHeight: 1.35 }}>
+              Καταγραφή ταυτότητας κατοικιδίου & ιατρικών πράξεων
+            </Typography>
+          </Stack>
+
+          <Stack direction="row" spacing={1} alignItems="center">
+            <EventAvailableOutlinedIcon sx={{ color: "#0b3d91" }} />
+            <Typography variant="body2" sx={{ color: "#1c2b39", lineHeight: 1.35 }}>
+              Ορισμός διαθεσιμότητας & διαχείριση αιτημάτων ραντεβού
+            </Typography>
+          </Stack>
+
+          <Stack direction="row" spacing={1} alignItems="center">
+            <CampaignIcon sx={{ color: "#0b3d91" }} />
+            <Typography variant="body2" sx={{ color: "#1c2b39", lineHeight: 1.35 }}>
+              Παρακολούθηση αξιολογήσεων & ιστορικού επισκέψεων
+            </Typography>
+          </Stack>
+
+          <Stack direction="row" spacing={1} alignItems="center">
+            <PetsOutlinedIcon sx={{ color: "#0b3d91" }} />
+            <Typography variant="body2" sx={{ color: "#1c2b39", lineHeight: 1.35 }}>
+              Συμβάντα ζωής (απώλεια/εύρεση/υιοθεσία) & αιτήματα ραντεβού (επιβεβαίωση/απόρριψη)
+            </Typography>
+          </Stack>
+        </Stack>
+
+        <Stack direction="row" justifyContent="flex-end" sx={{ mt: "auto", pt: 1.6 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => navigate("/register/vet")}
+            sx={{ textTransform: "none", borderRadius: 999, px: 2.2 }}
+          >
+            Εγγραφή ως Κτηνίατρος
+          </Button>
+        </Stack>
+      </Paper>
+    </Grid>
+  </Grid>
+</Container>
+
+
+
+{/* VETS SEARCH + PREVIEW */}
+<Container maxWidth="lg" sx={{ mt: 4, pb: 6 }}>
+  {/* SEARCH BAR */}
+  <Paper
+    elevation={0}
+    sx={{
+      bgcolor: "#cfe0f7",
+      borderRadius: 4,
+      p: 2.5,
+    }}
+  >
+    <Typography sx={{ fontWeight: 800, mb: 1.8, color: "#1c2b39" }}>
+      Αναζήτηση Κτηνιάτρων
+    </Typography>
+
+    <Stack direction={{ xs: "column", md: "row" }} spacing={1.6} alignItems="center">
+      {/* Περιοχή */}
+      <FormControl
+        size="small"
+        hiddenLabel
+        sx={{
+          minWidth: 170,
+          bgcolor: "white",
+          borderRadius: 999,
+          "& .MuiOutlinedInput-root": { borderRadius: 999 },
+        }}
+      >
+        <Select
+          value={area}
+          onChange={(e) => setArea(e.target.value)}
+          displayEmpty
+          startAdornment={
+            <InputAdornment position="start">
+              <LocationOnOutlinedIcon sx={{ color: "#6b7a90", ml: 0.5 }} />
+            </InputAdornment>
+          }
+          renderValue={(selected) => (
+            <span style={{ color: selected ? "#1c2b39" : "#6b7a90" }}>
+              {selected || "Περιοχή"}
+            </span>
+          )}
+        >
+          <MenuItem value="">Όλες</MenuItem>
+          <MenuItem value="Αθήνα">Αθήνα</MenuItem>
+          <MenuItem value="Πειραιάς">Πειραιάς</MenuItem>
+          <MenuItem value="Θεσσαλονίκη">Θεσσαλονίκη</MenuItem>
+        </Select>
+      </FormControl>
+
+      {/* Ημερομηνία (απλό input για τώρα) */}
+      <TextField
+        size="small"
+        placeholder="Ημερομηνία"
+        sx={{
+          bgcolor: "white",
+          borderRadius: 999,
+          minWidth: 200,
+          "& .MuiOutlinedInput-root": { borderRadius: 999 },
+          "& input::placeholder": { color: "#6b7a90", opacity: 1 },
+        }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <CalendarMonthOutlinedIcon sx={{ color: "#6b7a90" }} />
+            </InputAdornment>
+          ),
+        }}
+      />
+
+      {/* Ώρα */}
+      <FormControl
+        size="small"
+        hiddenLabel
+        sx={{
+          minWidth: 150,
+          bgcolor: "white",
+          borderRadius: 999,
+          "& .MuiOutlinedInput-root": { borderRadius: 999 },
+        }}
+      >
+        <Select
+          value=""
+          displayEmpty
+          startAdornment={
+            <InputAdornment position="start">
+              <AccessTimeOutlinedIcon sx={{ color: "#6b7a90", ml: 0.5 }} />
+            </InputAdornment>
+          }
+          renderValue={(selected) => (
+            <span style={{ color: selected ? "#1c2b39" : "#6b7a90" }}>
+              {selected || "Ώρα"}
+            </span>
+          )}
+        >
+          <MenuItem value="">Όλες</MenuItem>
+          <MenuItem value="10:00">10:00</MenuItem>
+          <MenuItem value="12:00">12:00</MenuItem>
+          <MenuItem value="17:30">17:30</MenuItem>
+        </Select>
+      </FormControl>
+
+      {/* Ειδικότητα */}
+      <FormControl
+        size="small"
+        hiddenLabel
+        sx={{
+          minWidth: 170,
+          bgcolor: "white",
+          borderRadius: 999,
+          "& .MuiOutlinedInput-root": { borderRadius: 999 },
+        }}
+      >
+        <Select
+          value=""
+          displayEmpty
+          startAdornment={
+            <InputAdornment position="start">
+              <LocalHospitalOutlinedIcon sx={{ color: "#6b7a90", ml: 0.5 }} />
+            </InputAdornment>
+          }
+          renderValue={(selected) => (
+            <span style={{ color: selected ? "#1c2b39" : "#6b7a90" }}>
+              {selected || "Ειδικότητα"}
+            </span>
+          )}
+        >
+          <MenuItem value="">Όλες</MenuItem>
+          <MenuItem value="Γενικός">Γενικός</MenuItem>
+          <MenuItem value="Χειρουργός">Χειρουργός</MenuItem>
+          <MenuItem value="Δερματολόγος">Δερματολόγος</MenuItem>
+        </Select>
+      </FormControl>
+
+      <Button
+        variant="contained"
+        startIcon={<SearchIcon />}
+        onClick={() => navigate("/owner/vets")}
+        sx={{
+          textTransform: "none",
+          borderRadius: 999,
+          px: 3.2,
+          ml: { md: "auto" },
+          bgcolor: "#0b3d91",
+          "&:hover": { bgcolor: "#08316f" },
+          boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
+          minWidth: 140,
+          fontWeight: 800,
+        }}
+      >
+        Αναζήτηση
+      </Button>
+    </Stack>
+  </Paper>
+
+  {/* PREVIEW RESULTS (STATIC DEMO) */}
+  <Paper
+    elevation={0}
+    sx={{
+      mt: 2.2,
+      bgcolor: "#8f9fb0",
+      borderRadius: 3,
+      p: 2.2,
+    }}
+  >
+    <Typography sx={{ fontWeight: 900, color: "white", mb: 1.5 }}>
+      Προτεινόμενοι κτηνίατροι
+    </Typography>
+
+    <Stack direction={{ xs: "column", md: "row" }} spacing={2} justifyContent="center">
+      {[
+        { id: 1, name: "Ιωάννα Παπαδοπούλου", area: "Αθήνα", specialty: "Γενικός" },
+        { id: 2, name: "Νίκος Γεωργίου", area: "Πειραιάς", specialty: "Χειρουργός" },
+      ].map((v) => (
+        <Paper
+          key={v.id}
+          elevation={0}
+          onClick={() => navigate(`/vets/${v.id}`)}
+          sx={{
+            width: { xs: "100%", md: 280 },
+            borderRadius: 2,
+            border: "1px solid #3b3b3b",
+            bgcolor: "rgba(255,255,255,0.92)",
+            cursor: "pointer",
+            overflow: "hidden",
+            "&:hover": { transform: "translateY(-2px)" },
+            transition: "transform 160ms ease",
+          }}
+        >
+          <Box
+            sx={{
+              height: 90,
+              bgcolor: "#eef1f4",
+              display: "grid",
+              placeItems: "center",
+              borderBottom: "1px solid #3b3b3b",
+            }}
+          >
+            <Typography sx={{ fontWeight: 900, color: "#0d2c54" }}>
+              {v.specialty}
+            </Typography>
+          </Box>
+
+          <Box sx={{ p: 1.4 }}>
+            <Typography sx={{ color: "#0d2c54", fontWeight: 900 }}>
+              {v.name}
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#4b5b6b", mt: 0.4 }}>
+              Περιοχή: <b>{v.area}</b>
+              <br />
+              Διαθεσιμότητα: <b>Σήμερα</b>
+            </Typography>
+          </Box>
+        </Paper>
+      ))}
+    </Stack>
+  </Paper>
+
+  <Stack alignItems="flex-end" sx={{ mt: 2 }}>
+    <Button
+      variant="outlined"
+     onClick={() => navigate("/owner/vets")}
+      sx={{ textTransform: "none", borderRadius: 2 }}
+    >
+      Δείτε όλους τους κτηνιάτρους
+    </Button>
+  </Stack>
+</Container>
+
       <Footer />
     </Box>
   );
