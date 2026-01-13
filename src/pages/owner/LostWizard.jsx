@@ -19,8 +19,7 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import WizardStepper from "../../components/WizardStepper";
-
-
+import { useAuth } from "../../auth/AuthContext";
 
 const COLORS = {
   primary: "#0b3d91",
@@ -42,25 +41,11 @@ const fieldSx = {
   "& .MuiInputLabel-root.Mui-focused": { color: COLORS.primary },
 };
 
-const STORAGE_KEY = "mypet_lost_declarations";
-
-function loadFromStorage() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-  } catch {
-    return [];
-  }
+async function fetchJSON(path, options) {
+  const res = await fetch(path, options);
+  if (!res.ok) throw new Error(`HTTP ${res.status} on ${path}`);
+  return res.json();
 }
-
-function saveToStorage(items) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
-
-function makeId() {
-  return `ls_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
-
-
 
 function Panel({ children }) {
   return (
@@ -84,12 +69,6 @@ function normalizePhone(raw) {
   return (raw || "").replace(/[^\d+]/g, "").trim();
 }
 
-function isValidEmail(email) {
-  const v = (email || "").trim();
-  // simple but solid enough for UI
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-}
-
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -99,23 +78,106 @@ function fileToBase64(file) {
   });
 }
 
-const WIZARD_STEPS = [
-  // "Επιλογή Κατοικιδίου",
-  "Στοιχεία Απώλειας",
-  "Προεπισκόπηση Αναφοράς",
-];
+// ✅ κρατάμε string-only (YYYY-MM-DD) -> εμφανίζουμε DD/MM/YYYY χωρίς Date()
+function fmtDDMMYYYY(value) {
+  if (!value) return "";
+  const [y, m, d] = String(value).split("-");
+  if (!y || !m || !d) return value;
+  return `${d}/${m}/${y}`;
+}
+
+function todayYMD() {
+  const t = new Date();
+  const y = t.getFullYear();
+  const m = String(t.getMonth() + 1).padStart(2, "0");
+  const d = String(t.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function oneYearAgoYMD() {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function PetPick({ pet, active, onClick }) {
+  const photo = pet.photo;
+
+  return (
+    <Paper
+      elevation={0}
+      onClick={onClick}
+      sx={{
+        cursor: "pointer",
+        borderRadius: 2,
+        border: `3px solid ${active ? COLORS.primary : "rgba(199,212,232,1)"}`,
+        bgcolor: active ? "rgba(11,61,145,0.06)" : "#fff",
+        p: 1.2,
+        width: 120,
+        height: 150,
+        boxSizing: "border-box",
+        textAlign: "center",
+        boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+        transition: "transform 120ms ease, box-shadow 120ms ease",
+        display: "grid",
+        justifyItems: "center",
+        alignContent: "start",
+        "&:hover": {
+          transform: "translateY(-1px)",
+          boxShadow: "0 12px 24px rgba(0,0,0,0.14)",
+        },
+        userSelect: "none",
+        flex: "0 0 auto",
+      }}
+    >
+      <Box
+        component="img"
+        src={photo}
+        alt={pet.name}
+        onError={(e) => {
+          e.currentTarget.onerror = null;
+          e.currentTarget.src = "/images/dog1.png";
+        }}
+        sx={{
+          width: 84,
+          height: 94,
+          borderRadius: 2,
+          objectFit: "cover",
+          border: "1px solid rgba(0,0,0,0.15)",
+          bgcolor: "#fff",
+          display: "block",
+          mt: 0.2,
+        }}
+      />
+      <Typography sx={{ mt: 0.8, fontWeight: 900, fontSize: 12, color: "#111" }} noWrap>
+        {pet.name || "—"}
+      </Typography>
+    </Paper>
+  );
+}
+
+const WIZARD_STEPS = ["Επιλογή Κατοικιδίου", "Στοιχεία Απώλειας", "Προεπισκόπηση Αναφοράς"];
 
 export default function LostWizard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [editingId, setEditingId] = useState(null);
+  const { user } = useAuth();
 
+  const [editingId, setEditingId] = useState(null);
   const [activeStep, setActiveStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
+  // ---------- Pets ----------
+  const [pets, setPets] = useState([]);
+  const [petsLoading, setPetsLoading] = useState(true);
+  const [petsErr, setPetsErr] = useState("");
+
   // ---------- Photo upload state ----------
   const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(""); // objectURL for preview
+  const [photoPreview, setPhotoPreview] = useState(""); // objectURL for preview or dataURL
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -125,7 +187,6 @@ export default function LostWizard() {
       }
     };
   }, [photoPreview]);
-
 
   function setSelectedPhoto(file) {
     const okTypes = ["image/jpeg", "image/png", "image/webp"];
@@ -145,8 +206,6 @@ export default function LostWizard() {
       if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
       return url;
     });
-
-    // δεν είναι required, αλλά αν θες “required φωτο” πες μου να το κάνω
   }
 
   function onPickFile(e) {
@@ -174,61 +233,144 @@ export default function LostWizard() {
     setForm((p) => ({ ...p, photoDataUrl: "" }));
   }
 
-
   // ---------- Form ----------
   const [form, setForm] = useState({
-    finderId: 1,
+    finderId: "",
 
-    // Step 1
+    // Step 0: pet selection
+    petId: "",
+    petName: "",
+    sex: "",
+    breedOrSpecies: "", // ✅ φυλή/είδος ενιαίο
+    color: "",
+    microchip: "",
 
-    // Step 2
+    // owner/finder (optional)
+    phone: "",
+    email: "",
+    firstName: "",
+    lastName: "",
+
+    // Step 1: loss (string YYYY-MM-DD)
     date: "",
     area: "",
     notes: "",
 
-    // Step 3
+    // Step 2
     acceptTerms: false,
+
+    // server fields
+    photoDataUrl: "",
+    createdAt: "",
   });
 
+  // load pets from server
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      setPetsLoading(true);
+      setPetsErr("");
+
+      if (!user?.id) {
+        if (!alive) return;
+        setPets([]);
+        setPetsErr("Δεν υπάρχει συνδεδεμένος χρήστης.");
+        setPetsLoading(false);
+        return;
+      }
+
+      try {
+        const p = await fetchJSON(`/api/pets?ownerId=${encodeURIComponent(String(user.id))}`);
+        if (!alive) return;
+        const arr = Array.isArray(p) ? p : [];
+        setPets(arr);
+        setPetsLoading(false);
+      } catch (e) {
+        console.error(e);
+        if (!alive) return;
+        setPets([]);
+        setPetsErr("Αποτυχία φόρτωσης κατοικιδίων από τον server.");
+        setPetsLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [user?.id]);
+
+  // apply draft edit from route state (now from json-server)
   useEffect(() => {
     const draftId = location.state?.draftId;
     const targetStep = location.state?.step;
 
     if (!draftId) return;
 
-    const list = loadFromStorage();
-    const draft = list.find((x) => x.id === draftId);
+    let alive = true;
 
-    if (!draft) {
-      alert("Δεν βρέθηκε το πρόχειρο.");
-      return;
-    }
+    (async () => {
+      try {
+        const draft = await fetchJSON(`/api/lostDeclarations/${encodeURIComponent(String(draftId))}`);
+        if (!alive) return;
 
-    setEditingId(draftId);
+        setEditingId(String(draftId));
 
-    // γέμισε τη φόρμα με τα δεδομένα του draft
-    setForm((p) => ({
-      ...p,
-      ...draft,
-      acceptTerms: false,
-    }));
+        setForm((p) => ({
+          ...p,
+          ...draft,
+          acceptTerms: false,
+        }));
 
-    // βάλε φωτογραφία στο preview (αν υπάρχει)
-    if (draft.photoDataUrl) {
-      setPhotoPreview(draft.photoDataUrl); // είναι dataURL
-      setPhotoFile(null);
-    }
-    else {
-      setPhotoPreview("");
-      setPhotoFile(null);
-    }
+        // photo preview
+        if (draft.photoDataUrl) {
+          setPhotoPreview(draft.photoDataUrl);
+          setPhotoFile(null);
+        } else {
+          setPhotoPreview("");
+          setPhotoFile(null);
+        }
 
-    // πήγαινε στο preview (τελευταίο βήμα)
-    setActiveStep(typeof targetStep === "number" ? targetStep : 1);
+        setActiveStep(typeof targetStep === "number" ? targetStep : 2);
+      } catch (e) {
+        console.error(e);
+        alert("Δεν βρέθηκε το πρόχειρο.");
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
   }, [location.state]);
 
+  const chosenPet = useMemo(() => {
+    return pets.find((p) => String(p.id) === String(form.petId)) || null;
+  }, [pets, form.petId]);
 
-  // touched/errors for required fields
+  // when choose a pet: fill in the read-only fields
+  useEffect(() => {
+    if (!chosenPet) return;
+
+    const breedOrSpecies = chosenPet.breed || chosenPet.species || chosenPet.kind || "";
+
+    setForm((p) => ({
+      ...p,
+      petId: chosenPet.id,
+      petName: chosenPet.name || "",
+      sex: chosenPet.sex || "",
+      breedOrSpecies,
+      color: chosenPet.color || "",
+      microchip: chosenPet.microchip || "",
+
+      finderId: p.finderId || user?.id || "",
+      firstName: p.firstName || user?.firstName || user?.name || "",
+      lastName: p.lastName || user?.lastName || "",
+      phone: p.phone || user?.phone || "",
+      email: p.email || user?.email || "",
+    }));
+  }, [chosenPet, user?.id, user?.firstName, user?.lastName, user?.name, user?.phone, user?.email]);
+
+  // touched/errors
   const [touched, setTouched] = useState({});
   const touch = (key) => setTouched((p) => ({ ...p, [key]: true }));
 
@@ -239,19 +381,25 @@ export default function LostWizard() {
 
   const errors = useMemo(() => {
     const e = {};
+    if (!form.petId) e.petId = "Υποχρεωτικό πεδίο.";
 
-    // required step 1
     if (!form.date) e.date = "Υποχρεωτικό πεδίο.";
+    if (form.date && form.date > todayYMD()) e.date = "Δεν επιτρέπεται μελλοντική ημερομηνία.";
+    if (form.date && form.date < oneYearAgoYMD()) e.date = "Μπορείς να επιλέξεις έως 1 χρόνο πίσω.";
+
     if (!form.area) e.area = "Υποχρεωτικό πεδίο.";
-
-
     return e;
-  }, [form]);
+  }, [form.petId, form.date, form.area]);
 
-  const isStep1Valid = !errors.date && !errors.area ;
+  const isStep0Valid = !errors.petId;
+  const isStep1Valid = !errors.date && !errors.area;
 
   function next() {
     if (activeStep === 0) {
+      ["petId"].forEach(touch);
+      if (!isStep0Valid) return;
+    }
+    if (activeStep === 1) {
       ["date", "area"].forEach(touch);
       if (!isStep1Valid) return;
     }
@@ -263,44 +411,66 @@ export default function LostWizard() {
   }
 
   async function buildPayload(status) {
-    let photoDataUrl = form.photoDataUrl || ""; // κράτα την υπάρχουσα (αν υπάρχει)
-
-    if (photoFile) {
-      photoDataUrl = await fileToBase64(photoFile);
-    }
+    let photoDataUrl = form.photoDataUrl || "";
+    if (photoFile) photoDataUrl = await fileToBase64(photoFile);
 
     return {
-      finderId: form.finderId,
+      finderId: user?.id ?? form.finderId ?? "",
       status,
+
+      // pet
+      petId: form.petId,
+      petName: form.petName,
+      sex: form.sex,
+      breedOrSpecies: form.breedOrSpecies,
+      color: form.color,
+      microchip: form.microchip,
+
+      // owner (optional)
+      firstName: form.firstName,
+      lastName: form.lastName,
+      phone: normalizePhone(form.phone),
+      email: form.email,
+
+      // loss (KEEP AS YYYY-MM-DD STRING!)
       date: form.date,
       area: form.area,
-      notes: form.notes.trim(),
+      notes: (form.notes || "").trim(),
+
+      // photo
       photoDataUrl,
-      createdAt: form.createdAt || new Date().toISOString(), // αν είναι draft κράτα το αρχικό
+
+      createdAt: form.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
   }
 
-
   async function saveDraft() {
-    ["date", "area"].forEach(touch);
-    if (!isStep1Valid) return;
+    ["petId", "date", "area"].forEach(touch);
+    if (!isStep0Valid || !isStep1Valid) return;
 
     setSaving(true);
     try {
       const payload = await buildPayload("Πρόχειρη");
-      const list = loadFromStorage();
 
       if (editingId) {
-        const idx = list.findIndex((x) => x.id === editingId);
-        if (idx !== -1) list[idx] = { ...list[idx], ...payload, id: editingId };
-        else list.push({ id: editingId, ...payload });
+        await fetchJSON(`/api/lostDeclarations/${encodeURIComponent(String(editingId))}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
       } else {
-        list.push({ id: makeId(), ...payload });
+        const created = await fetchJSON(`/api/lostDeclarations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        setEditingId(String(created?.id));
       }
 
-      saveToStorage(list);
       navigate("/owner/declarations/success", { state: { type: "lost", status: "Πρόχειρη" } });
-    } catch {
+    } catch (e) {
+      console.error(e);
       alert("Κάτι πήγε στραβά στην αποθήκευση.");
     } finally {
       setSaving(false);
@@ -308,33 +478,37 @@ export default function LostWizard() {
   }
 
   async function submitFinal() {
-    ["date", "area"].forEach(touch);
-    if (!isStep1Valid) return;
+    ["petId", "date", "area"].forEach(touch);
+    if (!isStep0Valid || !isStep1Valid) return;
     if (!form.acceptTerms) return;
 
     setSaving(true);
     try {
       const payload = await buildPayload("Οριστική");
-      const list = loadFromStorage();
 
       if (editingId) {
-        const idx = list.findIndex((x) => x.id === editingId);
-        if (idx !== -1) list[idx] = { ...list[idx], ...payload, id: editingId };
-        else list.push({ id: editingId, ...payload });
+        await fetchJSON(`/api/lostDeclarations/${encodeURIComponent(String(editingId))}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
       } else {
-        list.push({ id: makeId(), ...payload });
+        const created = await fetchJSON(`/api/lostDeclarations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        setEditingId(String(created?.id));
       }
 
-      saveToStorage(list);
       navigate("/owner/declarations/success", { state: { type: "lost", status: "Οριστική" } });
-    } catch {
+    } catch (e) {
+      console.error(e);
       alert("Κάτι πήγε στραβά στην υποβολή.");
     } finally {
       setSaving(false);
     }
   }
-
-
 
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
@@ -352,20 +526,112 @@ export default function LostWizard() {
 
           <WizardStepper activeStep={activeStep} steps={WIZARD_STEPS} />
 
-          {/* ================== STEP 1 ================== */}
+          {/* ================== STEP 0: PET PICK ================== */}
           {activeStep === 0 && (
-            
             <Panel>
-              {/* Centered form container */}
-              <Box
-                sx={{
-                  maxWidth: 520,        
-                  mx: "auto",
-                }}
-              >
+              <Box sx={{ maxWidth: 760, mx: "auto" }}>
+                <Typography sx={{ fontWeight: 900, fontSize: 18, mb: 1 }}>Επιλογή Κατοικιδίου *</Typography>
+                <Typography sx={{ fontSize: 12, color: "#1a1a1a", opacity: 0.75, mb: 2 }}>
+                  Διάλεξε το κατοικίδιο για το οποίο θα κάνεις δήλωση απώλειας.
+                </Typography>
+
+                {petsLoading ? (
+                  <Typography sx={{ color: "#1a1a1a", opacity: 0.8, fontWeight: 800 }}>Φόρτωση...</Typography>
+                ) : petsErr ? (
+                  <Paper
+                    elevation={0}
+                    sx={{ borderRadius: 2, p: 2, bgcolor: "#fff3f3", border: "1px solid rgba(0,0,0,0.12)" }}
+                  >
+                    <Typography sx={{ color: "#b00020", fontWeight: 900 }}>{petsErr}</Typography>
+                  </Paper>
+                ) : pets.length === 0 ? (
+                  <Paper
+                    elevation={0}
+                    sx={{ borderRadius: 2, p: 2, bgcolor: "#eef1f4", border: "1px solid rgba(0,0,0,0.08)" }}
+                  >
+                    <Typography sx={{ fontWeight: 900, color: "#111", fontSize: 12 }}>
+                      Δεν έχεις καταχωρήσει κατοικίδια.
+                    </Typography>
+                    <Typography sx={{ color: "#6b7a90", fontWeight: 700, fontSize: 12, mt: 0.6 }}>
+                      Πήγαινε στα «Τα Κατοικίδια μου» για να προσθέσεις.
+                    </Typography>
+                  </Paper>
+                ) : (
+                  <>
+                    {/* ✅ max 5 στην ίδια σειρά + horizontal scrollbar */}
+                    <Box
+                      sx={{
+                        width: "100%",
+                        overflowX: "auto",
+                        overflowY: "hidden",
+                        pb: 1,
+                        // λίγο πιο ωραία scrollbar (webkit)
+                        "&::-webkit-scrollbar": { height: 10 },
+                        "&::-webkit-scrollbar-track": { background: "rgba(0,0,0,0.08)", borderRadius: 99 },
+                        "&::-webkit-scrollbar-thumb": { background: "rgba(11,61,145,0.35)", borderRadius: 99 },
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "grid",
+                          gridAutoFlow: "column",
+                          // 5 κάρτες / σειρά -> 120px + gap 16px περίπου
+                          gridAutoColumns: "120px",
+                          gap: 1.6,
+                          alignItems: "start",
+                          width: "max-content",
+                          pr: 1,
+                        }}
+                      >
+                        {pets.map((p) => (
+                          <PetPick
+                            key={p.id}
+                            pet={p}
+                            active={String(p.id) === String(form.petId)}
+                            onClick={() => {
+                              setForm((prev) => ({ ...prev, petId: p.id }));
+                              touch("petId");
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  </>
+                )}
+
+                {touched.petId && errors.petId && (
+                  <Typography sx={{ mt: 1.2, fontSize: 12, color: "#d32f2f", fontWeight: 800 }}>
+                    {errors.petId}
+                  </Typography>
+                )}
+
+                <Stack direction="row" justifyContent="right" spacing={3} sx={{ mt: 3 }}>
+                  <Button
+                    onClick={next}
+                    disabled={!isStep0Valid}
+                    variant="contained"
+                    sx={{
+                      textTransform: "none",
+                      borderRadius: 2,
+                      px: 4,
+                      bgcolor: COLORS.primary,
+                      "&:hover": { bgcolor: COLORS.primaryHover },
+                    }}
+                  >
+                    Επόμενο
+                  </Button>
+                </Stack>
+              </Box>
+            </Panel>
+          )}
+
+          {/* ================== STEP 1: LOSS DETAILS ================== */}
+          {activeStep === 1 && (
+            <Panel>
+              <Box sx={{ maxWidth: 520, mx: "auto" }}>
                 <Box sx={{ display: "grid", gap: 2 }}>
                   <TextField
-                    label="Ημερομηνία Εξαφάνισης *"
+                    label="Ημερομηνία Απώλειας *"
                     type="date"
                     InputLabelProps={{ shrink: true }}
                     value={form.date}
@@ -373,6 +639,7 @@ export default function LostWizard() {
                     onBlur={() => touch("date")}
                     fullWidth
                     sx={fieldSx}
+                    inputProps={{ max: todayYMD(), min: oneYearAgoYMD() }}
                     error={!!errors.date && !!touched.date}
                     helperText={touched.date ? errors.date || " " : " "}
                   />
@@ -397,7 +664,6 @@ export default function LostWizard() {
                     </Typography>
                   </FormControl>
 
-                  {/* Περιγραφή */}
                   <Box>
                     <Typography sx={{ fontWeight: 900, mb: 1 }}>Περιγραφή</Typography>
                     <TextField
@@ -411,7 +677,6 @@ export default function LostWizard() {
                     />
                   </Box>
 
-                  {/* Φωτογραφία */}
                   <Box>
                     <Typography sx={{ fontWeight: 900, mb: 1 }}>Φωτογραφία Κατοικιδίου</Typography>
 
@@ -486,21 +751,15 @@ export default function LostWizard() {
                   </Box>
                 </Box>
 
-                {/* Actions */}
                 <Stack direction="row" justifyContent="right" spacing={3} sx={{ mt: 3 }}>
                   <Button
                     onClick={back}
                     variant="outlined"
-                    sx={{
-                      textTransform: "none",
-                      borderRadius: 2,
-                      borderColor: COLORS.primary,
-                      color: COLORS.primary,
-                    }}
+                    sx={{ textTransform: "none", borderRadius: 2, borderColor: COLORS.primary, color: COLORS.primary }}
                   >
                     Πίσω
                   </Button>
-                  
+
                   <Button
                     onClick={next}
                     disabled={!isStep1Valid}
@@ -520,8 +779,8 @@ export default function LostWizard() {
             </Panel>
           )}
 
-          {/* ================== STEP 3 ================== */}
-          {activeStep === 1 && (
+          {/* ================== STEP 2: PREVIEW ================== */}
+          {activeStep === 2 && (
             <Panel>
               <Box
                 sx={{
@@ -531,26 +790,18 @@ export default function LostWizard() {
                   alignItems: "start",
                 }}
               >
-                {/* Column 1: Στοιχεία Κατοικιδίου */}
                 <Box sx={{ display: "grid", gap: 2 }}>
-                  <Typography sx={{ fontWeight: 900, fontSize: 20, mb: 0.5 }}>
-                    Στοιχεία Κατοικιδίου
-                  </Typography>
+                  <Typography sx={{ fontWeight: 900, fontSize: 20, mb: 0.5 }}>Στοιχεία Κατοικιδίου</Typography>
 
                   <Box>
                     <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Όνομα</Typography>
-                    <TextField
-                      value={form.petName || "Καταχωρημένα στοιχεία"}
-                      fullWidth
-                      sx={fieldSx}
-                      InputProps={{ readOnly: true }}
-                    />
+                    <TextField value={form.petName || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
                   </Box>
 
                   <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Ημ. Γέννησης</Typography>
+                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Φυλή / Είδος</Typography>
                     <TextField
-                      value={form.birthDate || "DD / MM / YYYY"}
+                      value={form.breedOrSpecies || "-"}
                       fullWidth
                       sx={fieldSx}
                       InputProps={{ readOnly: true }}
@@ -559,85 +810,37 @@ export default function LostWizard() {
 
                   <Box>
                     <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Φύλο</Typography>
-                    <TextField
-                      value={form.sex || "Καταχωρημένα στοιχεία"}
-                      fullWidth
-                      sx={fieldSx}
-                      InputProps={{ readOnly: true }}
-                    />
-                  </Box>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Φυλή</Typography>
-                    <TextField
-                      value={form.breed || "Καταχωρημένα στοιχεία"}
-                      fullWidth
-                      sx={fieldSx}
-                      InputProps={{ readOnly: true }}
-                    />
+                    <TextField value={form.sex || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
                   </Box>
 
                   <Box>
                     <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Χρώμα</Typography>
-                    <TextField
-                      value={form.color || "Καταχωρημένα στοιχεία"}
-                      fullWidth
-                      sx={fieldSx}
-                      InputProps={{ readOnly: true }}
-                    />
+                    <TextField value={form.color || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
                   </Box>
 
                   <Box>
                     <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Microchip</Typography>
-                    <TextField
-                      value={form.microchip || "Καταχωρημένα στοιχεία"}
-                      fullWidth
-                      sx={fieldSx}
-                      InputProps={{ readOnly: true }}
-                    />
+                    <TextField value={form.microchip || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
                   </Box>
                 </Box>
 
-                {/* Column 2: Στοιχεία Ιδιοκτήτη */}
                 <Box sx={{ display: "grid", gap: 2 }}>
-                  <Typography sx={{ fontWeight: 900, fontSize: 20, mb: 0.5 }}>
-                    Στοιχεία Ιδιοκτήτη
-                  </Typography>
+                  <Typography sx={{ fontWeight: 900, fontSize: 20, mb: 0.5 }}>Στοιχεία Ιδιοκτήτη</Typography>
 
                   <Box>
                     <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Όνομα</Typography>
-                    <TextField
-                      value={form.firstName || "Καταχωρημένα στοιχεία"}
-                      fullWidth
-                      sx={fieldSx}
-                      InputProps={{ readOnly: true }}
-                    />
+                    <TextField value={form.firstName || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
                   </Box>
 
                   <Box>
                     <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Επώνυμο</Typography>
-                    <TextField
-                      value={form.lastName || "Καταχωρημένα στοιχεία"}
-                      fullWidth
-                      sx={fieldSx}
-                      InputProps={{ readOnly: true }}
-                    />
-                  </Box>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>ΑΦΜ</Typography>
-                    <TextField
-                      value={form.vat || "Καταχωρημένα στοιχεία"}
-                      fullWidth
-                      sx={fieldSx}
-                      InputProps={{ readOnly: true }}
-                    />
+                    <TextField value={form.lastName || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
                   </Box>
 
                   <Box>
                     <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Τηλέφωνο</Typography>
                     <TextField
-                      value={normalizePhone(form.phone) || "Καταχωρημένα στοιχεία"}
+                      value={normalizePhone(form.phone) || "-"}
                       fullWidth
                       sx={fieldSx}
                       InputProps={{ readOnly: true }}
@@ -646,25 +849,17 @@ export default function LostWizard() {
 
                   <Box>
                     <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Email</Typography>
-                    <TextField
-                      value={form.email || "Καταχωρημένα στοιχεία"}
-                      fullWidth
-                      sx={fieldSx}
-                      InputProps={{ readOnly: true }}
-                    />
+                    <TextField value={form.email || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
                   </Box>
                 </Box>
 
-                {/* Column 3: Στοιχεία Απώλειας */}
                 <Box sx={{ display: "grid", gap: 2 }}>
-                  <Typography sx={{ fontWeight: 900, fontSize: 20, mb: 0.5 }}>
-                    Στοιχεία Απώλειας
-                  </Typography>
+                  <Typography sx={{ fontWeight: 900, fontSize: 20, mb: 0.5 }}>Στοιχεία Απώλειας</Typography>
 
                   <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Ημερομηνία εξαφάνισης</Typography>
+                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Ημερομηνία Απώλειας</Typography>
                     <TextField
-                      value={form.date || "DD / MM / YYYY"}
+                      value={form.date ? fmtDDMMYYYY(form.date) : "-"}
                       fullWidth
                       sx={fieldSx}
                       InputProps={{ readOnly: true }}
@@ -673,21 +868,13 @@ export default function LostWizard() {
 
                   <Box>
                     <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Περιοχή</Typography>
-                    <TextField
-                      value={form.area || "Καταχωρημένα στοιχεία"}
-                      fullWidth
-                      sx={fieldSx}
-                      InputProps={{ readOnly: true }}
-                    />
+                    <TextField value={form.area || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
                   </Box>
 
                   <Box>
                     <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Περιγραφή</Typography>
                     <TextField
-                      value={
-                        form.notes ||
-                        "Περιγράψτε εμφανισιακά χαρακτηριστικά, λουράκι, σημάδια, συμπεριφορά ή ό,τι άλλο βοηθάει."
-                      }
+                      value={form.notes || "—"}
                       fullWidth
                       multiline
                       minRows={5}
@@ -726,9 +913,10 @@ export default function LostWizard() {
                         />
                       )}
                     </Box>
-                  </Box>                  
+                  </Box>
                 </Box>
               </Box>
+
               <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
                 <FormControlLabel
                   control={<Checkbox checked={form.acceptTerms} onChange={handleChange("acceptTerms")} />}
@@ -753,7 +941,7 @@ export default function LostWizard() {
                 </Button>
 
                 <Button
-                  onClick={() => setActiveStep(0)}
+                  onClick={() => setActiveStep(1)}
                   variant="contained"
                   sx={{
                     textTransform: "none",
@@ -769,7 +957,7 @@ export default function LostWizard() {
 
                 <Button
                   onClick={saveDraft}
-                  disabled={saving || !isStep1Valid }
+                  disabled={saving || !isStep0Valid || !isStep1Valid}
                   variant="contained"
                   sx={{
                     textTransform: "none",
@@ -785,7 +973,7 @@ export default function LostWizard() {
 
                 <Button
                   onClick={submitFinal}
-                  disabled={saving || !isStep1Valid || !form.acceptTerms}
+                  disabled={saving || !isStep0Valid || !isStep1Valid || !form.acceptTerms}
                   variant="contained"
                   sx={{
                     textTransform: "none",

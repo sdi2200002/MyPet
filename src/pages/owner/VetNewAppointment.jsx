@@ -39,7 +39,7 @@ function PetPick({ pet, active, onClick }) {
         bgcolor: active ? "rgba(11,61,145,0.06)" : "#fff",
         p: 1.2,
         width: 120,
-        height: 140,
+        height: 150,
         boxSizing: "border-box",
         textAlign: "center",
         boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
@@ -62,8 +62,8 @@ function PetPick({ pet, active, onClick }) {
           e.currentTarget.src = "/images/dog1.png";
         }}
         sx={{
-          width: 64,
-          height: 64,
+          width: 84,
+          height: 94,
           borderRadius: 2,
           objectFit: "cover",
           border: "1px solid rgba(0,0,0,0.15)",
@@ -354,9 +354,6 @@ export default function VetNewAppointment() {
                 {/* Pets */}
                 <Box>
                   <Typography sx={{ fontWeight: 900, color: TITLE, mb: 0.6 }}>Επιλογή Κατοικιδίου</Typography>
-                  <Typography sx={{ fontSize: 12, color: MUTED, fontWeight: 700, mb: 1.4 }}>
-                    Διάλεξε το κατοικίδιο για το οποίο θα κλείσεις ραντεβού.
-                  </Typography>
 
                   {pets.length === 0 ? (
                     <Paper
@@ -371,23 +368,33 @@ export default function VetNewAppointment() {
                       <Typography sx={{ fontWeight: 900, color: "#111", fontSize: 12 }}>
                         Δεν έχεις καταχωρήσει κατοικίδια.
                       </Typography>
-                      <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12, mt: 0.6 }}>
-                        Πήγαινε στα «Τα Κατοικίδια μου» για να προσθέσεις.
-                      </Typography>
                     </Paper>
                   ) : (
                     <Box
                       sx={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(2, 120px)",
-                        gap: 1.6,
-                        justifyContent: "start",
-                        alignItems: "start",
+                        maxHeight: 350,              // ✅ πόσο ύψος θες να πιάνει (ρύθμισέ το)
+                        overflowY: "auto",           // ✅ κάθετο scroll
+                        pr: 0.5,                     // ✅ λίγο padding για να μη “πατάει” το scrollbar
                       }}
                     >
-                      {pets.map((p) => (
-                        <PetPick key={p.id} pet={p} active={p.id === petId} onClick={() => setPetId(p.id)} />
-                      ))}
+                      <Box
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(2, 120px)", // ✅ 2 ανά σειρά
+                          gap: 1.6,
+                          justifyContent: "start",
+                          alignItems: "start",
+                        }}
+                      >
+                        {pets.map((p) => (
+                          <PetPick
+                            key={p.id}
+                            pet={p}
+                            active={p.id === petId}
+                            onClick={() => setPetId(p.id)}
+                          />
+                        ))}
+                      </Box>
                     </Box>
                   )}
                 </Box>

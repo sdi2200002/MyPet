@@ -1,24 +1,20 @@
 import { Box, Container, Paper, Typography } from "@mui/material";
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 
-const LOST_KEY = "mypet_lost_declarations";
-
-function safeLoad(key) {
-  try {
-    return JSON.parse(localStorage.getItem(key) || "[]");
-  } catch {
-    return [];
-  }
-}
-
 const COLORS = {
   title: "#0d2c54",
   panelBorder: "#8fb4e8",
 };
+
+async function fetchJSON(path, options) {
+  const res = await fetch(path, options);
+  if (!res.ok) throw new Error(`HTTP ${res.status} on ${path}`);
+  return res.json();
+}
 
 function Row({ label, value }) {
   return (
@@ -29,13 +25,57 @@ function Row({ label, value }) {
   );
 }
 
+function fmtDate(isoOrYmd) {
+  if (!isoOrYmd) return "—";
+  const d = new Date(isoOrYmd);
+  if (Number.isNaN(d.getTime())) return String(isoOrYmd);
+  return d.toLocaleDateString("el-GR");
+}
+
 export default function LostPetDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const item = useMemo(() => {
-    const list = safeLoad(LOST_KEY);
-    return list.find((x) => String(x.id) === String(id));
+  const [item, setItem] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  // ✅ Φέρνουμε τη δήλωση από json-server: /api/lostDeclarations/:id
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      setLoading(true);
+      setErr("");
+
+      if (!id) {
+        if (!alive) return;
+        setItem(null);
+        setErr("Λείπει το id της δήλωσης.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const data = await fetchJSON(`/api/lostDeclarations/${encodeURIComponent(String(id))}`);
+        if (!alive) return;
+
+        setItem(data || null);
+        setLoading(false);
+      } catch (e) {
+        console.error(e);
+        if (!alive) return;
+
+        // json-server όταν δεν βρίσκει id συνήθως γυρίζει 404
+        setItem(null);
+        setErr("Δεν βρέθηκε η δήλωση.");
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
   }, [id]);
 
   return (
@@ -62,12 +102,25 @@ export default function LostPetDetails() {
               minHeight: 320,
             }}
           >
-            {!item ? (
+            {loading ? (
+              <Typography sx={{ fontWeight: 900, color: COLORS.title }}>Φόρτωση...</Typography>
+            ) : err ? (
               <Box>
-                <Typography sx={{ fontWeight: 900, color: COLORS.title }}>
-                  Δεν βρέθηκε η δήλωση.
+                <Typography sx={{ fontWeight: 900, color: COLORS.title }}>{err}</Typography>
+                <Typography
+                  sx={{ mt: 1, color: COLORS.title, opacity: 0.7, cursor: "pointer" }}
+                  onClick={() => navigate("/owner/declarations")}
+                >
+                  Επιστροφή στη λίστα
                 </Typography>
-                <Typography sx={{ mt: 1, color: COLORS.title, opacity: 0.7, cursor: "pointer" }} onClick={() => navigate("/lost")}>
+              </Box>
+            ) : !item ? (
+              <Box>
+                <Typography sx={{ fontWeight: 900, color: COLORS.title }}>Δεν βρέθηκε η δήλωση.</Typography>
+                <Typography
+                  sx={{ mt: 1, color: COLORS.title, opacity: 0.7, cursor: "pointer" }}
+                  onClick={() => navigate("/owner/declarations")}
+                >
                   Επιστροφή στη λίστα
                 </Typography>
               </Box>
@@ -109,16 +162,19 @@ export default function LostPetDetails() {
                 {/* Details */}
                 <Box>
                   <Typography sx={{ fontWeight: 900, color: COLORS.title, fontSize: 28 }}>
-                    {item.petName || item.species || "Κατοικίδιο"}
+                    {item.petName || "Κατοικίδιο"}
                   </Typography>
 
                   <Box sx={{ height: 2, bgcolor: "#0b3d91", opacity: 0.25, my: 1.5 }} />
 
-                  <Row label="Ημ. Απώλειας" value={item.date} />
+                  <Row label="Ημ. Απώλειας" value={fmtDate(item.date)} />
                   <Row label="Περιοχή" value={item.area} />
+
+                  {/* LostWizard fields */}
                   <Row label="Φύλο" value={item.sex} />
-                  <Row label="Φυλή/Είδος" value={item.species} />
+                  <Row label="Φυλή/Είδος" value={item.breedOrSpecies} />
                   <Row label="Χρώμα" value={item.color} />
+                  <Row label="Microchip" value={item.microchip} />
 
                   <Row
                     label="Ιδιοκτήτης"
