@@ -11,6 +11,7 @@ import {
   Stack,
   Typography,
   TextField,
+  Divider,
 } from "@mui/material";
 
 import SearchIcon from "@mui/icons-material/Search";
@@ -21,11 +22,11 @@ import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import LocalHospitalOutlinedIcon from "@mui/icons-material/LocalHospitalOutlined";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
 
 import { useNavigate } from "react-router-dom";
 
 import PublicNavbar from "../../components/PublicNavbar";
-import OwnerNavbar from "../../components/OwnerNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 
@@ -40,6 +41,11 @@ const PRIMARY = "#0b3d91";
 const PRIMARY_HOVER = "#08316f";
 const PANEL_BG = "#cfe3ff";
 const PANEL_BORDER = "#8fb4e8";
+
+// ✅ Sidebar layout constants
+const NAVBAR_H = 72; // άλλαξέ το αν το navbar σου έχει άλλο ύψος
+const SIDEBAR_W = 280;
+const HERO_H = 240; 
 
 function safeLoad(key) {
   try {
@@ -262,9 +268,7 @@ function VetsSearchPanel() {
     "& .MuiSelect-select": { fontWeight: 700, color: TITLE },
   };
 
-  const placeholderSpan = (text) => (
-    <span style={{ color: MUTED, fontWeight: 700 }}>{text}</span>
-  );
+  const placeholderSpan = (text) => <span style={{ color: MUTED, fontWeight: 700 }}>{text}</span>;
 
   return (
     <Paper
@@ -359,7 +363,6 @@ function VetsSearchPanel() {
   );
 }
 
-/** ✅ Placeholder μέχρι να φορτώσουμε δεδομένα */
 function LatestUpdates() {
   return (
     <Box sx={{ mt: 3 }}>
@@ -384,10 +387,12 @@ function LatestUpdates() {
   );
 }
 
+
+
 export default function OwnerDashboard() {
   const navigate = useNavigate();
 
-  // ✅ πάντα “σωστά” demo paths (αν υπάρχει storage αλλά είναι λάθος, το φτιάχνει)
+  // ✅ demo pets
   const pets = useMemo(() => {
     const stored = safeLoad(PETS_KEY);
 
@@ -407,16 +412,13 @@ export default function OwnerDashboard() {
       photo: isLikelyValidPhotoPath(p?.photo) ? p.photo : fallback[idx].photo,
     }));
 
-    // γράψτο πίσω για να μη ξαναβγάζει broken εικόνες
     safeSave(PETS_KEY, normalized);
     return normalized;
   }, []);
 
-  // ✅ pets “panel” με πάνω/κάτω βελάκια (σαν scroll control στο mock)
   const [petIndex, setPetIndex] = useState(0);
   const canUp = petIndex > 0;
   const canDown = petIndex < Math.max(0, pets.length - 2);
-
   const visiblePets = pets.slice(petIndex, petIndex + 2);
 
   return (
@@ -475,22 +477,57 @@ export default function OwnerDashboard() {
         />
       </Box>
 
-      <Box sx={{ flex: 1 }}>
-        <Container maxWidth="lg" sx={{ py: 2.5 }}>
-
-          {/* TOP SECTION */}
+      {/* ✅ 2-column layout: sidebar + content */}
+      <Box
+        sx={{
+          display: { xs: "block", lg: "flex" },
+          alignItems: "flex-start",
+        }}
+      >
+        {/* LEFT: sticky sidebar column */}
+        <Box
+          sx={{
+            width: OWNER_SIDEBAR_W,
+            flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+            display: { xs: "none", lg: "block" },
+            alignSelf: "flex-start",
+          }}
+        >
           <Box
             sx={{
-              mt: 3,
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "260px 1fr 300px" },
-              gap: 3,
-              alignItems: "start",
+              position: "sticky",
+              top: 16, // ✅ αρχίζει αμέσως κάτω από hero (επειδή μπαίνει μετά το hero)
+              maxHeight: "calc(100vh - 16px)",
             }}
           >
+            <OwnerNavbar />
+          </Box>
+        </Box>
+
+        {/* RIGHT: content column */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Container maxWidth="lg" sx={{ py: 2.5 }}>
+            {/* TOP SECTION */}
+            <Box
+              sx={{
+                mt: 3,
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "260px 1fr 300px" },
+                gap: 3,
+                alignItems: "start",
+              }}
+            >
             {/* Left: pets panel */}
             <Box sx={{ pt: 0.2 }}>
-              <Typography sx={{ fontWeight: 900, color: TITLE, mb: 1.2, fontSize: 20, textAlign: "center" }}>
+              <Typography
+                sx={{
+                  fontWeight: 900,
+                  color: TITLE,
+                  mb: 1.2,
+                  fontSize: 20,
+                  textAlign: "center",
+                }}
+              >
                 Τα Κατοικίδια μου
               </Typography>
 
@@ -533,7 +570,15 @@ export default function OwnerDashboard() {
 
             {/* Center: quick actions */}
             <Box sx={{ pt: 0.2 }}>
-              <Typography sx={{ fontWeight: 900, color: TITLE, mb: 6.5, fontSize: 20, textAlign: "center" }}>
+              <Typography
+                sx={{
+                  fontWeight: 900,
+                  color: TITLE,
+                  mb: 6.5,
+                  fontSize: 20,
+                  textAlign: "center",
+                }}
+              >
                 Γρήγορες Ενέργειες
               </Typography>
 
@@ -558,18 +603,18 @@ export default function OwnerDashboard() {
             <Box sx={{ pt: 10, display: "flex", justifyContent: { xs: "flex-start", md: "flex-end" } }}>
               <MiniCalendar />
             </Box>
-          </Box>
+           </Box>
 
-          {/* SCROLL PART */}
-          <Box sx={{ mt: 4 }}>
-            <VetsSearchPanel />
-            <LatestUpdates />
-          </Box>
-        </Container>
+      {/* SCROLL PART */}
+      <Box sx={{ mt: 4 }}>
+        <VetsSearchPanel />
+        <LatestUpdates />
       </Box>
+    </Container>
+  </Box>
+</Box>
 
       <Footer />
     </Box>
   );
-
 }
