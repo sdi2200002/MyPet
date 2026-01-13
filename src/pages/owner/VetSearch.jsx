@@ -10,13 +10,17 @@ import {
   Stack,
   Typography,
   TextField,
+  IconButton,
 } from "@mui/material";
+
 import SearchIcon from "@mui/icons-material/Search";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import LocalHospitalOutlinedIcon from "@mui/icons-material/LocalHospitalOutlined";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
+
 import InputAdornment from "@mui/material/InputAdornment";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -57,7 +61,6 @@ function hhmmFromISO(isoString) {
   const mm = String(d.getMinutes()).padStart(2, "0");
   return `${hh}:${mm}`;
 }
-
 function VetCard({ vet, onView }) {
   return (
     <Paper
@@ -73,29 +76,52 @@ function VetCard({ vet, onView }) {
         alignItems: "center",
       }}
     >
+      {/* PHOTO / NO PHOTO */}
       <Box
-        component="img"
-        src={vet.photo || "/images/demo-vet-avatar.png"}
-        alt={vet.name}
-        onError={(e) => {
-          e.currentTarget.onerror = null;
-          e.currentTarget.src = "/images/demo-vet-avatar.png";
-        }}
         sx={{
           width: 74,
           height: 74,
           borderRadius: 2,
-          objectFit: "cover",
-          objectPosition: "top",
           border: "1px solid rgba(0,0,0,0.15)",
-          bgcolor: "#fff",
+          bgcolor: "#f6f8fb",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          fontSize: 11,
+          color: "#9aa4b2",
+          fontWeight: 500,
+          overflow: "hidden",
         }}
-      />
+      >
+        {vet.photo ? (
+          <Box
+            component="img"
+            src={vet.photo}
+            alt={vet.name || "Κτηνίατρος"}
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "top", // ✅ δείχνει ΠΑΝΩ ΜΕΡΟΣ πρώτα
+              display: "block",
+            }}
+          />
+        ) : (
+          <>
+            Δεν υπάρχει
+            <br />
+            φωτογραφία
+          </>
+        )}
+      </Box>
 
+      {/* INFO */}
       <Box sx={{ minWidth: 0 }}>
         <Typography sx={{ fontWeight: 900, color: "#111" }} noWrap>
           {vet.name || "—"}
         </Typography>
+
         <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }} noWrap>
           {vet.clinic || "—"}
         </Typography>
@@ -104,12 +130,15 @@ function VetCard({ vet, onView }) {
           <Typography sx={{ fontWeight: 900, fontSize: 12 }}>
             ⭐ {vet.rating ?? "—"}
           </Typography>
+
           <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
             ({vet.reviewsCount ?? 0})
           </Typography>
+
           <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
             • {vet.area || "—"}
           </Typography>
+
           <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
             • {vet.specialty || "—"}
           </Typography>
@@ -120,6 +149,7 @@ function VetCard({ vet, onView }) {
         </Typography>
       </Box>
 
+      {/* ACTION */}
       <Button
         variant="contained"
         onClick={onView}
@@ -176,7 +206,6 @@ export default function VetSearch() {
         setLoading(true);
         setErr("");
 
-        // άλλαξε αν το API σου είναι αλλού:
         const [vetsData, apptsData] = await Promise.all([
           fetchJSON("http://localhost:3001/vets"),
           fetchJSON("http://localhost:3001/appointments"),
@@ -229,7 +258,7 @@ export default function VetSearch() {
           const ok = list.some((a) => {
             if (!a?.when) return false;
             const aDateISO = String(a.when).slice(0, 10); // YYYY-MM-DD
-            const aTime = hhmmFromISO(a.when);            // HH:MM
+            const aTime = hhmmFromISO(a.when); // HH:MM
             if (dateISO && aDateISO !== dateISO) return false;
             if (timeQ && aTime !== timeQ) return false;
             return true;
@@ -271,6 +300,8 @@ export default function VetSearch() {
     setPage(1);
     navigate("/owner/vets");
   }
+
+  const hasFilters = Boolean(area || spec || date || time); // ✅ για να δείχνουμε το reset icon μόνο όταν χρειάζεται
 
   const pillSx = {
     minWidth: 160,
@@ -392,13 +423,21 @@ export default function VetSearch() {
               Αναζήτηση
             </Button>
 
-            <Button
-              variant="text"
-              onClick={clearFilters}
-              sx={{ textTransform: "none", fontWeight: 900, color: PRIMARY }}
-            >
-              Καθαρισμός
-            </Button>
+            {/* ✅ Καθαρισμός ως icon */}
+            {hasFilters && (
+              <IconButton
+                onClick={clearFilters}
+                title="Καθαρισμός φίλτρων"
+                sx={{
+                  ml: 0.6,
+                  bgcolor: "white",
+                  border: "1px solid rgba(0,0,0,0.15)",
+                  "&:hover": { bgcolor: "#f2f6fb" },
+                }}
+              >
+                <RestartAltIcon sx={{ color: PRIMARY }} />
+              </IconButton>
+            )}
           </Stack>
         </Paper>
 
@@ -458,13 +497,7 @@ export default function VetSearch() {
             </Stack>
 
             <Box sx={{ display: "flex", justifyContent: "right", mt: 1.5 }}>
-              <Pager
-                page={page}
-                pageCount={totalPages}
-                onChange={setPage}
-                color={PRIMARY}
-                maxButtons={4}
-              />
+              <Pager page={page} pageCount={totalPages} onChange={setPage} color={PRIMARY} maxButtons={4} />
             </Box>
           </>
         )}
