@@ -180,6 +180,40 @@
       "studies": "Πτυχίο Κτηνιατρικής – Θεσσαλία",
       "photo": "/images/demo-vet-avatar.png"
     }
+    ,
+    {
+      "id": "5",
+      "name": "Μαρία Θεοδώρου",
+      "clinic": "Happy Paws Vet Clinic",
+      "specialty": "Γενικός",
+      "area": "Αθήνα",
+      "rating": 4.9,
+      "reviewsCount": 146,
+      "priceRange": "40€ - 55€",
+      "address": "Λεωφόρος Μεσογείων 45, Αθήνα",
+      "phone": "6900000005",
+      "email": "doc5@test.gr",
+      "experience": "12 χρόνια",
+      "studies": "Πτυχίο Κτηνιατρικής – ΑΠΘ, MSc Παθολογίας Ζώων",
+      "photo": "/images/demo-vet-avatar.png"
+    },
+    {
+      "id": "6",
+      "name": "Γιώργος Αντωνίου",
+      "clinic": "AnimalCare Plus",
+      "specialty": "Καρδιολόγος",
+      "area": "Γλυφάδα",
+      "rating": 4.5,
+      "reviewsCount": 51,
+      "priceRange": "60€ - 90€",
+      "address": "Λεωφόρος Βουλιαγμένης 210, Γλυφάδα",
+      "phone": "6900000006",
+      "email": "doc6@test.gr",
+      "experience": "9 χρόνια",
+      "studies": "MSc Καρδιολογίας Μικρών Ζώων – Παν. Ζυρίχης",
+      "photo": "/images/demo-vet-avatar.png"
+    }
+
   ],
   "reviews": [
   {
