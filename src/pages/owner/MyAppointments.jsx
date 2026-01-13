@@ -10,6 +10,11 @@ import {
   Tab,
   Typography,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from "@mui/material";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
@@ -18,6 +23,11 @@ import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext"; // ✅ όπως MyPets
+
+const PRIMARY = "#0b3d91";
+const PRIMARY_HOVER = "#08316f";
+const MUTED = "#6b7a90";
+const TITLE = "#0d2c54";
 
 async function fetchJSON(path, options) {
   const res = await fetch(path, options);
@@ -30,15 +40,7 @@ function isValidPhoto(p) {
 }
 
 function getPetPhotoFromProfile(pet) {
-  // ✅ πάρε από pet profile (δοκίμασε και εναλλακτικά keys)
-  const candidate =
-    pet?.photo ||
-    pet?.photoUrl ||
-    pet?.image ||
-    pet?.avatar ||
-    pet?.img ||
-    "";
-
+  const candidate = pet?.photo || pet?.photoUrl || pet?.image || pet?.avatar || pet?.img || "";
   return isValidPhoto(candidate) ? candidate : "";
 }
 
@@ -75,11 +77,9 @@ function AppointmentRow({ item, pet, onView, onCancel }) {
   const t = new Date(item?.when || 0).getTime();
 
   const rawStatus = item?.status || "Εκκρεμές";
-  const status =
-    rawStatus === "Ακυρωμένο" ? "Ακυρωμένο" : t && t < now ? "Ολοκληρωμένο" : rawStatus;
+  const status = rawStatus === "Ακυρωμένο" ? "Ακυρωμένο" : t && t < now ? "Ολοκληρωμένο" : rawStatus;
 
   const canCancel = status !== "Ακυρωμένο" && status !== "Ολοκληρωμένο";
-
   const petPhoto = getPetPhotoFromProfile(pet);
 
   return (
@@ -115,33 +115,28 @@ function AppointmentRow({ item, pet, onView, onCancel }) {
                 alt={item?.petName || "pet"}
                 sx={{ width: "100%", height: "100%", objectFit: "cover" }}
                 onError={(e) => {
-                  // ✅ δεν θέλεις fallback, άρα αν σπάσει -> κρύψ'το και δείξε text
                   e.currentTarget.onerror = null;
                   e.currentTarget.style.display = "none";
                 }}
               />
             ) : (
-              <Typography sx={{ fontSize: 11, color: "#6b7a90", fontWeight: 700 }}>
-                Χωρίς φωτο
-              </Typography>
+              <Typography sx={{ fontSize: 11, color: MUTED, fontWeight: 700 }}>Χωρίς φωτο</Typography>
             )}
           </Box>
 
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Stack direction="row" spacing={1} alignItems="center">
-              <Typography sx={{ fontWeight: 900, color: "#0d2c54" }} noWrap>
+              <Typography sx={{ fontWeight: 900, color: TITLE }} noWrap>
                 {item?.petName || pet?.name || "Κατοικίδιο"}
               </Typography>
 
-              <Typography sx={{ fontSize: 12, color: "#6b7a90" }}>
-                {item?.service || "Ραντεβού"}
-              </Typography>
+              <Typography sx={{ fontSize: 12, color: MUTED }}>{item?.service || "Ραντεβού"}</Typography>
 
               <StatusChip status={status} />
             </Stack>
 
-            <Stack direction="row" spacing={2} sx={{ mt: 0.5, color: "#0d2c54" }}>
-              <Typography sx={{ fontSize: 12, color: "#0d2c54" }}>
+            <Stack direction="row" spacing={2} sx={{ mt: 0.5, color: TITLE }}>
+              <Typography sx={{ fontSize: 12, color: TITLE }}>
                 {item?.vetName ? (
                   <>
                     {item.vetName}
@@ -155,7 +150,7 @@ function AppointmentRow({ item, pet, onView, onCancel }) {
         </Stack>
 
         <Stack direction="column" spacing={1} alignItems="flex-end">
-          <Typography sx={{ fontSize: 12, color: "#0d2c54", mr: 1, display: { xs: "none", md: "block" } }}>
+          <Typography sx={{ fontSize: 12, color: TITLE, mr: 1, display: { xs: "none", md: "block" } }}>
             Υποβλήθηκε: {item?.createdAt ? new Date(item.createdAt).toLocaleDateString("el-GR") : "—"}
           </Typography>
 
@@ -182,8 +177,8 @@ function AppointmentRow({ item, pet, onView, onCancel }) {
               sx={{
                 textTransform: "none",
                 borderRadius: 2,
-                bgcolor: "#0b3d91",
-                "&:hover": { bgcolor: "#08316f" },
+                bgcolor: PRIMARY,
+                "&:hover": { bgcolor: PRIMARY_HOVER },
               }}
             >
               Προβολή
@@ -207,7 +202,12 @@ export default function MyAppointments() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // ✅ Load appointments + pets από server (μόνο του owner)
+  // ✅ Dialog state για ακύρωση
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelItem, setCancelItem] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelSaving, setCancelSaving] = useState(false);
+
   useEffect(() => {
     let alive = true;
 
@@ -224,7 +224,6 @@ export default function MyAppointments() {
         return;
       }
 
-      // ✅ parallel fetch
       const [apptsData, petsData] = await Promise.all([
         fetchJSON(`/api/appointments?ownerId=${encodeURIComponent(String(user.id))}`),
         fetchJSON(`/api/pets?ownerId=${encodeURIComponent(String(user.id))}`),
@@ -246,9 +245,7 @@ export default function MyAppointments() {
     };
   }, [user?.id]);
 
-  const petMap = useMemo(() => {
-    return new Map((pets || []).map((p) => [String(p.id), p]));
-  }, [pets]);
+  const petMap = useMemo(() => new Map((pets || []).map((p) => [String(p.id), p])), [pets]);
 
   const all = useMemo(() => {
     const merged = [...appointments];
@@ -265,7 +262,6 @@ export default function MyAppointments() {
     };
 
     if (tab === 0) {
-      // Επερχόμενα: μελλοντικά ΚΑΙ όχι ακυρωμένα
       return all.filter((x) => {
         const t = getTime(x);
         const status = x?.status || "Εκκρεμές";
@@ -273,7 +269,6 @@ export default function MyAppointments() {
       });
     }
 
-    // Ιστορικό: όσα έχουν περάσει Ή είναι ακυρωμένα
     return all.filter((x) => {
       const t = getTime(x);
       return t < now || x?.status === "Ακυρωμένο";
@@ -283,26 +278,53 @@ export default function MyAppointments() {
   const handleCreate = () => navigate("/owner/vets");
   const handleView = (item) => navigate(`/owner/appointments/${item.id}`);
 
-  const handleCancel = async (item) => {
+  // ✅ ανοίγει popup αντί για confirm
+  const handleCancel = (item) => {
     const status = item?.status || "Εκκρεμές";
-    if (status === "Ακυρωμένο" || status === "Ολοκληρωμένο") return;
+    const t = new Date(item?.when || 0).getTime();
+    const computedStatus = status === "Ακυρωμένο" ? "Ακυρωμένο" : t && t < Date.now() ? "Ολοκληρωμένο" : status;
+    if (computedStatus === "Ακυρωμένο" || computedStatus === "Ολοκληρωμένο") return;
 
-    const ok = confirm("Θες σίγουρα να ακυρώσεις το ραντεβού;");
-    if (!ok) return;
+    setCancelItem(item);
+    setCancelReason("");
+    setCancelOpen(true);
+  };
+
+  const closeCancelDialog = () => {
+    if (cancelSaving) return;
+    setCancelOpen(false);
+    setCancelItem(null);
+    setCancelReason("");
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelItem?.id) return;
 
     try {
-      const updated = await fetchJSON(`/api/appointments/${encodeURIComponent(String(item.id))}`, {
+      setCancelSaving(true);
+
+      const payload = {
+        status: "Ακυρωμένο",
+        canceledAt: new Date().toISOString(),
+        cancelReason: cancelReason.trim() || "",
+      };
+
+      const updated = await fetchJSON(`/api/appointments/${encodeURIComponent(String(cancelItem.id))}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "Ακυρωμένο" }),
+        body: JSON.stringify(payload),
       });
 
       setAppointments((prev) =>
-        prev.map((x) => (String(x.id) === String(item.id) ? { ...x, ...updated } : x))
+        prev.map((x) => (String(x.id) === String(cancelItem.id) ? { ...x, ...updated } : x))
       );
+
+      closeCancelDialog();
+      setCancelSaving(false);
     } catch (e) {
       console.error(e);
       alert("Αποτυχία ακύρωσης. Δοκίμασε ξανά.");
+      setCancelSaving(false);
     }
   };
 
@@ -318,10 +340,8 @@ export default function MyAppointments() {
 
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Box>
-              <Typography sx={{ fontWeight: 900, color: "#0d2c54", fontSize: 28 }}>
-                Ραντεβού
-              </Typography>
-              <Typography sx={{ mt: 0.6, color: "#6b7a90", maxWidth: 820 }}>
+              <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 28 }}>Ραντεβού</Typography>
+              <Typography sx={{ mt: 0.6, color: MUTED, maxWidth: 820 }}>
                 Εδώ θα βρείτε όλα τα ραντεβού που έχετε προγραμματίσει για τα κατοικίδιά σας.
                 <br />
                 Παρακολουθήστε την κατάστασή τους ή κλείστε ένα νέο ραντεβού εύκολα και γρήγορα.
@@ -336,8 +356,8 @@ export default function MyAppointments() {
                 textTransform: "none",
                 borderRadius: 2,
                 px: 2.5,
-                bgcolor: "#0b3d91",
-                "&:hover": { bgcolor: "#08316f" },
+                bgcolor: PRIMARY,
+                "&:hover": { bgcolor: PRIMARY_HOVER },
                 boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
               }}
             >
@@ -367,7 +387,7 @@ export default function MyAppointments() {
                   "& .MuiTab-root": {
                     textTransform: "none",
                     fontWeight: 900,
-                    color: "#0d2c54",
+                    color: TITLE,
                   },
                   "& .MuiTabs-indicator": {
                     height: 4,
@@ -393,7 +413,7 @@ export default function MyAppointments() {
                     bgcolor: "#ffffff",
                   }}
                 >
-                  <Typography sx={{ color: "#6b7a90", fontWeight: 800 }}>Φόρτωση...</Typography>
+                  <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
                 </Paper>
               ) : err ? (
                 <Paper
@@ -418,10 +438,8 @@ export default function MyAppointments() {
                     textAlign: "center",
                   }}
                 >
-                  <Typography sx={{ fontWeight: 900, color: "#0d2c54" }}>
-                    Δεν υπάρχουν ραντεβού εδώ
-                  </Typography>
-                  <Typography sx={{ mt: 0.6, color: "#6b7a90" }}>
+                  <Typography sx={{ fontWeight: 900, color: TITLE }}>Δεν υπάρχουν ραντεβού εδώ</Typography>
+                  <Typography sx={{ mt: 0.6, color: MUTED }}>
                     Πάτησε “+ Νέο Ραντεβού” για να κλείσεις ένα νέο.
                   </Typography>
                 </Paper>
@@ -444,6 +462,76 @@ export default function MyAppointments() {
       </Box>
 
       <Footer />
+
+      {/* ✅ POPUP ΑΚΥΡΩΣΗΣ */}
+      <Dialog
+        open={cancelOpen}
+        onClose={closeCancelDialog}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 2 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 900, color: TITLE }}>Ακύρωση ραντεβού</DialogTitle>
+
+        <DialogContent sx={{ pt: 1 }}>
+          <Typography sx={{ fontWeight: 900, color: "#111", mb: 1 }}>
+            Είστε βέβαιοι ότι θέλετε να ακυρώσετε το ραντεβού;
+          </Typography>
+
+          <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12, mb: 1.2 }}>
+            (Προαιρετικό) Γράψε τον λόγο ακύρωσης:
+          </Typography>
+
+          <TextField
+            fullWidth
+            multiline
+            minRows={4}
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Π.χ. Έκτακτο πρόβλημα / δεν μπορώ να παρευρεθώ..."
+          />
+
+          <Typography sx={{ mt: 1.2, color: MUTED, fontWeight: 800, fontSize: 12 }}>
+            {cancelItem?.vetName ? `Κτηνίατρος: ${cancelItem.vetName} • ` : ""}
+            {cancelItem?.when ? `${fmtDate(cancelItem.when)} ${fmtTime(cancelItem.when)}` : ""}
+          </Typography>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button
+            onClick={closeCancelDialog}
+            variant="contained"
+            disabled={cancelSaving}
+            sx={{
+              textTransform: "none",
+              borderRadius: 2,
+              px: 3,
+              bgcolor: "#b7bcc3",
+              color: "#000",
+              "&:hover": { bgcolor: "#a9aeb6" },
+              fontWeight: 900,
+            }}
+          >
+            Ακύρωση
+          </Button>
+
+          <Button
+            onClick={confirmCancel}
+            variant="contained"
+            disabled={cancelSaving}
+            sx={{
+              textTransform: "none",
+              borderRadius: 2,
+              px: 3,
+              bgcolor: PRIMARY,
+              "&:hover": { bgcolor: PRIMARY_HOVER },
+              fontWeight: 900,
+            }}
+          >
+            {cancelSaving ? "Γίνεται ακύρωση..." : "Επιβεβαίωση"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

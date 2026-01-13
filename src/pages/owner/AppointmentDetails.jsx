@@ -79,12 +79,18 @@ export default function AppointmentDetails() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
+  // ✅ NEW: review existence (robust)
+  const [hasReview, setHasReview] = useState(false);
+  const [checkingReview, setCheckingReview] = useState(true);
+
   useEffect(() => {
     let alive = true;
 
     (async () => {
       setLoading(true);
       setErr("");
+      setHasReview(false);
+      setCheckingReview(true);
 
       if (!apptId) throw new Error("missing id");
 
@@ -109,10 +115,22 @@ export default function AppointmentDetails() {
         p = await fetchJSON(`/api/pets/${encodeURIComponent(String(a.petId))}`);
       }
 
+      // 4) ✅ robust check: φέρνουμε ΟΛΑ τα reviews και φιλτράρουμε client-side
+      let exists = false;
+      try {
+        const all = await fetchJSON(`/api/reviews`);
+        const arr = Array.isArray(all) ? all : [];
+        exists = arr.some((r) => String(r?.appointmentId || "") === String(apptId));
+      } catch {
+        exists = false;
+      }
+
       if (!alive) return;
       setAppt(a || null);
       setVet(v || null);
       setPet(p || null);
+      setHasReview(exists);
+      setCheckingReview(false);
       setLoading(false);
     })().catch((e) => {
       console.error(e);
@@ -127,6 +145,8 @@ export default function AppointmentDetails() {
       setAppt(null);
       setVet(null);
       setPet(null);
+      setHasReview(false);
+      setCheckingReview(false);
       setLoading(false);
     });
 
@@ -136,6 +156,19 @@ export default function AppointmentDetails() {
   }, [apptId, user?.id]);
 
   const status = useMemo(() => computeStatus(appt), [appt]);
+
+  // ✅ show button only if completed AND no review exists
+  const canReview = useMemo(() => {
+    if (status !== "Ολοκληρωμένο") return false;
+    if (checkingReview) return false;
+    return !hasReview;
+  }, [status, checkingReview, hasReview]);
+
+  const goToReview = () => {
+    const vetId = appt?.vetId;
+    if (!apptId || vetId == null) return;
+    navigate(`/owner/appointments/${encodeURIComponent(String(apptId))}/review`);
+  };
 
   const { displayDate, displayTime } = useMemo(() => {
     if (!appt) return { displayDate: "—", displayTime: "—" };
@@ -259,7 +292,12 @@ export default function AppointmentDetails() {
                           }}
                         >
                           {vetPhoto ? (
-                            <Box component="img" src={vetPhoto} alt="vet" sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <Box
+                              component="img"
+                              src={vetPhoto}
+                              alt="vet"
+                              sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            />
                           ) : (
                             <Typography sx={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>Χωρίς φωτο</Typography>
                           )}
@@ -271,7 +309,11 @@ export default function AppointmentDetails() {
                           </Typography>
 
                           <Typography sx={{ color: MUTED, fontWeight: 800, mt: 0.3 }}>
-                            {vet?.clinic || vet?.clinicName || appt?.clinicName || appt?.clinicType || "Κλινική μικρών ζώων"}
+                            {vet?.clinic ||
+                              vet?.clinicName ||
+                              appt?.clinicName ||
+                              appt?.clinicType ||
+                              "Κλινική μικρών ζώων"}
                           </Typography>
 
                           <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.8 }}>
@@ -304,7 +346,12 @@ export default function AppointmentDetails() {
                           }}
                         >
                           {petPhoto ? (
-                            <Box component="img" src={petPhoto} alt="pet" sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <Box
+                              component="img"
+                              src={petPhoto}
+                              alt="pet"
+                              sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            />
                           ) : (
                             <Typography sx={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>Χωρίς φωτο</Typography>
                           )}
@@ -326,8 +373,32 @@ export default function AppointmentDetails() {
                   </Stack>
                 </Paper>
 
-                <Stack direction="row" justifyContent="flex-end" sx={{ mt: 3 }}>
-                  <Button
+                <Stack direction="row" justifyContent="flex-end" spacing={1.2} sx={{ mt: 3, flexWrap: "wrap" }}>
+                  {canReview && (
+                    <Button
+                      variant="contained"
+                      onClick={goToReview}
+                      sx={{
+                        textTransform: "none",
+                        borderRadius: 2,
+                        bgcolor: PRIMARY,
+                        "&:hover": { bgcolor: PRIMARY_HOVER },
+                        fontWeight: 900,
+                        px: 3,
+                        boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
+                      }}
+                    >
+                      Αξιολόγηση
+                    </Button>
+                  )}
+
+                  {status === "Ολοκληρωμένο" && !checkingReview && hasReview && (
+                    <Typography sx={{ color: MUTED, fontWeight: 800, alignSelf: "center" }}>
+                      Έχεις ήδη υποβάλει αξιολόγηση για αυτό το ραντεβού.
+                    </Typography>
+                  )}
+
+                  {/* <Button
                     variant="contained"
                     onClick={() => navigate("/owner/appointments")}
                     sx={{
@@ -341,7 +412,7 @@ export default function AppointmentDetails() {
                     }}
                   >
                     Τα Ραντεβού μου
-                  </Button>
+                  </Button> */}
                 </Stack>
               </>
             )}
