@@ -299,6 +299,7 @@ export default function VetProfile() {
                             sx={{
                               flex: { xs: "1 1 auto", sm: "1 1 0" },
                               minWidth: 0,            // ✅ απαραίτητο για σωστές τελίτσες
+                              maxWidth: 220,
                               borderRadius: 2,
                               bgcolor: "#eef1f4",
                               border: "1px solid rgba(0,0,0,0.08)",
@@ -324,16 +325,16 @@ export default function VetProfile() {
 
                             <Typography
                               sx={{
-                                fontSize: 11,
+                                mt: 1,
                                 color: "#111",
                                 fontWeight: 700,
-                                lineHeight: 1.25,
+                                fontSize: 11,
                                 display: "-webkit-box",
-                                WebkitLineClamp: 2,
+                                WebkitLineClamp: 1,        // 👈 πόσες γραμμές να φαίνονται (1/2/3)
                                 WebkitBoxOrient: "vertical",
                                 overflow: "hidden",
+                                textOverflow: "ellipsis",
                               }}
-                              title={r.text || ""}
                             >
                               {r.text || "—"}
                             </Typography>
@@ -358,7 +359,7 @@ export default function VetProfile() {
                       <Divider sx={{ mt: 1.2, opacity: 0.35 }} />
                     </>
                   )}
-                  <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1.2 }}>
+                  <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1.7 }}>
                     <Button
                       variant="outlined"
                       size="small"

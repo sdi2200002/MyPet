@@ -35,6 +35,8 @@ import VetNewAppointment from "./pages/owner/VetNewAppointment.jsx";
 import VetReviews from "./pages/owner/VetReviews.jsx";
 import AppointmentSuccess from "./pages/owner/AppointmentSuccess.jsx";
 import AppointmentDetails from "./pages/owner/AppointmentDetails.jsx";
+import VetNewReview from "./pages/owner/VetNewReview.jsx";
+import VetReviewDetails from "./pages/owner/VetReviewDetails.jsx";
 import OwnerProfile from "./pages/owner/Profile.jsx";
 
 
@@ -73,8 +75,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route path="/owner/vets/:vetId" element={<VetProfile />} />
           <Route path="/owner/vets/:vetId/new" element={<VetNewAppointment />} />
           <Route path="/owner/vets/:vetId/reviews" element={<VetReviews />} />
+          <Route path="/owner/vets/:vetId/reviews/:reviewId" element={<VetReviewDetails />} />
           <Route path="/owner/appointments/success" element={<AppointmentSuccess />} />
           <Route path="/owner/appointments/:appId" element={<AppointmentDetails />} />
+          <Route path="/owner/appointments/:appId/review" element={<VetNewReview />} />
           <Route path="/owner/profile" element={<OwnerProfile />} />
 
           {/* Vet */}

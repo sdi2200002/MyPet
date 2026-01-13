@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Box,
+  Button,
   Container,
   Paper,
   Stack,
@@ -9,8 +10,9 @@ import {
   MenuItem,
   Select,
 } from "@mui/material";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
@@ -20,6 +22,7 @@ const BORDER = "#8fb4e8";
 const TITLE = "#0d2c54";
 const MUTED = "#6b7a90";
 const PRIMARY = "#0b3d91";
+const PRIMARY_HOVER = "#08316f";
 
 async function fetchJSON(path, options) {
   const res = await fetch(path, options);
@@ -61,6 +64,7 @@ function normalizeReview(r) {
 
 export default function VetReviews() {
   const { vetId } = useParams();
+  const navigate = useNavigate();
 
   const [vet, setVet] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -72,7 +76,13 @@ export default function VetReviews() {
 
   // ✅ pagination
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 5; // άλλαξέ το σε 5/6 αν θες
+  const PAGE_SIZE = 5;
+
+  // ✅ Προβολή ενός review (φτιάχτηκε)
+  const onView = (review) => {
+    if (!review?.id) return;
+    navigate(`/owner/vets/${encodeURIComponent(String(vetId))}/reviews/${encodeURIComponent(String(review.id))}`);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -87,7 +97,6 @@ export default function VetReviews() {
       const v = await fetchJSON(`/api/vets/${encodeURIComponent(String(vetId))}`);
 
       // 2) Reviews από server (προσπαθούμε πρώτα με query param)
-      // Αν δεν υποστηρίζεται query param, κάνουμε fallback σε /api/reviews και filter client-side
       let rr = [];
       try {
         rr = await fetchJSON(`/api/reviews?vetId=${encodeURIComponent(String(vetId))}`);
@@ -125,7 +134,6 @@ export default function VetReviews() {
     const arr = [...reviews];
 
     if (sort === "rating") {
-      // rating desc, και σε ισοβαθμία πιο πρόσφατο
       return arr.sort((a, b) => {
         const dr = (b.rating || 0) - (a.rating || 0);
         if (dr !== 0) return dr;
@@ -133,14 +141,11 @@ export default function VetReviews() {
       });
     }
 
-    // recent
     return arr.sort((a, b) => parseAnyDateToMs(b.date) - parseAnyDateToMs(a.date));
   }, [reviews, sort]);
 
   // ✅ pagination derived
-  const pageCount = useMemo(() => {
-    return Math.max(1, Math.ceil(ordered.length / PAGE_SIZE));
-  }, [ordered.length]);
+  const pageCount = useMemo(() => Math.max(1, Math.ceil(ordered.length / PAGE_SIZE)), [ordered.length]);
 
   const paged = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
@@ -163,21 +168,17 @@ export default function VetReviews() {
   const computedRating = useMemo(() => {
     if (!reviews.length) return vet?.rating ?? 0;
     const sum = reviews.reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
-    return Math.round((sum / reviews.length) * 10) / 10; // 1 δεκαδικό
+    return Math.round((sum / reviews.length) * 10) / 10;
   }, [reviews, vet?.rating]);
 
-  const computedCount = useMemo(() => {
-    return vet?.reviewsCount ?? reviews.length ?? 0;
-  }, [vet?.reviewsCount, reviews.length]);
+  const computedCount = useMemo(() => vet?.reviewsCount ?? reviews.length ?? 0, [vet?.reviewsCount, reviews.length]);
 
   if (!vetId) {
     return (
       <Box sx={{ minHeight: "100vh", bgcolor: "#fff" }}>
         <PublicNavbar />
         <Container maxWidth="lg" sx={{ py: 4 }}>
-          <Typography sx={{ fontWeight: 900, color: "#b00020" }}>
-            Λείπει το vetId από το URL.
-          </Typography>
+          <Typography sx={{ fontWeight: 900, color: "#b00020" }}>Λείπει το vetId από το URL.</Typography>
         </Container>
         <Footer />
       </Box>
@@ -260,9 +261,7 @@ export default function VetReviews() {
             <AppBreadcrumbs />
           </Box>
 
-          <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 22, mb: 2 }}>
-            Αξιολογήσεις
-          </Typography>
+          <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 22, mb: 2 }}>Αξιολογήσεις</Typography>
 
           <Box
             sx={{
@@ -290,7 +289,7 @@ export default function VetReviews() {
             >
               <Box
                 component="img"
-                src={vet.photo }
+                src={vet.photo}
                 alt={vet.name}
                 sx={{
                   width: 98,
@@ -320,9 +319,7 @@ export default function VetReviews() {
               }}
             >
               <Stack direction="row" spacing={1} alignItems="center">
-                <Typography sx={{ fontWeight: 900, fontSize: 18 }}>
-                  ⭐ {computedRating || 0}
-                </Typography>
+                <Typography sx={{ fontWeight: 900, fontSize: 18 }}>⭐ {computedRating || 0}</Typography>
                 <Typography sx={{ color: MUTED, fontWeight: 800 }}>({computedCount})</Typography>
               </Stack>
 
@@ -381,9 +378,7 @@ export default function VetReviews() {
                   bgcolor: "#f6f8fb",
                 }}
               >
-                <Typography sx={{ color: MUTED, fontWeight: 800 }}>
-                  Δεν υπάρχουν ακόμα αξιολογήσεις.
-                </Typography>
+                <Typography sx={{ color: MUTED, fontWeight: 800 }}>Δεν υπάρχουν ακόμα αξιολογήσεις.</Typography>
               </Paper>
             ) : (
               paged.map((r) => (
@@ -395,19 +390,55 @@ export default function VetReviews() {
                     border: `2px solid ${BORDER}`,
                     boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
                     p: 2,
+                    display: "flex",
+                    alignItems: "center",     // 👈 κάθετο κέντρο
+                    gap: 2,
                   }}
                 >
-                  <Typography sx={{ fontWeight: 900, fontSize: 12, color: "#111" }}>
-                    ⭐ {r.rating}.0 — {r.name} —{" "}
-                    {r.date
-                      ? r.date.includes("/")
-                        ? r.date
-                        : new Date(r.date).toLocaleDateString("el-GR")
-                      : "—"}
-                  </Typography>
-                  <Typography sx={{ mt: 1, color: "#111", fontWeight: 700, fontSize: 12 }}>
-                    {r.text || "—"}
-                  </Typography>
+                  {/* ΚΕΙΜΕΝΟ */}
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography sx={{ fontWeight: 900, fontSize: 12, color: "#111" }}>
+                      ⭐ {r.rating}.0 — {r.name} —{" "}
+                      {r.date
+                        ? r.date.includes("/")
+                          ? r.date
+                          : new Date(r.date).toLocaleDateString("el-GR")
+                        : "—"}
+                    </Typography>
+
+                    <Typography 
+                      sx={{
+                        mt: 1,
+                        color: "#111",
+                        fontWeight: 700,
+                        fontSize: 12,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 1,        // 👈 πόσες γραμμές (βάλε 2 ή 3)
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}>
+                      {r.text || "—"}
+                    </Typography>
+                  </Box>
+
+                  {/* ΚΟΥΜΠΙ */}
+                  <Button
+                    variant="contained"
+                    onClick={() => onView(r)}
+                    startIcon={<VisibilityOutlinedIcon />}
+                    sx={{
+                      textTransform: "none",
+                      borderRadius: 2,
+                      bgcolor: PRIMARY,
+                      "&:hover": { bgcolor: PRIMARY_HOVER },
+                      fontWeight: 900,
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,          // 👈 να μη μικραίνει
+                    }}
+                  >
+                    Προβολή
+                  </Button>
                 </Paper>
               ))
             )}
