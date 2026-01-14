@@ -538,6 +538,7 @@ export default function Home() {
                 <DatePicker
                   value={vetDateObj}
                   minDate={dayjs()} // ✅ δεν επιτρέπει “χτες”
+                  maxDate={dayjs().add(1, "year")}
                   onChange={(newValue) => {
                     setVetDateObj(newValue);
                     setVetDate(dateToISOFromDayjs(newValue)); // ✅ ISO
@@ -689,7 +690,7 @@ export default function Home() {
                 disabled={!canPrevVets}
                 sx={{
                   position: "absolute",
-                  left: 14,
+                  left: 5,
                   top: "50%",
                   transform: "translateY(-50%)",
                   bgcolor: "white",
@@ -706,7 +707,7 @@ export default function Home() {
                 disabled={!canNextVets}
                 sx={{
                   position: "absolute",
-                  right: 14,
+                  right: 5,
                   top: "50%",
                   transform: "translateY(-50%)",
                   bgcolor: "white",

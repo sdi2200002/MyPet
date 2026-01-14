@@ -17,6 +17,7 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useAuth } from "../../auth/AuthContext";
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
 
 const PRIMARY = "#0b3d91";
 const PRIMARY_HOVER = "#08316f";
@@ -30,6 +31,37 @@ async function fetchJSON(url, opts) {
   const res = await fetch(url, opts);
   if (!res.ok) throw new Error(`HTTP ${res.status} on ${url}`);
   return res.json();
+}
+
+function OwnerPageShell({ children }) {
+  return (
+    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
+      <PublicNavbar />
+
+      <Box
+        sx={{
+          flex: 1,
+          display: { xs: "block", lg: "flex" },
+          alignItems: "flex-start",
+        }}
+      >
+        {/* spacer ώστε το content να μη μπαίνει κάτω απ’ το sidebar */}
+        <Box
+          sx={{
+            width: OWNER_SIDEBAR_W,
+            flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+            display: { xs: "none", lg: "block" },
+          }}
+        />
+
+        <OwnerNavbar mode="navbar" />
+
+        <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+      </Box>
+
+      <Footer />
+    </Box>
+  );
 }
 
 // ίδιος κανόνας με AppointmentDetails
@@ -220,8 +252,7 @@ export default function VetNewReview() {
   const vetName = vet?.name || appt?.vetName || "Κτηνίατρος";
 
   return (
-    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
-      <PublicNavbar />
+    <OwnerPageShell>
 
       <Container maxWidth="lg" sx={{ py: 2.5, flex: 1 }}>
         <Box>
@@ -351,8 +382,7 @@ export default function VetNewReview() {
           </Stack>
         )}
       </Container>
-
       <Footer />
-    </Box>
+    </OwnerPageShell>
   );
 }

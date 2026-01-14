@@ -30,7 +30,8 @@ import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
 
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs from "dayjs";
 
 /* ====== THEME ====== */
 const PRIMARY = "#0b3d91";
@@ -196,6 +197,25 @@ function VetCard({ vet, onView }) {
   );
 }
 
+/** ✅ δέχεται "YYYY-MM-DD" ή "DD/MM/YYYY" ή "DD-MM-YYYY" και το κάνει "YYYY-MM-DD" */
+function normalizeGreekDateToISO(s) {
+  if (!s) return "";
+  const t = String(s).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const m = t.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  return "";
+}
+
+function dateToISOFromDayjs(dj) {
+  if (!dj) return "";
+  const d = dj.toDate();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 export default function VetSearch() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -223,7 +243,7 @@ export default function VetSearch() {
 
     const d = p.get("date") || "";
     setDate(d);
-    setDateObj(d ? new Date(`${d}T00:00:00`) : null);
+    setDateObj(d ? dayjs(d) : null);
 
     setPage(1);
   }, [location.search]);
@@ -376,23 +396,24 @@ export default function VetSearch() {
                 </FormControl>
 
                 {/* ✅ Ημερομηνία - dropdown calendar */}
-                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DatePicker
                     value={dateObj}
+                    minDate={dayjs()}
+                    maxDate={dayjs().add(1, "year")}
                     onChange={(newValue) => {
                       setDateObj(newValue);
-                      setDate(dateToISO(newValue));
+                      setDate(dateToISOFromDayjs(newValue));
                     }}
-                    format="dd/MM/yyyy"
-                    minDate={new Date()} // ✅ μην επιτρέπεις παρελθόν
+                    format="DD/MM/YYYY"
                     slotProps={{
                       textField: {
                         size: "small",
                         placeholder: "Ημερομηνία",
                         sx: {
-                          minWidth: 230,
-                          bgcolor: "#fff",
+                          bgcolor: "white",
                           borderRadius: 999,
+                          minWidth: 230,
                           "& .MuiOutlinedInput-root": { borderRadius: 999 },
                           "& input::placeholder": { color: MUTED, opacity: 1 },
                         },

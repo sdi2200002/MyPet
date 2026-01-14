@@ -40,7 +40,7 @@ function PetPick({ pet, active, onClick }) {
         bgcolor: active ? "rgba(11,61,145,0.06)" : "#fff",
         p: 1.2,
         width: 120,
-        height: 150,
+        height: 140,
         boxSizing: "border-box",
         textAlign: "center",
         boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
@@ -396,7 +396,7 @@ export default function VetNewAppointment() {
                 ) : (
                   <Box
                     sx={{
-                      maxHeight: 350, // ✅ scroll
+                      maxHeight: 310, // ✅ scroll
                       overflowY: "auto",
                       pr: 0.5,
                     }}

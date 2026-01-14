@@ -139,14 +139,14 @@ export default function DeclarationsHome() {
                                     icon={<CampaignIcon sx={{ fontSize: 100, color: PRIMARY }} />}
                                     title="Δήλωση Απώλειας"
                                     text="Καταχωρίστε την απώλεια του κατοικιδίου σας για άμεση ενημέρωση."
-                                    onClick={() => navigate("/owner/lost/new")}
+                                    onClick={() => navigate("/owner/declarations/lost/new")}
                                 />
 
                                 <QuickAction
                                     icon={<SearchIcon sx={{ fontSize: 100, color: PRIMARY }} />}
                                     title="Δήλωση Εύρεσης"
                                     text="Καταχωρίστε την εύρεση για να εντοπιστεί ο ιδιοκτήτης."
-                                    onClick={() => navigate("/owner/found/new")}
+                                    onClick={() => navigate("/owner/declarations/found/new")}
                                 />
                             </Stack>
                         </Box>
