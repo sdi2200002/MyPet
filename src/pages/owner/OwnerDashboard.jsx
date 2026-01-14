@@ -32,8 +32,14 @@ import AppBreadcrumbs from "../../components/Breadcrumbs";
 
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { listNotifications, markAllRead, markNotificationRead } from "../../api/notifications";
+import Pager from "../../components/Pager"; // βάλε το σωστό path
+
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
+
 
 import { useAuth } from "../../auth/AuthContext";
 
@@ -696,16 +702,217 @@ function VetsSearchPanel() {
   );
 }
 
-function LatestUpdates() {
+function fmtShort(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString("el-GR", { day: "2-digit", month: "2-digit" });
+  } catch {
+    return "";
+  }
+}
+
+function routeForNotification(n) {
+  if (n?.refType === "appointment" && n?.refId) return `/owner/appointments/${n.refId}`;
+  if (n?.refType === "pet" && n?.refId) return `/owner/pets/${n.refId}`;
+  if (n?.refType === "lostDeclaration" && n?.refId) return `/owner/lost/${n.refId}`; // ✅ ταιριάζει με το refType που έχεις ήδη
+  if (n?.refType === "lost" && n?.refId) return `/owner/lost/${n.refId}`;
+  if (n?.refType === "found" && n?.refId) return `/owner/found/${n.refId}`;
+  return "";
+}
+
+// ✅ συμβατό με isRead + readAt
+function isUnread(n) {
+  if (n?.readAt) return false;
+  if (typeof n?.isRead === "boolean") return n.isRead === false;
+  return true;
+}
+
+function LatestUpdates({ limit = 5 }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const uid = useMemo(() => String(user?.id ?? user?.user?.id ?? ""), [user]);
+
+  const [allItems, setAllItems] = useState([]);   // ⬅️ ΟΛΑ τα notifications (τελευταία)
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);            // ⬅️ σελίδα
+
+  const unreadCount = useMemo(
+    () => (Array.isArray(allItems) ? allItems.filter(isUnread).length : 0),
+    [allItems]
+  );
+
+  const pageCount = useMemo(() => {
+    const total = Array.isArray(allItems) ? allItems.length : 0;
+    return Math.max(1, Math.ceil(total / limit));
+  }, [allItems, limit]);
+
+  // ⬅️ items που θα εμφανιστούν στην τρέχουσα σελίδα
+  const pageItems = useMemo(() => {
+    const start = (page - 1) * limit;
+    return (Array.isArray(allItems) ? allItems : []).slice(start, start + limit);
+  }, [allItems, page, limit]);
+
+  async function load() {
+    if (!uid) {
+      setLoading(true);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await listNotifications({ userId: uid, limit: 200 }); // φέρνουμε πολλά
+      const normalizeId = (v) => String(v ?? "").replace(/^u_/, "");
+
+      const all = Array.isArray(data) ? data : [];
+
+      // μόνο του χρήστη
+      const mine = all.filter((n) => normalizeId(n?.userId) === normalizeId(uid));
+
+      // newest first
+      const sorted = [...mine].sort(
+        (a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0)
+      );
+
+      setAllItems(sorted);
+    } catch (e) {
+      console.error(e);
+      setAllItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // όταν αλλάζει user -> σελίδα 1
+  useEffect(() => {
+    setPage(1);
+  }, [uid]);
+
+  // αν μειωθούν items και η σελίδα βγει εκτός -> φέρ' την μέσα
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
+
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 15000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, limit]);
+
+  async function onClickItem(n) {
+    if (isUnread(n)) {
+      if (n?.readAt !== undefined) {
+        const updated = await markNotificationRead(n.id);
+        setAllItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, ...updated } : x)));
+      } else {
+        await fetch(`/api/notifications/${encodeURIComponent(String(n.id))}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isRead: true }),
+        });
+        setAllItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
+      }
+    }
+
+    const to = routeForNotification(n);
+    if (to) navigate(to);
+  }
+
+  async function onMarkAll() {
+    if (!uid) return;
+    await markAllRead(uid);
+    await load();
+    setPage(1);
+  }
+
   return (
     <Box sx={{ mt: 3 }}>
-      <Typography sx={{ fontWeight: 900, color: TITLE, mb: 1.2 }}>Τελευταίες Ενημερώσεις</Typography>
-      <Paper elevation={0} sx={{ bgcolor: "#eef5ff", borderRadius: 3, p: 2.2, border: "1px solid rgba(0,0,0,0.08)" }}>
-        <Typography sx={{ color: "#4b5b6b", fontWeight: 700, fontSize: 13 }}>Δεν έχετε καινούριες ενημερώσεις.</Typography>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.2 }}>
+        <Typography sx={{ fontWeight: 900, color: TITLE }}>
+          Τελευταίες Ενημερώσεις
+          {unreadCount > 0 ? (
+            <Typography component="span" sx={{ ml: 1, color: PRIMARY, fontWeight: 900 }}>
+              ({unreadCount})
+            </Typography>
+          ) : null}
+        </Typography>
+
+        {allItems.length > 0 && unreadCount > 0 && (
+          <Button
+            onClick={onMarkAll}
+            variant="contained"
+            size="small"
+            sx={{
+              textTransform: "none",
+              borderRadius: 999,
+              bgcolor: PRIMARY,
+              "&:hover": { bgcolor: PRIMARY_HOVER },
+              fontWeight: 900,
+            }}
+          >
+            Όλα ως διαβασμένα
+          </Button>
+        )}
+      </Stack>
+
+      <Paper
+        elevation={0}
+        sx={{
+          bgcolor: "#eef5ff",
+          borderRadius: 3,
+          p: 2.2,
+          border: "1px solid rgba(0,0,0,0.08)",
+        }}
+      >
+        {loading ? (
+          <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
+        ) : allItems.length === 0 ? (
+          <Typography sx={{ color: MUTED, fontWeight: 700 }}>Δεν έχετε καινούριες ενημερώσεις.</Typography>
+        ) : (
+          <>
+            <Stack spacing={1.2}>
+              {pageItems.map((n) => {
+                const unread = isUnread(n);
+                return (
+                  <Box
+                    key={n.id}
+                    onClick={() => onClickItem(n)}
+                    role="button"
+                    tabIndex={0}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <Typography
+                      sx={{
+                        color: unread ? "#1c2b39" : MUTED,
+                        fontWeight: unread ? 900 : 700,
+                        fontSize: 13.5,
+                        lineHeight: 1.25,
+                      }}
+                    >
+                      • {fmtShort(n.createdAt)} — {n.message || n.title || "Ενημέρωση"}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Stack>
+
+            {/* ✅ Pager */}
+            <Pager
+              page={page}
+              pageCount={pageCount}
+              onChange={(p) => setPage(p)}
+              maxButtons={4}
+              color={PRIMARY}
+            />
+          </>
+        )}
       </Paper>
     </Box>
   );
 }
+
+
 
 export default function OwnerDashboard() {
   const navigate = useNavigate();

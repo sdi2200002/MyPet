@@ -42,6 +42,40 @@ const fieldSx = {
   "& .MuiInputLabel-root.Mui-focused": { color: COLORS.primary },
 };
 
+async function createNotification(payload) {
+  return fetchJSON(`/api/notifications`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+function makeNotif({ userId, type, title, message, refType, refId, meta }) {
+  return {
+    // ✅ αν δεν βάλεις id, json-server βάζει numeric.
+    // Αν θες string id (προτείνω), βάλε το:
+    id: `n_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+
+    userId: String(userId),
+    createdAt: new Date().toISOString(),
+
+    // ✅ αυτό να είναι το "read/unread"
+    readAt: null,
+
+    type: type || "info", // info | success | warning | error
+    title: title || "",
+    message: message || "",
+
+    // ✅ link/reference fields (πολύ χρήσιμα)
+    refType: refType || "",
+    refId: refId || "",
+
+    // optional extra data
+    meta: meta || {},
+  };
+}
+
+
 async function fetchJSON(path, options) {
   const res = await fetch(path, options);
   if (!res.ok) throw new Error(`HTTP ${res.status} on ${path}`);
@@ -487,6 +521,9 @@ export default function LostWizard() {
     try {
       const payload = await buildPayload("Οριστική");
 
+      // 1) Δημιουργία / ενημέρωση δήλωσης
+      let savedId = editingId;
+
       if (editingId) {
         await fetchJSON(`/api/lostDeclarations/${encodeURIComponent(String(editingId))}`, {
           method: "PATCH",
@@ -499,9 +536,35 @@ export default function LostWizard() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        setEditingId(String(created?.id));
+        savedId = String(created?.id);
+        setEditingId(savedId);
       }
 
+      // 2) ✅ Notification 
+      try {
+        await createNotification({
+          userId: user?.id,
+          type: "lost_submitted", // ή "warning" αν θες
+          title: "Νέα δήλωση απώλειας",
+          message: `Υποβλήθηκε δήλωση απώλειας για ${
+            payload?.petName || "κατοικίδιο"
+          } (${payload?.area || "—"}) στις ${fmtDDMMYYYY(payload?.date)}.`,
+          refType: "lostDeclaration",
+          refId: String(savedId || ""),
+          // optional extra
+          meta: {
+            kind: "lost",
+            status: "Οριστική",
+            petId: String(payload?.petId || ""),
+            area: payload?.area || "",
+            date: payload?.date || "",
+          },
+        });
+      } catch (e) {
+        console.warn("Notification failed (ignored):", e);
+      }
+
+      // 3) Μετά πλοήγηση
       navigate("/owner/declarations/success", { state: { type: "lost", status: "Οριστική" } });
     } catch (e) {
       console.error(e);
@@ -510,6 +573,7 @@ export default function LostWizard() {
       setSaving(false);
     }
   }
+
 
   function OwnerPageShell({ children }) {
     return (
