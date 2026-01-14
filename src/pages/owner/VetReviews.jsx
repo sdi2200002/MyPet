@@ -16,7 +16,9 @@ import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
-import Pager from "../../components/Pager"; // ✅ πρόσθεσε το
+import Pager from "../../components/Pager"; 
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+
 
 const BORDER = "#8fb4e8";
 const TITLE = "#0d2c54";
@@ -173,22 +175,53 @@ export default function VetReviews() {
 
   const computedCount = useMemo(() => vet?.reviewsCount ?? reviews.length ?? 0, [vet?.reviewsCount, reviews.length]);
 
-  if (!vetId) {
+  function OwnerPageShell({ children }) {
     return (
-      <Box sx={{ minHeight: "100vh", bgcolor: "#fff" }}>
+      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
         <PublicNavbar />
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-          <Typography sx={{ fontWeight: 900, color: "#b00020" }}>Λείπει το vetId από το URL.</Typography>
-        </Container>
+
+        <Box
+          sx={{
+            flex: 1,
+            display: { xs: "block", lg: "flex" },
+            alignItems: "flex-start",
+          }}
+        >
+          {/* spacer */}
+          <Box
+            sx={{
+              width: OWNER_SIDEBAR_W,
+              flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+              display: { xs: "none", lg: "block" },
+            }}
+          />
+
+          <OwnerNavbar mode="navbar" />
+
+          <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+        </Box>
+
         <Footer />
       </Box>
     );
   }
 
+
+
+  if (!vetId) {
+    return (
+      <OwnerPageShell>
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+          <Typography sx={{ fontWeight: 900, color: "#b00020" }}>Λείπει το vetId από το URL.</Typography>
+        </Container>
+      </OwnerPageShell>
+    );
+  }
+
+
   if (loading) {
     return (
-      <Box sx={{ minHeight: "100vh", bgcolor: "#fff" }}>
-        <PublicNavbar />
+      <OwnerPageShell>
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Box>
             <AppBreadcrumbs />
@@ -205,15 +238,14 @@ export default function VetReviews() {
             <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
           </Paper>
         </Container>
-        <Footer />
-      </Box>
+      </OwnerPageShell>
     );
   }
 
+
   if (err) {
     return (
-      <Box sx={{ minHeight: "100vh", bgcolor: "#fff" }}>
-        <PublicNavbar />
+      <OwnerPageShell>
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Box>
             <AppBreadcrumbs />
@@ -231,48 +263,141 @@ export default function VetReviews() {
             <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
           </Paper>
         </Container>
-        <Footer />
-      </Box>
+      </OwnerPageShell>
     );
   }
 
+
   if (!vet) {
     return (
-      <Box sx={{ minHeight: "100vh", bgcolor: "#fff" }}>
-        <PublicNavbar />
+      <OwnerPageShell>
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Box>
             <AppBreadcrumbs />
           </Box>
           <Typography sx={{ fontWeight: 900 }}>Δεν βρέθηκε κτηνίατρος.</Typography>
         </Container>
-        <Footer />
-      </Box>
+      </OwnerPageShell>
     );
   }
 
+
   return (
-    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
-      <PublicNavbar />
+    <OwnerPageShell>
+      <Container maxWidth="lg" sx={{ py: 2.5 }}>
+        <Box>
+          <AppBreadcrumbs />
+        </Box>
 
-      <Box sx={{ flex: 1 }}>
-        <Container maxWidth="lg" sx={{ py: 2.5 }}>
-          <Box>
-            <AppBreadcrumbs />
-          </Box>
+        <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 22, mb: 2 }}>
+          Αξιολογήσεις
+        </Typography>
 
-          <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 22, mb: 2 }}>Αξιολογήσεις</Typography>
-
-          <Box
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "1fr 1.1fr" },
+            gap: 3,
+            alignItems: "start",
+            mb: 2.5,
+          }}
+        >
+          {/* Vet card */}
+          <Paper
+            elevation={0}
             sx={{
+              borderRadius: 2,
+              border: `2px solid ${BORDER}`,
+              boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+              p: 2,
               display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "1fr 1.1fr" },
-              gap: 3,
-              alignItems: "start",
-              mb: 2.5,
+              gridTemplateColumns: "110px 1fr",
+              gap: 2,
+              py: 5.4,
+              alignItems: "center",
             }}
           >
-            {/* Vet card */}
+            <Box
+              component="img"
+              src={vet.photo}
+              alt={vet.name}
+              sx={{
+                width: 98,
+                height: 98,
+                borderRadius: 2,
+                objectFit: "cover",
+                border: "1px solid rgba(0,0,0,0.15)",
+                bgcolor: "#fff",
+              }}
+            />
+            <Box>
+              <Typography sx={{ fontWeight: 900, color: "#111" }}>{vet.name}</Typography>
+              <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
+                {vet.clinic || vet.clinicName || "—"}
+              </Typography>
+            </Box>
+          </Paper>
+
+          {/* Rating summary */}
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: 2,
+              border: `2px solid ${BORDER}`,
+              boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+              p: 2,
+            }}
+          >
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography sx={{ fontWeight: 900, fontSize: 18 }}>⭐ {computedRating || 0}</Typography>
+              <Typography sx={{ color: MUTED, fontWeight: 800 }}>({computedCount})</Typography>
+            </Stack>
+
+            <Stack spacing={0.8} sx={{ mt: 1.4 }}>
+              {distribution.map((r) => (
+                <Stack key={r.stars} direction="row" spacing={1.2} alignItems="center">
+                  <Typography sx={{ width: 90, fontWeight: 900, fontSize: 12 }}>
+                    {"⭐".repeat(r.stars)}
+                  </Typography>
+
+                  <Box sx={{ flex: 1, height: 10, borderRadius: 99, bgcolor: "#e6ebf3", overflow: "hidden" }}>
+                    <Box
+                      sx={{
+                        width: `${Math.round((r.n / maxN) * 100)}%`,
+                        height: "100%",
+                        bgcolor: PRIMARY,
+                        opacity: 0.35,
+                      }}
+                    />
+                  </Box>
+
+                  <Typography sx={{ width: 26, textAlign: "right", fontWeight: 900, fontSize: 12, color: "#111" }}>
+                    {r.n}
+                  </Typography>
+                </Stack>
+              ))}
+            </Stack>
+          </Paper>
+        </Box>
+
+        {/* Sort */}
+        <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 2 }}>
+          <Typography sx={{ color: MUTED, fontWeight: 900, fontSize: 12 }}>Ταξινόμηση:</Typography>
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <Select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              sx={{ borderRadius: 2, bgcolor: "#fff", fontWeight: 800 }}
+            >
+              <MenuItem value="recent">Πρόσφατα</MenuItem>
+              <MenuItem value="rating">Βαθμολογία</MenuItem>
+            </Select>
+          </FormControl>
+        </Stack>
+
+        {/* Reviews list */}
+        <Stack spacing={2}>
+          {ordered.length === 0 ? (
             <Paper
               elevation={0}
               sx={{
@@ -280,184 +405,82 @@ export default function VetReviews() {
                 border: `2px solid ${BORDER}`,
                 boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
                 p: 2,
-                display: "grid",
-                gridTemplateColumns: "110px 1fr",
-                gap: 2,
-                py: 5.4,
-                alignItems: "center",
+                bgcolor: "#f6f8fb",
               }}
             >
-              <Box
-                component="img"
-                src={vet.photo}
-                alt={vet.name}
-                sx={{
-                  width: 98,
-                  height: 98,
-                  borderRadius: 2,
-                  objectFit: "cover",
-                  border: "1px solid rgba(0,0,0,0.15)",
-                  bgcolor: "#fff",
-                }}
-              />
-              <Box>
-                <Typography sx={{ fontWeight: 900, color: "#111" }}>{vet.name}</Typography>
-                <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
-                  {vet.clinic || vet.clinicName || "—"}
-                </Typography>
-              </Box>
+              <Typography sx={{ color: MUTED, fontWeight: 800 }}>Δεν υπάρχουν ακόμα αξιολογήσεις.</Typography>
             </Paper>
-
-            {/* Rating summary */}
-            <Paper
-              elevation={0}
-              sx={{
-                borderRadius: 2,
-                border: `2px solid ${BORDER}`,
-                boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
-                p: 2,
-              }}
-            >
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography sx={{ fontWeight: 900, fontSize: 18 }}>⭐ {computedRating || 0}</Typography>
-                <Typography sx={{ color: MUTED, fontWeight: 800 }}>({computedCount})</Typography>
-              </Stack>
-
-              <Stack spacing={0.8} sx={{ mt: 1.4 }}>
-                {distribution.map((r) => (
-                  <Stack key={r.stars} direction="row" spacing={1.2} alignItems="center">
-                    <Typography sx={{ width: 90, fontWeight: 900, fontSize: 12 }}>
-                      {"⭐".repeat(r.stars)}
-                    </Typography>
-
-                    <Box sx={{ flex: 1, height: 10, borderRadius: 99, bgcolor: "#e6ebf3", overflow: "hidden" }}>
-                      <Box
-                        sx={{
-                          width: `${Math.round((r.n / maxN) * 100)}%`,
-                          height: "100%",
-                          bgcolor: PRIMARY,
-                          opacity: 0.35,
-                        }}
-                      />
-                    </Box>
-
-                    <Typography sx={{ width: 26, textAlign: "right", fontWeight: 900, fontSize: 12, color: "#111" }}>
-                      {r.n}
-                    </Typography>
-                  </Stack>
-                ))}
-              </Stack>
-            </Paper>
-          </Box>
-
-          {/* Sort */}
-          <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 2 }}>
-            <Typography sx={{ color: MUTED, fontWeight: 900, fontSize: 12 }}>Ταξινόμηση:</Typography>
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <Select
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-                sx={{ borderRadius: 2, bgcolor: "#fff", fontWeight: 800 }}
-              >
-                <MenuItem value="recent">Πρόσφατα</MenuItem>
-                <MenuItem value="rating">Βαθμολογία</MenuItem>
-              </Select>
-            </FormControl>
-          </Stack>
-
-          {/* Reviews list */}
-          <Stack spacing={2}>
-            {ordered.length === 0 ? (
+          ) : (
+            paged.map((r) => (
               <Paper
+                key={r.id}
                 elevation={0}
                 sx={{
                   borderRadius: 2,
                   border: `2px solid ${BORDER}`,
                   boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
                   p: 2,
-                  bgcolor: "#f6f8fb",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
                 }}
               >
-                <Typography sx={{ color: MUTED, fontWeight: 800 }}>Δεν υπάρχουν ακόμα αξιολογήσεις.</Typography>
-              </Paper>
-            ) : (
-              paged.map((r) => (
-                <Paper
-                  key={r.id}
-                  elevation={0}
-                  sx={{
-                    borderRadius: 2,
-                    border: `2px solid ${BORDER}`,
-                    boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
-                    p: 2,
-                    display: "flex",
-                    alignItems: "center",     // 👈 κάθετο κέντρο
-                    gap: 2,
-                  }}
-                >
-                  {/* ΚΕΙΜΕΝΟ */}
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography sx={{ fontWeight: 900, fontSize: 12, color: "#111" }}>
-                      ⭐ {r.rating}.0 — {r.name} —{" "}
-                      {r.date
-                        ? r.date.includes("/")
-                          ? r.date
-                          : new Date(r.date).toLocaleDateString("el-GR")
-                        : "—"}
-                    </Typography>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography sx={{ fontWeight: 900, fontSize: 12, color: "#111" }}>
+                    ⭐ {r.rating}.0 — {r.name} —{" "}
+                    {r.date ? (r.date.includes("/") ? r.date : new Date(r.date).toLocaleDateString("el-GR")) : "—"}
+                  </Typography>
 
-                    <Typography 
-                      sx={{
-                        mt: 1,
-                        color: "#111",
-                        fontWeight: 700,
-                        fontSize: 12,
-                        display: "-webkit-box",
-                        WebkitLineClamp: 1,        // 👈 πόσες γραμμές (βάλε 2 ή 3)
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}>
-                      {r.text || "—"}
-                    </Typography>
-                  </Box>
-
-                  {/* ΚΟΥΜΠΙ */}
-                  <Button
-                    variant="contained"
-                    onClick={() => onView(r)}
-                    startIcon={<VisibilityOutlinedIcon />}
+                  <Typography
                     sx={{
-                      textTransform: "none",
-                      borderRadius: 2,
-                      bgcolor: PRIMARY,
-                      "&:hover": { bgcolor: PRIMARY_HOVER },
-                      fontWeight: 900,
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,          // 👈 να μη μικραίνει
+                      mt: 1,
+                      color: "#111",
+                      fontWeight: 700,
+                      fontSize: 12,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 1,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                     }}
                   >
-                    Προβολή
-                  </Button>
-                </Paper>
-              ))
-            )}
-          </Stack>
+                    {r.text || "—"}
+                  </Typography>
+                </Box>
 
-          {/* ✅ Pager */}
-          {ordered.length > 0 && (
-            <Pager
-              page={page}
-              pageCount={pageCount}
-              onChange={(p) => setPage(p)}
-              maxButtons={Math.min(4, pageCount)}
-              color={PRIMARY}
-            />
+                <Button
+                  variant="contained"
+                  onClick={() => onView(r)}
+                  startIcon={<VisibilityOutlinedIcon />}
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: 2,
+                    bgcolor: PRIMARY,
+                    "&:hover": { bgcolor: PRIMARY_HOVER },
+                    fontWeight: 900,
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}
+                >
+                  Προβολή
+                </Button>
+              </Paper>
+            ))
           )}
-        </Container>
-      </Box>
+        </Stack>
 
-      <Footer />
-    </Box>
+        {/* Pager */}
+        {ordered.length > 0 && (
+          <Pager
+            page={page}
+            pageCount={pageCount}
+            onChange={(p) => setPage(p)}
+            maxButtons={Math.min(4, pageCount)}
+            color={PRIMARY}
+          />
+        )}
+      </Container>
+    </OwnerPageShell>
   );
+
 }

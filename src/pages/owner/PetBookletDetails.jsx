@@ -5,6 +5,8 @@ import { Link, useParams } from "react-router-dom";
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+
 
 const TITLE = "#0d2c54";
 const PRIMARY = "#0b3d91";
@@ -126,106 +128,128 @@ export default function PetBookletDetails() {
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
       <PublicNavbar />
 
-      <Box sx={{ flex: 1 }}>
-        <Container maxWidth="lg" sx={{ py: 2.5 }}>
-          <Box>
-            <AppBreadcrumbs />
-          </Box>
+      {/* ✅ 2-column layout: sidebar + content */}
+      <Box
+        sx={{
+          flex: 1,
+          display: { xs: "block", lg: "flex" },
+          alignItems: "flex-start",
+        }}
+      >
+        {/* LEFT: spacer column (κρατάει χώρο για το fixed sidebar) */}
+        <Box
+          sx={{
+            width: OWNER_SIDEBAR_W,
+            flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+            display: { xs: "none", lg: "block" },
+            alignSelf: "flex-start",
+          }}
+        />
 
-          <Stack direction="row" spacing={1.2} sx={{ mb: -1, position: "relative", zIndex: 1 }}>
-            <Tab active label="Στοιχεία Κατοικιδίου" to={`/owner/pets/${petId}/booklet`} />
-            <Tab label="Εμβολιασμοί" to={`/owner/pets/${petId}/booklet/vaccinations`} />
-            <Tab label="Ιατρικές Πράξεις" to={`/owner/pets/${petId}/booklet/acts`} />
-          </Stack>
+        {/* Sidebar κάτω από PublicNavbar */}
+        <OwnerNavbar mode="navbar" />
 
-          <Paper
-            elevation={0}
-            sx={{
-              position: "relative",
-              zIndex: 2,
-              borderRadius: 2,
-              border: `2px solid ${BORDER}`,
-              boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
-              p: 2.2,
-            }}
-          >
-            {loading ? (
-              <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
-            ) : err ? (
-              <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
-            ) : (
-              <Box sx={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 2.5 }}>
-                <Box sx={{ display: "flex", justifyContent: "center" }}>
-                  <Box
-                    sx={{
-                      width: 160,
-                      height: 160,
-                      bgcolor: "#e3f1ff",
-                      borderRadius: 2,
-                      border: "1px solid rgba(0,0,0,0.15)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                    }}
-                  >
+        {/* RIGHT: page content */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Container maxWidth="lg" sx={{ py: 2.5 }}>
+            <Box>
+              <AppBreadcrumbs />
+            </Box>
+
+            <Stack direction="row" spacing={1.2} sx={{ mb: -1, position: "relative", zIndex: 1 }}>
+              <Tab active label="Στοιχεία Κατοικιδίου" to={`/owner/pets/${petId}/booklet`} />
+              <Tab label="Εμβολιασμοί" to={`/owner/pets/${petId}/booklet/vaccinations`} />
+              <Tab label="Ιατρικές Πράξεις" to={`/owner/pets/${petId}/booklet/acts`} />
+            </Stack>
+
+            <Paper
+              elevation={0}
+              sx={{
+                position: "relative",
+                zIndex: 2,
+                borderRadius: 2,
+                border: `2px solid ${BORDER}`,
+                boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+                p: 2.2,
+              }}
+            >
+              {loading ? (
+                <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
+              ) : err ? (
+                <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
+              ) : (
+                <Box sx={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 2.5 }}>
+                  <Box sx={{ display: "flex", justifyContent: "center" }}>
                     <Box
-                      component="img"
-                      src={photo}
-                      alt={pet?.name || "pet"}
                       sx={{
-                        maxWidth: "100%",
-                        maxHeight: "100%",
-                        objectFit: "cover",
-                        borderRadius: 1.5,
+                        width: 160,
+                        height: 160,
+                        bgcolor: "#e3f1ff",
+                        borderRadius: 2,
+                        border: "1px solid rgba(0,0,0,0.15)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
                       }}
-                    />
+                    >
+                      <Box
+                        component="img"
+                        src={photo}
+                        alt={pet?.name || "pet"}
+                        sx={{
+                          maxWidth: "100%",
+                          maxHeight: "100%",
+                          objectFit: "cover",
+                          borderRadius: 1.5,
+                        }}
+                      />
+                    </Box>
+                  </Box>
+
+                  <Box>
+                    <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 22, mb: 1 }}>
+                      {pet?.name || "—"}
+                    </Typography>
+
+                    <Stack spacing={1}>
+                      <FieldRow label="Ημ. Γέννησης" value={pet?.birthDate || "-"} />
+                      <FieldRow label="Φύλο" value={pet?.sex || "-"} />
+                      <FieldRow label="Είδος / Φυλή" value={speciesOrBreed} />
+                      <FieldRow label="Χρώμα" value={pet?.color || "-"} />
+                      <FieldRow label="Microchip" value={pet?.microchip || "-"} />
+                      <FieldRow label="Ομάδα αίματος" value={pet?.blood || "-"} />
+                      <FieldRow label="Ιδιοκτήτης" value={owner?.name || "-"} />
+                      <FieldRow label="Τηλ." value={owner?.phone || "-"} />
+                      <FieldRow label="Διεύθυνση" value={owner?.address || "-"} />
+                    </Stack>
                   </Box>
                 </Box>
+              )}
+            </Paper>
 
-                <Box>
-                  <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 22, mb: 1 }}>
-                    {pet?.name || "—"}
-                  </Typography>
-
-                  <Stack spacing={1}>
-                    <FieldRow label="Ημ. Γέννησης" value={pet?.birthDate || "-"} />
-                    <FieldRow label="Φύλο" value={pet?.sex || "-"} />
-                    <FieldRow label="Είδος / Φυλή" value={speciesOrBreed} />
-                    <FieldRow label="Χρώμα" value={pet?.color || "-"} />
-                    <FieldRow label="Microchip" value={pet?.microchip || "-"} />
-                    <FieldRow label="Ομάδα αίματος" value={pet?.blood || "-"} />
-
-                    {/* ✅ owner από users */}
-                    <FieldRow label="Ιδιοκτήτης" value={owner?.name || "-"} />
-                    <FieldRow label="Τηλ." value={owner?.phone || "-"} />
-                    <FieldRow label="Διεύθυνση" value={owner?.address || "-"} />
-                  </Stack>
-                </Box>
-              </Box>
-            )}
-          </Paper>
-
-          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
-            <Button
-              variant="contained"
-              sx={{
-                textTransform: "none",
-                borderRadius: 2,
-                bgcolor: PRIMARY,
-                "&:hover": { bgcolor: PRIMARY_HOVER },
-                fontWeight: 900,
-                px: 3,
-              }}
-              onClick={() => window.print()}
-            >
-              Εκτύπωση
-            </Button>
-          </Box>
-        </Container>
+            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+              <Button
+                variant="contained"
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                  bgcolor: PRIMARY,
+                  "&:hover": { bgcolor: PRIMARY_HOVER },
+                  fontWeight: 900,
+                  px: 3,
+                }}
+                onClick={() => window.print()}
+              >
+                Εκτύπωση
+              </Button>
+            </Box>
+          </Container>
+        </Box>
       </Box>
 
       <Footer />
     </Box>
   );
+
 }

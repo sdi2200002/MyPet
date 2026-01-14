@@ -7,8 +7,16 @@ import { Link } from "react-router-dom";
 export default function Footer() {
   return (
     <Box sx={{ mt: 8 }}>
-      {/* WAVE */}
-      <Box sx={{ position: "relative", height: 380, overflow: "hidden" }}>
+        {/* WAVE */}
+        <Box
+          sx={{
+            position: "relative",
+            height: 380,
+            overflow: "hidden",
+            zIndex: 10,          // ✅ πάνω από sidebar (που έχει zIndex: 1)
+          }}
+        >
+
         <Box
           component="svg"
           viewBox="0 0 1440 320"

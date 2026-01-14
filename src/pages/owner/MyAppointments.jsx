@@ -22,7 +22,9 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../auth/AuthContext"; // ✅ όπως MyPets
+import { useAuth } from "../../auth/AuthContext"; 
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+
 
 const PRIMARY = "#0b3d91";
 const PRIMARY_HOVER = "#08316f";
@@ -328,210 +330,238 @@ export default function MyAppointments() {
     }
   };
 
-  return (
-    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
-      <PublicNavbar />
+  function OwnerPageShell({ children }) {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
+        <PublicNavbar />
 
-      <Box sx={{ flex: 1 }}>
-        <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Box
+          sx={{
+            flex: 1,
+            display: { xs: "block", lg: "flex" },
+            alignItems: "flex-start",
+          }}
+        >
+          {/* spacer ώστε το content να μην πάει κάτω από το fixed sidebar */}
+          <Box
+            sx={{
+              width: OWNER_SIDEBAR_W,
+              flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+              display: { xs: "none", lg: "block" },
+            }}
+          />
+
+          {/* fixed sidebar κάτω από PublicNavbar */}
+          <OwnerNavbar mode="navbar" />
+
+          {/* main */}
+          <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+        </Box>
+
+        <Footer />
+      </Box>
+    );
+  }
+
+
+  return (
+    <OwnerPageShell>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Box>
+          <AppBreadcrumbs />
+        </Box>
+
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Box>
-            <AppBreadcrumbs />
+            <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 28 }}>Ραντεβού</Typography>
+            <Typography sx={{ mt: 0.6, color: MUTED, maxWidth: 820 }}>
+              Εδώ θα βρείτε όλα τα ραντεβού που έχετε προγραμματίσει για τα κατοικίδιά σας.
+              <br />
+              Παρακολουθήστε την κατάστασή τους ή κλείστε ένα νέο ραντεβού εύκολα και γρήγορα.
+            </Typography>
           </Box>
 
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Box>
-              <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 28 }}>Ραντεβού</Typography>
-              <Typography sx={{ mt: 0.6, color: MUTED, maxWidth: 820 }}>
-                Εδώ θα βρείτε όλα τα ραντεβού που έχετε προγραμματίσει για τα κατοικίδιά σας.
-                <br />
-                Παρακολουθήστε την κατάστασή τους ή κλείστε ένα νέο ραντεβού εύκολα και γρήγορα.
-              </Typography>
-            </Box>
+          <Button
+            onClick={handleCreate}
+            variant="contained"
+            startIcon={<AddOutlinedIcon />}
+            sx={{
+              textTransform: "none",
+              borderRadius: 2,
+              px: 2.5,
+              bgcolor: PRIMARY,
+              "&:hover": { bgcolor: PRIMARY_HOVER },
+              boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
+            }}
+          >
+            Νέο Ραντεβού
+          </Button>
+        </Stack>
 
+        <Divider sx={{ my: 2.5 }} />
+
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: 2,
+            border: "1px solid #d6e2f5",
+            overflow: "hidden",
+            boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+          }}
+        >
+          <Box sx={{ bgcolor: "#ffffff" }}>
+            <Tabs
+              value={tab}
+              onChange={(_, v) => setTab(v)}
+              textColor="primary"
+              indicatorColor="primary"
+              sx={{
+                px: 1,
+                "& .MuiTab-root": {
+                  textTransform: "none",
+                  fontWeight: 900,
+                  color: TITLE,
+                },
+                "& .MuiTabs-indicator": {
+                  height: 4,
+                  borderRadius: 99,
+                },
+              }}
+            >
+              <Tab label="Επερχόμενα" />
+              <Tab label="Ιστορικό" />
+            </Tabs>
+          </Box>
+
+          <Divider />
+
+          <Box sx={{ p: 2 }}>
+            {loading ? (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  border: "1px solid #e6edf7",
+                  bgcolor: "#ffffff",
+                }}
+              >
+                <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
+              </Paper>
+            ) : err ? (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  border: "1px solid rgba(0,0,0,0.12)",
+                  bgcolor: "#fff3f3",
+                }}
+              >
+                <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
+              </Paper>
+            ) : filtered.length === 0 ? (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 4,
+                  borderRadius: 2,
+                  border: "1px solid #e6edf7",
+                  bgcolor: "#ffffff",
+                  textAlign: "center",
+                }}
+              >
+                <Typography sx={{ fontWeight: 900, color: TITLE }}>Δεν υπάρχουν ραντεβού εδώ</Typography>
+                <Typography sx={{ mt: 0.6, color: MUTED }}>
+                  Πάτησε “+ Νέο Ραντεβού” για να κλείσεις ένα νέο.
+                </Typography>
+              </Paper>
+            ) : (
+              <Stack spacing={1.3}>
+                {filtered.map((item) => (
+                  <AppointmentRow
+                    key={item.id}
+                    item={item}
+                    pet={petMap.get(String(item?.petId))}
+                    onView={handleView}
+                    onCancel={handleCancel}
+                  />
+                ))}
+              </Stack>
+            )}
+          </Box>
+        </Paper>
+
+        {/* ✅ POPUP ΑΚΥΡΩΣΗΣ (μένει ίδιο, απλά είναι μέσα στο shell) */}
+        <Dialog
+          open={cancelOpen}
+          onClose={closeCancelDialog}
+          fullWidth
+          maxWidth="sm"
+          PaperProps={{ sx: { borderRadius: 2 } }}
+        >
+          <DialogTitle sx={{ fontWeight: 900, color: TITLE }}>Ακύρωση ραντεβού</DialogTitle>
+
+          <DialogContent sx={{ pt: 1 }}>
+            <Typography sx={{ fontWeight: 900, color: "#111", mb: 1 }}>
+              Είστε βέβαιοι ότι θέλετε να ακυρώσετε το ραντεβού;
+            </Typography>
+
+            <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12, mb: 1.2 }}>
+              (Προαιρετικό) Γράψε τον λόγο ακύρωσης:
+            </Typography>
+
+            <TextField
+              fullWidth
+              multiline
+              minRows={4}
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Π.χ. Έκτακτο πρόβλημα / δεν μπορώ να παρευρεθώ..."
+            />
+
+            <Typography sx={{ mt: 1.2, color: MUTED, fontWeight: 800, fontSize: 12 }}>
+              {cancelItem?.vetName ? `Κτηνίατρος: ${cancelItem.vetName} • ` : ""}
+              {cancelItem?.when ? `${fmtDate(cancelItem.when)} ${fmtTime(cancelItem.when)}` : ""}
+            </Typography>
+          </DialogContent>
+
+          <DialogActions sx={{ p: 2, gap: 1 }}>
             <Button
-              onClick={handleCreate}
+              onClick={closeCancelDialog}
               variant="contained"
-              startIcon={<AddOutlinedIcon />}
+              disabled={cancelSaving}
               sx={{
                 textTransform: "none",
                 borderRadius: 2,
-                px: 2.5,
-                bgcolor: PRIMARY,
-                "&:hover": { bgcolor: PRIMARY_HOVER },
-                boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
+                px: 3,
+                bgcolor: "#b7bcc3",
+                color: "#000",
+                "&:hover": { bgcolor: "#a9aeb6" },
+                fontWeight: 900,
               }}
             >
-              Νέο Ραντεβού
+              Ακύρωση
             </Button>
-          </Stack>
 
-          <Divider sx={{ my: 2.5 }} />
-
-          <Paper
-            elevation={0}
-            sx={{
-              borderRadius: 2,
-              border: "1px solid #d6e2f5",
-              overflow: "hidden",
-              boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
-            }}
-          >
-            <Box sx={{ bgcolor: "#ffffff" }}>
-              <Tabs
-                value={tab}
-                onChange={(_, v) => setTab(v)}
-                textColor="primary"
-                indicatorColor="primary"
-                sx={{
-                  px: 1,
-                  "& .MuiTab-root": {
-                    textTransform: "none",
-                    fontWeight: 900,
-                    color: TITLE,
-                  },
-                  "& .MuiTabs-indicator": {
-                    height: 4,
-                    borderRadius: 99,
-                  },
-                }}
-              >
-                <Tab label="Επερχόμενα" />
-                <Tab label="Ιστορικό" />
-              </Tabs>
-            </Box>
-
-            <Divider />
-
-            <Box sx={{ p: 2 }}>
-              {loading ? (
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    border: "1px solid #e6edf7",
-                    bgcolor: "#ffffff",
-                  }}
-                >
-                  <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
-                </Paper>
-              ) : err ? (
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    border: "1px solid rgba(0,0,0,0.12)",
-                    bgcolor: "#fff3f3",
-                  }}
-                >
-                  <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
-                </Paper>
-              ) : filtered.length === 0 ? (
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 4,
-                    borderRadius: 2,
-                    border: "1px solid #e6edf7",
-                    bgcolor: "#ffffff",
-                    textAlign: "center",
-                  }}
-                >
-                  <Typography sx={{ fontWeight: 900, color: TITLE }}>Δεν υπάρχουν ραντεβού εδώ</Typography>
-                  <Typography sx={{ mt: 0.6, color: MUTED }}>
-                    Πάτησε “+ Νέο Ραντεβού” για να κλείσεις ένα νέο.
-                  </Typography>
-                </Paper>
-              ) : (
-                <Stack spacing={1.3}>
-                  {filtered.map((item) => (
-                    <AppointmentRow
-                      key={item.id}
-                      item={item}
-                      pet={petMap.get(String(item?.petId))}
-                      onView={handleView}
-                      onCancel={handleCancel}
-                    />
-                  ))}
-                </Stack>
-              )}
-            </Box>
-          </Paper>
-        </Container>
-      </Box>
-
-      <Footer />
-
-      {/* ✅ POPUP ΑΚΥΡΩΣΗΣ */}
-      <Dialog
-        open={cancelOpen}
-        onClose={closeCancelDialog}
-        fullWidth
-        maxWidth="sm"
-        PaperProps={{ sx: { borderRadius: 2 } }}
-      >
-        <DialogTitle sx={{ fontWeight: 900, color: TITLE }}>Ακύρωση ραντεβού</DialogTitle>
-
-        <DialogContent sx={{ pt: 1 }}>
-          <Typography sx={{ fontWeight: 900, color: "#111", mb: 1 }}>
-            Είστε βέβαιοι ότι θέλετε να ακυρώσετε το ραντεβού;
-          </Typography>
-
-          <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12, mb: 1.2 }}>
-            (Προαιρετικό) Γράψε τον λόγο ακύρωσης:
-          </Typography>
-
-          <TextField
-            fullWidth
-            multiline
-            minRows={4}
-            value={cancelReason}
-            onChange={(e) => setCancelReason(e.target.value)}
-            placeholder="Π.χ. Έκτακτο πρόβλημα / δεν μπορώ να παρευρεθώ..."
-          />
-
-          <Typography sx={{ mt: 1.2, color: MUTED, fontWeight: 800, fontSize: 12 }}>
-            {cancelItem?.vetName ? `Κτηνίατρος: ${cancelItem.vetName} • ` : ""}
-            {cancelItem?.when ? `${fmtDate(cancelItem.when)} ${fmtTime(cancelItem.when)}` : ""}
-          </Typography>
-        </DialogContent>
-
-        <DialogActions sx={{ p: 2, gap: 1 }}>
-          <Button
-            onClick={closeCancelDialog}
-            variant="contained"
-            disabled={cancelSaving}
-            sx={{
-              textTransform: "none",
-              borderRadius: 2,
-              px: 3,
-              bgcolor: "#b7bcc3",
-              color: "#000",
-              "&:hover": { bgcolor: "#a9aeb6" },
-              fontWeight: 900,
-            }}
-          >
-            Ακύρωση
-          </Button>
-
-          <Button
-            onClick={confirmCancel}
-            variant="contained"
-            disabled={cancelSaving}
-            sx={{
-              textTransform: "none",
-              borderRadius: 2,
-              px: 3,
-              bgcolor: PRIMARY,
-              "&:hover": { bgcolor: PRIMARY_HOVER },
-              fontWeight: 900,
-            }}
-          >
-            {cancelSaving ? "Γίνεται ακύρωση..." : "Επιβεβαίωση"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+            <Button
+              onClick={confirmCancel}
+              variant="contained"
+              disabled={cancelSaving}
+              sx={{
+                textTransform: "none",
+                borderRadius: 2,
+                px: 3,
+                bgcolor: PRIMARY,
+                "&:hover": { bgcolor: PRIMARY_HOVER },
+                fontWeight: 900,
+              }}
+            >
+              {cancelSaving ? "Γίνεται ακύρωση..." : "Επιβεβαίωση"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Container>
+    </OwnerPageShell>
   );
 }

@@ -500,7 +500,7 @@ export default function OwnerDashboard() {
               maxHeight: "calc(100vh - 16px)",
             }}
           >
-            <OwnerNavbar />
+            <OwnerNavbar mode="hero"/>
           </Box>
         </Box>
 

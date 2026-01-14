@@ -6,14 +6,14 @@ import {
   Paper,
   Stack,
   Typography,
-  Pagination,
 } from "@mui/material";
 import { Link, useParams } from "react-router-dom";
 import PublicNavbar from "../../components/PublicNavbar";
-import OwnerNavbar from "../../components/OwnerNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import Pager from "../../components/Pager";
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+
 
 
 const PRIMARY = "#0b3d91";
@@ -165,56 +165,53 @@ export default function PetBookletVaccinations() {
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
       <PublicNavbar />
 
-      <Box sx={{ flex: 1 }}>
-        <Container maxWidth="lg" sx={{ py: 2.5 }}>
-          <Box>
-            <AppBreadcrumbs />
-          </Box>
+      {/* ✅ 2-column layout: sidebar + content */}
+      <Box
+        sx={{
+          flex: 1,
+          display: { xs: "block", lg: "flex" },
+          alignItems: "flex-start",
+        }}
+      >
+        {/* LEFT: spacer column */}
+        <Box
+          sx={{
+            width: OWNER_SIDEBAR_W,
+            flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+            display: { xs: "none", lg: "block" },
+            alignSelf: "flex-start",
+          }}
+        />
 
-          <Stack direction="row" spacing={1.2} sx={{ mb: -1, position: "relative", zIndex: 1, }}>
-            <Tab label="Στοιχεία Κατοικιδίου" to={`/owner/pets/${id}/booklet`} />
-            <Tab active label="Εμβολιασμοί" to={`/owner/pets/${id}/booklet/vaccinations`} />
-            <Tab label="Ιατρικές Πράξεις" to={`/owner/pets/${id}/booklet/acts`} />
-          </Stack>
+        {/* Sidebar κάτω από PublicNavbar */}
+        <OwnerNavbar mode="navbar" />
 
-          <Paper
-            elevation={0}
-            sx={{
-              position: "relative",
-              zIndex: 2,
-              borderRadius: 2,
-              border: `2px solid ${BORDER}`,
-              boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
-              p: 3,
-            }}
-          >
-            {/* Header */}
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "2.2fr 1fr 1.2fr 1fr",
-                gap: 1.2,
-                mb: 1,
-              }}
-            >
-              <Typography sx={{ fontWeight: 900, fontSize: 12, color: "#111", textAlign: "center" }}>
-                Κατασκευαστής &amp; ονομασία εμβολίου
-              </Typography>
-              <Typography sx={{ fontWeight: 900, fontSize: 12, color: "#111", textAlign: "center" }}>
-                Αριθμός παρτίδας
-              </Typography>
-              <Typography sx={{ fontWeight: 900, fontSize: 12, color: "#111", textAlign: "center" }}>
-                Ημερομηνία εμβολιασμού &amp; λήξη ισχύος
-              </Typography>
-              <Typography sx={{ fontWeight: 900, fontSize: 12, color: "#111", textAlign: "center" }}>
-                Εγκεκριμένος κτηνίατρος
-              </Typography>
+        {/* RIGHT: content */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Container maxWidth="lg" sx={{ py: 2.5 }}>
+            <Box>
+              <AppBreadcrumbs />
             </Box>
 
-            {/* Rows */}
-            {paddedRows.map((row, i) => (
+            <Stack direction="row" spacing={1.2} sx={{ mb: -1, position: "relative", zIndex: 1 }}>
+              <Tab label="Στοιχεία Κατοικιδίου" to={`/owner/pets/${id}/booklet`} />
+              <Tab active label="Εμβολιασμοί" to={`/owner/pets/${id}/booklet/vaccinations`} />
+              <Tab label="Ιατρικές Πράξεις" to={`/owner/pets/${id}/booklet/acts`} />
+            </Stack>
+
+            <Paper
+              elevation={0}
+              sx={{
+                position: "relative",
+                zIndex: 2,
+                borderRadius: 2,
+                border: `2px solid ${BORDER}`,
+                boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+                p: 3,
+              }}
+            >
+              {/* Header */}
               <Box
-                key={`${page}-${i}`}
                 sx={{
                   display: "grid",
                   gridTemplateColumns: "2.2fr 1fr 1.2fr 1fr",
@@ -222,46 +219,72 @@ export default function PetBookletVaccinations() {
                   mb: 1,
                 }}
               >
-                <Cell>{row.vaccine}</Cell>
-                <Cell>{row.batch}</Cell>
-                <Cell>{row.dates}</Cell>
-                <Cell>{row.vet}</Cell>
+                <Typography sx={{ fontWeight: 900, fontSize: 12, color: "#111", textAlign: "center" }}>
+                  Κατασκευαστής &amp; ονομασία εμβολίου
+                </Typography>
+                <Typography sx={{ fontWeight: 900, fontSize: 12, color: "#111", textAlign: "center" }}>
+                  Αριθμός παρτίδας
+                </Typography>
+                <Typography sx={{ fontWeight: 900, fontSize: 12, color: "#111", textAlign: "center" }}>
+                  Ημερομηνία εμβολιασμού &amp; λήξη ισχύος
+                </Typography>
+                <Typography sx={{ fontWeight: 900, fontSize: 12, color: "#111", textAlign: "center" }}>
+                  Εγκεκριμένος κτηνίατρος
+                </Typography>
               </Box>
-            ))}
 
-            {/* ✅ Pagination (λειτουργικό) */}
-            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
-              <Pager
-                page={page}
-                pageCount={totalPages}
-                onChange={setPage}
-                color={PRIMARY}
-                maxButtons={4}
-              />
+              {/* Rows */}
+              {paddedRows.map((row, i) => (
+                <Box
+                  key={`${page}-${i}`}
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "2.2fr 1fr 1.2fr 1fr",
+                    gap: 1.2,
+                    mb: 1,
+                  }}
+                >
+                  <Cell>{row.vaccine}</Cell>
+                  <Cell>{row.batch}</Cell>
+                  <Cell>{row.dates}</Cell>
+                  <Cell>{row.vet}</Cell>
+                </Box>
+              ))}
+
+              {/* Pagination */}
+              <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
+                <Pager
+                  page={page}
+                  pageCount={totalPages}
+                  onChange={setPage}
+                  color={PRIMARY}
+                  maxButtons={4}
+                />
+              </Box>
+            </Paper>
+
+            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+              <Button
+                variant="contained"
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                  bgcolor: PRIMARY,
+                  "&:hover": { bgcolor: PRIMARY_HOVER },
+                  fontWeight: 900,
+                  px: 3,
+                }}
+                onClick={() => window.print()}
+              >
+                Εκτύπωση
+              </Button>
             </Box>
-
-          </Paper>
-
-          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
-            <Button
-              variant="contained"
-              sx={{
-                textTransform: "none",
-                borderRadius: 2,
-                bgcolor: PRIMARY,
-                "&:hover": { bgcolor: PRIMARY_HOVER },
-                fontWeight: 900,
-                px: 3,
-              }}
-              onClick={() => window.print()}
-            >
-              Εκτύπωση
-            </Button>
-          </Box>
-        </Container>
+          </Container>
+        </Box>
       </Box>
 
       <Footer />
     </Box>
   );
+
 }

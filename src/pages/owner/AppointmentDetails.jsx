@@ -8,6 +8,8 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useAuth } from "../../auth/AuthContext";
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+
 
 const PRIMARY = "#0b3d91";
 const PRIMARY_HOVER = "#08316f";
@@ -206,201 +208,181 @@ export default function AppointmentDetails() {
   const rating = vet?.rating ?? appt?.rating ?? 4.8;
   const reviewsCount = vet?.reviewsCount ?? appt?.reviewsCount ?? 120;
 
+  function OwnerPageShell({ children }) {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
+        <PublicNavbar />
+
+        <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
+          {/* spacer */}
+          <Box sx={{ width: OWNER_SIDEBAR_W, flex: `0 0 ${OWNER_SIDEBAR_W}px`, display: { xs: "none", lg: "block" } }} />
+          {/* fixed sidebar */}
+          <OwnerNavbar mode="navbar" />
+          {/* main */}
+          <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+        </Box>
+
+        <Footer />
+      </Box>
+    );
+  }
+
+
   return (
-    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
-      <PublicNavbar />
+    <OwnerPageShell>
+      <Container maxWidth="lg" sx={{ py: 2.5 }}>
+        <Box>
+          <AppBreadcrumbs />
+        </Box>
 
-      <Box sx={{ flex: 1 }}>
-        <Container maxWidth="lg" sx={{ py: 2.5 }}>
-          <Box>
-            <AppBreadcrumbs />
-          </Box>
-
-          <Paper
-            elevation={0}
-            sx={{
-              borderRadius: 2,
-              border: `2px solid ${BORDER}`,
-              boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
-              p: { xs: 2, md: 3 },
-              maxWidth: 980,
-              mx: "auto",
-            }}
-          >
-            {loading ? (
-              <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
-            ) : err ? (
-              <>
-                <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
-                <Button
-                  variant="contained"
-                  onClick={() => navigate("/owner/appointments")}
-                  sx={{
-                    mt: 2,
-                    textTransform: "none",
-                    borderRadius: 2,
-                    bgcolor: PRIMARY,
-                    "&:hover": { bgcolor: PRIMARY_HOVER },
-                    fontWeight: 900,
-                    px: 3,
-                    boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
-                  }}
-                >
-                  Τα Ραντεβού μου
-                </Button>
-              </>
-            ) : (
-              <>
-                <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  spacing={2}
-                  alignItems={{ xs: "flex-start", sm: "center" }}
-                  justifyContent="space-between"
-                >
-                  <Stack direction="row" spacing={1.2} alignItems="center" flexWrap="wrap">
-                    <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: { xs: 22, md: 28 } }}>
-                      Πληροφορίες Ραντεβού
-                    </Typography>
-                    <StatusChip status={status} />
-                  </Stack>
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: 2,
+            border: `2px solid ${BORDER}`,
+            boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+            p: { xs: 2, md: 3 },
+            maxWidth: 980,
+            mx: "auto",
+          }}
+        >
+          {loading ? (
+            <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
+          ) : err ? (
+            <>
+              <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
+              <Button
+                variant="contained"
+                onClick={() => navigate("/owner/appointments")}
+                sx={{
+                  mt: 2,
+                  textTransform: "none",
+                  borderRadius: 2,
+                  bgcolor: PRIMARY,
+                  "&:hover": { bgcolor: PRIMARY_HOVER },
+                  fontWeight: 900,
+                  px: 3,
+                  boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
+                }}
+              >
+                Τα Ραντεβού μου
+              </Button>
+            </>
+          ) : (
+            <>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={2}
+                alignItems={{ xs: "flex-start", sm: "center" }}
+                justifyContent="space-between"
+              >
+                <Stack direction="row" spacing={1.2} alignItems="center" flexWrap="wrap">
+                  <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: { xs: 22, md: 28 } }}>
+                    Πληροφορίες Ραντεβού
+                  </Typography>
+                  <StatusChip status={status} />
                 </Stack>
+              </Stack>
 
-                <Paper
-                  elevation={0}
-                  sx={{
-                    mt: 3,
-                    borderRadius: 2,
-                    border: `1px solid rgba(0,0,0,0.10)`,
-                    bgcolor: "#fff",
-                    p: { xs: 2, md: 3 },
-                  }}
-                >
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={2.2} alignItems="stretch">
-                    <Box sx={{ flex: 1, minWidth: 280 }}>
-                      <Stack direction="row" spacing={2} alignItems="center">
-                        <Box
-                          sx={{
-                            width: 92,
-                            height: 92,
-                            borderRadius: 2,
-                            overflow: "hidden",
-                            border: "1px solid rgba(0,0,0,0.12)",
-                            bgcolor: "#eef1f4",
-                            display: "grid",
-                            placeItems: "center",
-                            flexShrink: 0,
-                          }}
-                        >
-                          {vetPhoto ? (
-                            <Box
-                              component="img"
-                              src={vetPhoto}
-                              alt="vet"
-                              sx={{ width: "100%", height: "100%", objectFit: "cover" }}
-                            />
-                          ) : (
-                            <Typography sx={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>Χωρίς φωτο</Typography>
-                          )}
-                        </Box>
+              <Paper
+                elevation={0}
+                sx={{
+                  mt: 3,
+                  borderRadius: 2,
+                  border: `1px solid rgba(0,0,0,0.10)`,
+                  bgcolor: "#fff",
+                  p: { xs: 2, md: 3 },
+                }}
+              >
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2.2} alignItems="stretch">
+                  <Box sx={{ flex: 1, minWidth: 280 }}>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      <Box
+                        sx={{
+                          width: 92,
+                          height: 92,
+                          borderRadius: 2,
+                          overflow: "hidden",
+                          border: "1px solid rgba(0,0,0,0.12)",
+                          bgcolor: "#eef1f4",
+                          display: "grid",
+                          placeItems: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {vetPhoto ? (
+                          <Box component="img" src={vetPhoto} alt="vet" sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          <Typography sx={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>Χωρίς φωτο</Typography>
+                        )}
+                      </Box>
 
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography sx={{ fontWeight: 900, color: "#111", fontSize: 18 }} noWrap>
-                            {vet?.name || appt?.vetName || "—"}
-                          </Typography>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 900, color: "#111", fontSize: 18 }} noWrap>
+                          {vet?.name || appt?.vetName || "—"}
+                        </Typography>
 
-                          <Typography sx={{ color: MUTED, fontWeight: 800, mt: 0.3 }}>
-                            {vet?.clinic ||
-                              vet?.clinicName ||
-                              appt?.clinicName ||
-                              appt?.clinicType ||
-                              "Κλινική μικρών ζώων"}
-                          </Typography>
+                        <Typography sx={{ color: MUTED, fontWeight: 800, mt: 0.3 }}>
+                          {vet?.clinic || vet?.clinicName || appt?.clinicName || appt?.clinicType || "Κλινική μικρών ζώων"}
+                        </Typography>
 
-                          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.8 }}>
-                            <Box sx={{ color: "#f5b301", fontWeight: 900, lineHeight: 1 }}>★</Box>
-                            <Typography sx={{ fontWeight: 900, color: "#111" }}>{rating}</Typography>
-                            <Typography sx={{ color: MUTED, fontWeight: 800 }}>({reviewsCount})</Typography>
-                          </Stack>
-                        </Box>
-                      </Stack>
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.8 }}>
+                          <Box sx={{ color: "#f5b301", fontWeight: 900, lineHeight: 1 }}>★</Box>
+                          <Typography sx={{ fontWeight: 900, color: "#111" }}>{rating}</Typography>
+                          <Typography sx={{ color: MUTED, fontWeight: 800 }}>({reviewsCount})</Typography>
+                        </Stack>
+                      </Box>
+                    </Stack>
 
-                      <Divider sx={{ my: 2 }} />
-                      <LabelValue label="Ιατρείο:" value={vet?.address || appt?.clinicAddress} />
-                    </Box>
+                    <Divider sx={{ my: 2 }} />
+                    <LabelValue label="Ιατρείο:" value={vet?.address || appt?.clinicAddress} />
+                  </Box>
 
-                    <Divider orientation="vertical" flexItem sx={{ display: { xs: "none", md: "block" }, mx: 0.5 }} />
+                  <Divider orientation="vertical" flexItem sx={{ display: { xs: "none", md: "block" }, mx: 0.5 }} />
 
-                    <Box sx={{ flex: 1, minWidth: 280 }}>
-                      <Stack direction="row" spacing={2} alignItems="center">
-                        <Box
-                          sx={{
-                            width: 92,
-                            height: 92,
-                            borderRadius: 2,
-                            overflow: "hidden",
-                            border: "1px solid rgba(0,0,0,0.12)",
-                            bgcolor: "#eef1f4",
-                            display: "grid",
-                            placeItems: "center",
-                            flexShrink: 0,
-                          }}
-                        >
-                          {petPhoto ? (
-                            <Box
-                              component="img"
-                              src={petPhoto}
-                              alt="pet"
-                              sx={{ width: "100%", height: "100%", objectFit: "cover" }}
-                            />
-                          ) : (
-                            <Typography sx={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>Χωρίς φωτο</Typography>
-                          )}
-                        </Box>
+                  <Box sx={{ flex: 1, minWidth: 280 }}>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      <Box
+                        sx={{
+                          width: 92,
+                          height: 92,
+                          borderRadius: 2,
+                          overflow: "hidden",
+                          border: "1px solid rgba(0,0,0,0.12)",
+                          bgcolor: "#eef1f4",
+                          display: "grid",
+                          placeItems: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {petPhoto ? (
+                          <Box component="img" src={petPhoto} alt="pet" sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          <Typography sx={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>Χωρίς φωτο</Typography>
+                        )}
+                      </Box>
 
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography sx={{ fontWeight: 900, color: "#111", fontSize: 18 }} noWrap>
-                            {pet?.name || appt?.petName || "Κατοικίδιο"}
-                          </Typography>
-                          <Typography sx={{ color: MUTED, fontWeight: 800, mt: 0.3 }}>{microchip}</Typography>
-                        </Box>
-                      </Stack>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 900, color: "#111", fontSize: 18 }} noWrap>
+                          {pet?.name || appt?.petName || "Κατοικίδιο"}
+                        </Typography>
+                        <Typography sx={{ color: MUTED, fontWeight: 800, mt: 0.3 }}>{microchip}</Typography>
+                      </Box>
+                    </Stack>
 
-                      <Divider sx={{ my: 2 }} />
-                      <LabelValue label="Ημερομηνία:" value={displayDate} />
-                      <LabelValue label="Ώρα:" value={displayTime} />
-                      <LabelValue label="Υπηρεσία:" value={appt?.service} />
-                    </Box>
-                  </Stack>
-                </Paper>
+                    <Divider sx={{ my: 2 }} />
+                    <LabelValue label="Ημερομηνία:" value={displayDate} />
+                    <LabelValue label="Ώρα:" value={displayTime} />
+                    <LabelValue label="Υπηρεσία:" value={appt?.service} />
+                  </Box>
+                </Stack>
+              </Paper>
 
-                <Stack direction="row" justifyContent="flex-end" spacing={1.2} sx={{ mt: 3, flexWrap: "wrap" }}>
-                  {canReview && (
-                    <Button
-                      variant="contained"
-                      onClick={goToReview}
-                      sx={{
-                        textTransform: "none",
-                        borderRadius: 2,
-                        bgcolor: PRIMARY,
-                        "&:hover": { bgcolor: PRIMARY_HOVER },
-                        fontWeight: 900,
-                        px: 3,
-                        boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
-                      }}
-                    >
-                      Αξιολόγηση
-                    </Button>
-                  )}
-
-                  {status === "Ολοκληρωμένο" && !checkingReview && hasReview && (
-                    <Typography sx={{ color: MUTED, fontWeight: 800, alignSelf: "center" }}>
-                      Έχεις ήδη υποβάλει αξιολόγηση για αυτό το ραντεβού.
-                    </Typography>
-                  )}
-
-                  {/* <Button
+              <Stack direction="row" justifyContent="flex-end" spacing={1.2} sx={{ mt: 3, flexWrap: "wrap" }}>
+                {canReview && (
+                  <Button
                     variant="contained"
-                    onClick={() => navigate("/owner/appointments")}
+                    onClick={goToReview}
                     sx={{
                       textTransform: "none",
                       borderRadius: 2,
@@ -411,16 +393,21 @@ export default function AppointmentDetails() {
                       boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
                     }}
                   >
-                    Τα Ραντεβού μου
-                  </Button> */}
-                </Stack>
-              </>
-            )}
-          </Paper>
-        </Container>
-      </Box>
+                    Αξιολόγηση
+                  </Button>
+                )}
 
-      <Footer />
-    </Box>
+                {status === "Ολοκληρωμένο" && !checkingReview && hasReview && (
+                  <Typography sx={{ color: MUTED, fontWeight: 800, alignSelf: "center" }}>
+                    Έχεις ήδη υποβάλει αξιολόγηση για αυτό το ραντεβού.
+                  </Typography>
+                )}
+              </Stack>
+            </>
+          )}
+        </Paper>
+      </Container>
+    </OwnerPageShell>
   );
+
 }

@@ -16,6 +16,7 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useAuth } from "../../auth/AuthContext"; // ✅ το δικό σου AuthContext
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
 
 
 const TITLE = "#0d2c54";
@@ -166,77 +167,127 @@ export default function MyPets() {
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
       <PublicNavbar />
 
-      <Box sx={{ flex: 1 }}>
-        <Container maxWidth="lg" sx={{ py: 3 }}>
-          <Box>
-            <AppBreadcrumbs />
-          </Box>
+      {/* ✅ 2-column layout: sidebar + content */}
+      <Box
+        sx={{
+          flex: 1,
+          display: { xs: "block", lg: "flex" },
+          alignItems: "flex-start",
+        }}
+      >
+        {/* LEFT: spacer column (κρατάει χώρο για το fixed sidebar) */}
+        <Box
+          sx={{
+            width: OWNER_SIDEBAR_W,
+            flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+            display: { xs: "none", lg: "block" },
+            alignSelf: "flex-start",
+          }}
+        />
 
-          <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 26 }}>
-            Τα Κατοικίδια μου
-          </Typography>
-          <Typography sx={{ color: MUTED, fontWeight: 600, mt: 0.5 }}>
-            Εδώ θα βρείτε όλα τα κατοικίδια σας.
-          </Typography>
+        {/* Sidebar κάτω από PublicNavbar */}
+        <OwnerNavbar mode="navbar" />
 
-          <Box sx={{ mt: 2.2, mb: 2 }}>
-            <TextField
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Αναζήτηση"
-              size="small"
-              sx={{
-                width: 230,
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 999,
-                  bgcolor: "#d8e7ff",
-                  border: "1px solid #8fb4e8",
-                },
-                "& input::placeholder": { color: "#2f3a4a", opacity: 0.7, fontWeight: 700 },
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: "#2f3a4a", opacity: 0.7 }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Box>
+        {/* RIGHT: page content */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Container maxWidth="lg" sx={{ py: 3 }}>
+            <Box>
+              <AppBreadcrumbs />
+            </Box>
 
-          {loading && (
-            <Paper elevation={0} sx={{ borderRadius: 2, p: 2, bgcolor: "#f6f8fb", border: "1px solid rgba(0,0,0,0.12)" }}>
-              <Typography sx={{ color: MUTED, fontWeight: 700 }}>Φόρτωση...</Typography>
-            </Paper>
-          )}
+            <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 26 }}>
+              Τα Κατοικίδια μου
+            </Typography>
+            <Typography sx={{ color: MUTED, fontWeight: 600, mt: 0.5 }}>
+              Εδώ θα βρείτε όλα τα κατοικίδια σας.
+            </Typography>
 
-          {!loading && err && (
-            <Paper elevation={0} sx={{ borderRadius: 2, p: 2, bgcolor: "#fff3f3", border: "1px solid rgba(0,0,0,0.12)" }}>
-              <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
-            </Paper>
-          )}
+            <Box sx={{ mt: 2.2, mb: 2 }}>
+              <TextField
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Αναζήτηση"
+                size="small"
+                sx={{
+                  width: 230,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 999,
+                    bgcolor: "#d8e7ff",
+                    border: "1px solid #8fb4e8",
+                  },
+                  "& input::placeholder": { color: "#2f3a4a", opacity: 0.7, fontWeight: 700 },
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: "#2f3a4a", opacity: 0.7 }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Box>
 
-          {!loading && !err && (
-            <Stack spacing={2}>
-              {filtered.length === 0 ? (
-                <Paper elevation={0} sx={{ borderRadius: 2, border: "1px solid rgba(0,0,0,0.12)", p: 2, bgcolor: "#f6f8fb" }}>
-                  <Typography sx={{ color: MUTED, fontWeight: 700 }}>Δεν βρέθηκαν κατοικίδια.</Typography>
-                </Paper>
-              ) : (
-                filtered.map((pet) => (
-                  <PetRow
-                    key={pet.id}
-                    pet={pet}
-                    onOpenBooklet={() => navigate(`/owner/pets/${pet.id}/booklet`)}
-                  />
-                ))
-              )}
-            </Stack>
-          )}
-        </Container>
+            {loading && (
+              <Paper
+                elevation={0}
+                sx={{
+                  borderRadius: 2,
+                  p: 2,
+                  bgcolor: "#f6f8fb",
+                  border: "1px solid rgba(0,0,0,0.12)",
+                }}
+              >
+                <Typography sx={{ color: MUTED, fontWeight: 700 }}>Φόρτωση...</Typography>
+              </Paper>
+            )}
+
+            {!loading && err && (
+              <Paper
+                elevation={0}
+                sx={{
+                  borderRadius: 2,
+                  p: 2,
+                  bgcolor: "#fff3f3",
+                  border: "1px solid rgba(0,0,0,0.12)",
+                }}
+              >
+                <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
+              </Paper>
+            )}
+
+            {!loading && !err && (
+              <Stack spacing={2}>
+                {filtered.length === 0 ? (
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      borderRadius: 2,
+                      border: "1px solid rgba(0,0,0,0.12)",
+                      p: 2,
+                      bgcolor: "#f6f8fb",
+                    }}
+                  >
+                    <Typography sx={{ color: MUTED, fontWeight: 700 }}>
+                      Δεν βρέθηκαν κατοικίδια.
+                    </Typography>
+                  </Paper>
+                ) : (
+                  filtered.map((pet) => (
+                    <PetRow
+                      key={pet.id}
+                      pet={pet}
+                      onOpenBooklet={() => navigate(`/owner/pets/${pet.id}/booklet`)}
+                    />
+                  ))
+                )}
+              </Stack>
+            )}
+          </Container>
+        </Box>
       </Box>
 
       <Footer />
     </Box>
   );
+
 }

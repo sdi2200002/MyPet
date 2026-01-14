@@ -5,6 +5,8 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useAuth } from "../../auth/AuthContext";
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+
 
 const COLORS = {
   primary: "#0b3d91",
@@ -146,136 +148,167 @@ export default function OwnerProfile() {
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
-      <PublicNavbar />
+      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
+        <PublicNavbar />
 
-      <Box sx={{ flex: 1 }}>
-        <Container maxWidth="lg" sx={{ mt: 2 }}>
-          <AppBreadcrumbs />
+        {/* ✅ 2-column layout: sidebar + content */}
+        <Box
+          sx={{
+            flex: 1,
+            display: { xs: "block", lg: "flex" },
+            alignItems: "flex-start",
+          }}
+        >
+          {/* LEFT: spacer column (κρατάει χώρο για το fixed sidebar) */}
+          <Box
+            sx={{
+              width: OWNER_SIDEBAR_W,
+              flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+              display: { xs: "none", lg: "block" },
+              alignSelf: "flex-start",
+            }}
+          />
 
-          <Box sx={{ mt: 2, display: "grid", placeItems: "center" }}>
-            <Paper
-              elevation={0}
-              sx={{
-                width: { xs: "100%", sm: 650, md: 720 },
-                bgcolor: COLORS.panelBg,
-                border: `2px solid ${COLORS.panelBorder}`,
-                borderRadius: 2,
-                boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
-                p: { xs: 2.2, sm: 3 },
-              }}
-            >
-              {loading ? (
-                <Typography sx={{ fontWeight: 800, color: "#1c2b39" }}>Φόρτωση προφίλ...</Typography>
-              ) : (
-                <>
-                  {err && (
-                    <Typography sx={{ fontWeight: 900, color: "#b00020", mb: 2 }}>
-                      {err}
-                    </Typography>
-                  )}
+          {/* Sidebar: κολλάει κάτω από PublicNavbar */}
+          <OwnerNavbar mode="navbar" />
 
-                  {/* top row: photo + name */}
-                  <Box sx={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 3, alignItems: "start" }}>
-                    <Box
-                      sx={{
-                        width: 120,
-                        height: 120,
-                        borderRadius: 1,
-                        bgcolor: "rgba(255,255,255,0.45)",
-                        border: "1.5px solid rgba(13,44,84,0.35)",
-                        position: "relative",
-                        overflow: "hidden",
-                        display: "grid",
-                        placeItems: "center",
-                        color: COLORS.title,
-                        fontWeight: 800,
-                      }}
-                    >
-                      {profile.photoUrl ? (
+          {/* RIGHT: page content */}
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Container maxWidth="lg" sx={{ mt: 2 }}>
+              <AppBreadcrumbs />
+
+              <Box sx={{ mt: 2, display: "grid", placeItems: "center" }}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    width: { xs: "100%", sm: 650, md: 720 },
+                    bgcolor: COLORS.panelBg,
+                    border: `2px solid ${COLORS.panelBorder}`,
+                    borderRadius: 2,
+                    boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+                    p: { xs: 2.2, sm: 3 },
+                  }}
+                >
+                  {loading ? (
+                    <Typography sx={{ fontWeight: 800, color: "#1c2b39" }}>Φόρτωση προφίλ...</Typography>
+                  ) : (
+                    <>
+                      {err && (
+                        <Typography sx={{ fontWeight: 900, color: "#b00020", mb: 2 }}>
+                          {err}
+                        </Typography>
+                      )}
+
+                      {/* top row: photo + name */}
+                      <Box
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns: "140px 1fr",
+                          gap: 3,
+                          alignItems: "start",
+                        }}
+                      >
                         <Box
-                          component="img"
-                          src={profile.photoUrl}
-                          alt="Φωτογραφία"
-                          sx={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
-                      ) : (
-                        <Typography sx={{ fontWeight: 800 }}>Φωτογραφία</Typography>
-                      )}
+                          sx={{
+                            width: 120,
+                            height: 120,
+                            borderRadius: 1,
+                            bgcolor: "rgba(255,255,255,0.45)",
+                            border: "1.5px solid rgba(13,44,84,0.35)",
+                            position: "relative",
+                            overflow: "hidden",
+                            display: "grid",
+                            placeItems: "center",
+                            color: COLORS.title,
+                            fontWeight: 800,
+                          }}
+                        >
+                          {profile.photoUrl ? (
+                            <Box
+                              component="img"
+                              src={profile.photoUrl}
+                              alt="Φωτογραφία"
+                              sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            />
+                          ) : (
+                            <Typography sx={{ fontWeight: 800 }}>Φωτογραφία</Typography>
+                          )}
 
-                      {!profile.photoUrl && (
-                        <>
-                          <Box
-                            sx={{
-                              position: "absolute",
-                              inset: 0,
-                              borderTop: "1px solid rgba(13,44,84,0.35)",
-                              transform: "rotate(45deg)",
-                              transformOrigin: "center",
-                            }}
-                          />
-                          <Box
-                            sx={{
-                              position: "absolute",
-                              inset: 0,
-                              borderTop: "1px solid rgba(13,44,84,0.35)",
-                              transform: "rotate(-45deg)",
-                              transformOrigin: "center",
-                            }}
-                          />
-                        </>
-                      )}
-                    </Box>
+                          {!profile.photoUrl && (
+                            <>
+                              <Box
+                                sx={{
+                                  position: "absolute",
+                                  inset: 0,
+                                  borderTop: "1px solid rgba(13,44,84,0.35)",
+                                  transform: "rotate(45deg)",
+                                  transformOrigin: "center",
+                                }}
+                              />
+                              <Box
+                                sx={{
+                                  position: "absolute",
+                                  inset: 0,
+                                  borderTop: "1px solid rgba(13,44,84,0.35)",
+                                  transform: "rotate(-45deg)",
+                                  transformOrigin: "center",
+                                }}
+                              />
+                            </>
+                          )}
+                        </Box>
 
-                    <Box>
-                      <Typography sx={{ fontWeight: 900, color: "#000", fontSize: 18, mt: 1 }}>
-                        {profile.fullName}
-                      </Typography>
-                      <Typography sx={{ color: "#1c2b39", fontWeight: 700, mt: 0.4 }}>
-                        Ρόλος: {dbUser?.role || user?.role || "-"}
-                      </Typography>
-                    </Box>
-                  </Box>
+                        <Box>
+                          <Typography sx={{ fontWeight: 900, color: "#000", fontSize: 18, mt: 1 }}>
+                            {profile.fullName}
+                          </Typography>
+                          <Typography sx={{ color: "#1c2b39", fontWeight: 700, mt: 0.4 }}>
+                            Ρόλος: {dbUser?.role || user?.role || "-"}
+                          </Typography>
+                        </Box>
+                      </Box>
 
-                  {/* info rows */}
-                  <Box sx={{ mt: 4 }}>
-                    <InfoRow label="Τηλέφωνο:" value={profile.phone} />
-                    <InfoRow label="Διεύθυνση:" value={profile.address} />
-                    <InfoRow label="Email:" value={profile.email} />
-                  </Box>
-                </>
-              )}
-            </Paper>
+                      {/* info rows */}
+                      <Box sx={{ mt: 4 }}>
+                        <InfoRow label="Τηλέφωνο:" value={profile.phone} />
+                        <InfoRow label="Διεύθυνση:" value={profile.address} />
+                        <InfoRow label="Email:" value={profile.email} />
+                      </Box>
+                    </>
+                  )}
+                </Paper>
 
-            {/* Logout button */}
-            <Box
-              sx={{
-                width: { xs: "100%", sm: 650, md: 720 },
-                display: "flex",
-                justifyContent: "flex-end",
-                mt: 2.2,
-              }}
-            >
-              <Button
-                variant="contained"
-                onClick={handleLogout}
-                sx={{
-                  textTransform: "none",
-                  borderRadius: 2,
-                  px: 3.2,
-                  bgcolor: COLORS.primary,
-                  "&:hover": { bgcolor: COLORS.primaryHover },
-                  boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
-                }}
-              >
-                Αποσύνδεση
-              </Button>
-            </Box>
+                {/* Προαιρετικό: μπορείς να το αφαιρέσεις γιατί υπάρχει logout στο sidebar */}
+                <Box
+                  sx={{
+                    width: { xs: "100%", sm: 650, md: 720 },
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    mt: 2.2,
+                  }}
+                >
+                  <Button
+                    variant="contained"
+                    onClick={handleLogout}
+                    sx={{
+                      textTransform: "none",
+                      borderRadius: 2,
+                      px: 3.2,
+                      bgcolor: COLORS.primary,
+                      "&:hover": { bgcolor: COLORS.primaryHover },
+                      boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
+                    }}
+                  >
+                    Αποσύνδεση
+                  </Button>
+                </Box>
+              </Box>
+            </Container>
           </Box>
-        </Container>
-      </Box>
+        </Box>
 
-      <Footer />
-    </Box>
-  );
+        <Footer />
+      </Box>
+    );
+
 }

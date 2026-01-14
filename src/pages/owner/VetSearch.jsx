@@ -24,6 +24,7 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import Pager from "../../components/Pager";
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
 
 /* ====== THEME ====== */
 const PRIMARY = "#0b3d91";
@@ -101,18 +102,10 @@ function VetCard({ vet, onView }) {
         </Typography>
 
         <Stack direction="row" spacing={1} sx={{ mt: 0.6, flexWrap: "wrap" }}>
-          <Typography sx={{ fontWeight: 900, fontSize: 12 }}>
-            ⭐ {vet.rating ?? "—"}
-          </Typography>
-          <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
-            ({vet.reviewsCount ?? 0})
-          </Typography>
-          <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
-            • {vet.area || "—"}
-          </Typography>
-          <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
-            • {vet.specialty || "—"}
-          </Typography>
+          <Typography sx={{ fontWeight: 900, fontSize: 12 }}>⭐ {vet.rating ?? "—"}</Typography>
+          <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>({vet.reviewsCount ?? 0})</Typography>
+          <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>• {vet.area || "—"}</Typography>
+          <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>• {vet.specialty || "—"}</Typography>
         </Stack>
 
         <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12, mt: 0.4 }}>
@@ -142,7 +135,7 @@ export default function VetSearch() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ states (με date/time)
+  // filters
   const [area, setArea] = useState("");
   const [spec, setSpec] = useState("");
   const [date, setDate] = useState("");
@@ -157,7 +150,7 @@ export default function VetSearch() {
   const [page, setPage] = useState(1);
   const perPage = 8;
 
-  // ✅ 1) Διάβασε query params όταν αλλάζει το URL
+  // ✅ Read query params when URL changes
   useEffect(() => {
     const p = new URLSearchParams(location.search);
     setArea(p.get("area") || "");
@@ -167,7 +160,7 @@ export default function VetSearch() {
     setPage(1);
   }, [location.search]);
 
-  // ✅ 2) Φόρτωσε ΟΛΑ από json-server (vets + appointments)
+  // ✅ Load all data from API (use /api/* όπως το υπόλοιπο project)
   useEffect(() => {
     let alive = true;
 
@@ -176,11 +169,7 @@ export default function VetSearch() {
         setLoading(true);
         setErr("");
 
-        // άλλαξε αν το API σου είναι αλλού:
-        const [vetsData, apptsData] = await Promise.all([
-          fetchJSON("http://localhost:3001/vets"),
-          fetchJSON("http://localhost:3001/appointments"),
-        ]);
+        const [vetsData, apptsData] = await Promise.all([fetchJSON("/api/vets"), fetchJSON("/api/appointments")]);
 
         if (!alive) return;
         setVets(Array.isArray(vetsData) ? vetsData : []);
@@ -199,19 +188,19 @@ export default function VetSearch() {
     };
   }, []);
 
-  // ✅ helper: appointments grouped by vetId
+  // appointments grouped by vetId
   const apptsByVetId = useMemo(() => {
     const map = new Map();
     for (const a of appointments) {
-      const id = String(a?.vetId ?? "");
-      if (!id) continue;
-      if (!map.has(id)) map.set(id, []);
-      map.get(id).push(a);
+      const vid = String(a?.vetId ?? "");
+      if (!vid) continue;
+      if (!map.has(vid)) map.set(vid, []);
+      map.get(vid).push(a);
     }
     return map;
   }, [appointments]);
 
-  // ✅ 3) Client-side filtering (σωστό)
+  // filtering
   const filtered = useMemo(() => {
     const areaQ = area.trim();
     const specQ = spec.trim();
@@ -223,13 +212,13 @@ export default function VetSearch() {
         if (areaQ && String(v.area || "").toLowerCase() !== areaQ.toLowerCase()) return false;
         if (specQ && String(v.specialty || "").toLowerCase() !== specQ.toLowerCase()) return false;
 
-        // date/time match με appointments (αν έχεις βάλει date ή time)
+        // If date/time provided, keep vets that have an appointment matching those criteria
         if (dateISO || timeQ) {
           const list = apptsByVetId.get(String(v.id)) || [];
           const ok = list.some((a) => {
             if (!a?.when) return false;
-            const aDateISO = String(a.when).slice(0, 10); // YYYY-MM-DD
-            const aTime = hhmmFromISO(a.when);            // HH:MM
+            const aDateISO = String(a.when).slice(0, 10);
+            const aTime = hhmmFromISO(a.when);
             if (dateISO && aDateISO !== dateISO) return false;
             if (timeQ && aTime !== timeQ) return false;
             return true;
@@ -253,7 +242,12 @@ export default function VetSearch() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  // ✅ 4) Το “Αναζήτηση” γράφει query params και σε φέρνει στο σωστό URL
+  const hasFilters = useMemo(
+    () => !!area.trim() || !!spec.trim() || !!date.trim() || !!time.trim(),
+    [area, spec, date, time]
+  );
+
+  // write query params
   function applySearch() {
     const params = new URLSearchParams();
     if (area) params.set("area", area);
@@ -279,196 +273,208 @@ export default function VetSearch() {
     "& .MuiOutlinedInput-root": { borderRadius: 999 },
     "& .MuiSelect-select": { fontWeight: 700, color: TITLE },
   };
+
   const placeholder = (t) => <span style={{ color: MUTED, fontWeight: 700 }}>{t}</span>;
 
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <PublicNavbar />
 
-      <Container maxWidth="lg" sx={{ py: 2.5, flex: 1 }}>
-        <Box>
-          <AppBreadcrumbs />
-        </Box>
-
-        <Paper
-          elevation={0}
+      {/* ✅ 2-column layout: sidebar + content */}
+      <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
+        {/* LEFT spacer */}
+        <Box
           sx={{
-            bgcolor: PANEL_BG,
-            borderRadius: 4,
-            p: 2.5,
-            border: `2px solid ${PANEL_BORDER}`,
+            width: OWNER_SIDEBAR_W,
+            flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+            display: { xs: "none", lg: "block" },
+            alignSelf: "flex-start",
           }}
-        >
-          <Typography sx={{ fontWeight: 900, color: TITLE, mb: 1.6 }}>
-            Αναζήτηση Κτηνιάτρων
-          </Typography>
+        />
 
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1.2} alignItems="center">
-            {/* Περιοχή */}
-            <FormControl size="small" sx={pillSx}>
-              <Select
-                value={area}
-                displayEmpty
-                onChange={(e) => setArea(e.target.value)}
-                startAdornment={<LocationOnOutlinedIcon sx={{ mr: 1, color: MUTED }} />}
-                renderValue={(v) => (v ? v : placeholder("Περιοχή"))}
-              >
-                <MenuItem value="">Περιοχή</MenuItem>
-                <MenuItem value="Αθήνα">Αθήνα</MenuItem>
-                <MenuItem value="Πειραιάς">Πειραιάς</MenuItem>
-                <MenuItem value="Θεσσαλονίκη">Θεσσαλονίκη</MenuItem>
-              </Select>
-            </FormControl>
+        <OwnerNavbar mode="navbar" />
 
-            {/* Ημερομηνία */}
-            <TextField
-              size="small"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              placeholder="Ημερομηνία (πχ 13/01/2026)"
+        {/* RIGHT content */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Container maxWidth="lg" sx={{ py: 2.5 }}>
+            <Box>
+              <AppBreadcrumbs />
+            </Box>
+
+            <Paper
+              elevation={0}
               sx={{
-                minWidth: 230,
-                bgcolor: "#fff",
-                borderRadius: 999,
-                "& .MuiOutlinedInput-root": { borderRadius: 999 },
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <CalendarMonthOutlinedIcon sx={{ color: MUTED }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-
-            {/* Ώρα */}
-            <FormControl size="small" sx={{ ...pillSx, minWidth: 150 }}>
-              <Select
-                value={time}
-                displayEmpty
-                onChange={(e) => setTime(e.target.value)}
-                startAdornment={
-                  <InputAdornment position="start">
-                    <AccessTimeOutlinedIcon sx={{ color: MUTED, mr: 1 }} />
-                  </InputAdornment>
-                }
-                renderValue={(v) => (v ? v : placeholder("Ώρα"))}
-              >
-                <MenuItem value="">Ώρα</MenuItem>
-                <MenuItem value="10:00">10:00</MenuItem>
-                <MenuItem value="12:00">12:00</MenuItem>
-                <MenuItem value="17:30">17:30</MenuItem>
-              </Select>
-            </FormControl>
-
-            {/* Ειδικότητα */}
-            <FormControl size="small" sx={pillSx}>
-              <Select
-                value={spec}
-                displayEmpty
-                onChange={(e) => setSpec(e.target.value)}
-                startAdornment={<LocalHospitalOutlinedIcon sx={{ mr: 1, color: MUTED }} />}
-                renderValue={(v) => (v ? v : placeholder("Ειδικότητα"))}
-              >
-                <MenuItem value="">Ειδικότητα</MenuItem>
-                <MenuItem value="Γενικός">Γενικός</MenuItem>
-                <MenuItem value="Χειρουργός">Χειρουργός</MenuItem>
-                <MenuItem value="Δερματολόγος">Δερματολόγος</MenuItem>
-              </Select>
-            </FormControl>
-
-            <Button
-              variant="contained"
-              startIcon={<SearchIcon />}
-              onClick={applySearch}
-              sx={{
-                ml: { md: "auto" },
-                borderRadius: 999,
-                bgcolor: PRIMARY,
-                "&:hover": { bgcolor: PRIMARY_HOVER },
-                fontWeight: 900,
+                bgcolor: PANEL_BG,
+                borderRadius: 4,
+                p: 2.5,
+                border: `2px solid ${PANEL_BORDER}`,
               }}
             >
-              Αναζήτηση
-            </Button>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.6 }}>
+                <Typography sx={{ fontWeight: 900, color: TITLE }}>Αναζήτηση Κτηνιάτρων</Typography>
 
-            <Button
-              variant="text"
-              onClick={clearFilters}
-              sx={{ textTransform: "none", fontWeight: 900, color: PRIMARY }}
-            >
-              Καθαρισμός
-            </Button>
-          </Stack>
-        </Paper>
+                {hasFilters && (
+                  <Button
+                    variant="text"
+                    onClick={clearFilters}
+                    sx={{ textTransform: "none", fontWeight: 900, color: PRIMARY }}
+                  >
+                    Καθαρισμός
+                  </Button>
+                )}
+              </Stack>
 
-        {/* states */}
-        {loading && (
-          <Paper
-            elevation={0}
-            sx={{
-              mt: 2.5,
-              borderRadius: 2,
-              p: 2,
-              bgcolor: "#f6f8fb",
-              border: "1px solid rgba(0,0,0,0.12)",
-            }}
-          >
-            <Typography sx={{ color: MUTED, fontWeight: 700 }}>Φόρτωση...</Typography>
-          </Paper>
-        )}
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1.2} alignItems="center">
+                {/* Περιοχή */}
+                <FormControl size="small" sx={pillSx}>
+                  <Select
+                    value={area}
+                    displayEmpty
+                    onChange={(e) => setArea(e.target.value)}
+                    startAdornment={<LocationOnOutlinedIcon sx={{ mr: 1, color: MUTED }} />}
+                    renderValue={(v) => (v ? v : placeholder("Περιοχή"))}
+                  >
+                    <MenuItem value="">Περιοχή</MenuItem>
+                    <MenuItem value="Αθήνα">Αθήνα</MenuItem>
+                    <MenuItem value="Πειραιάς">Πειραιάς</MenuItem>
+                    <MenuItem value="Θεσσαλονίκη">Θεσσαλονίκη</MenuItem>
+                  </Select>
+                </FormControl>
 
-        {!loading && err && (
-          <Paper
-            elevation={0}
-            sx={{
-              mt: 2.5,
-              borderRadius: 2,
-              p: 2,
-              bgcolor: "#fff3f3",
-              border: "1px solid rgba(0,0,0,0.12)",
-            }}
-          >
-            <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
-          </Paper>
-        )}
-
-        {!loading && !err && (
-          <>
-            <Stack spacing={1.8} sx={{ mt: 2.5 }}>
-              {view.length === 0 ? (
-                <Paper
-                  elevation={0}
+                {/* Ημερομηνία */}
+                <TextField
+                  size="small"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  placeholder="Ημερομηνία (πχ 13/01/2026)"
                   sx={{
-                    borderRadius: 2,
-                    border: "1px solid rgba(0,0,0,0.12)",
-                    p: 2,
-                    bgcolor: "#f6f8fb",
+                    minWidth: 230,
+                    bgcolor: "#fff",
+                    borderRadius: 999,
+                    "& .MuiOutlinedInput-root": { borderRadius: 999 },
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <CalendarMonthOutlinedIcon sx={{ color: MUTED }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+
+                {/* Ώρα */}
+                <FormControl size="small" sx={{ ...pillSx, minWidth: 150 }}>
+                  <Select
+                    value={time}
+                    displayEmpty
+                    onChange={(e) => setTime(e.target.value)}
+                    startAdornment={
+                      <InputAdornment position="start">
+                        <AccessTimeOutlinedIcon sx={{ color: MUTED, mr: 1 }} />
+                      </InputAdornment>
+                    }
+                    renderValue={(v) => (v ? v : placeholder("Ώρα"))}
+                  >
+                    <MenuItem value="">Ώρα</MenuItem>
+                    <MenuItem value="09:00">09:00</MenuItem>
+                    <MenuItem value="10:00">10:00</MenuItem>
+                    <MenuItem value="12:00">12:00</MenuItem>
+                    <MenuItem value="15:00">15:00</MenuItem>
+                    <MenuItem value="17:30">17:30</MenuItem>
+                  </Select>
+                </FormControl>
+
+                {/* Ειδικότητα */}
+                <FormControl size="small" sx={pillSx}>
+                  <Select
+                    value={spec}
+                    displayEmpty
+                    onChange={(e) => setSpec(e.target.value)}
+                    startAdornment={<LocalHospitalOutlinedIcon sx={{ mr: 1, color: MUTED }} />}
+                    renderValue={(v) => (v ? v : placeholder("Ειδικότητα"))}
+                  >
+                    <MenuItem value="">Ειδικότητα</MenuItem>
+                    <MenuItem value="Γενικός">Γενικός</MenuItem>
+                    <MenuItem value="Χειρουργός">Χειρουργός</MenuItem>
+                    <MenuItem value="Δερματολόγος">Δερματολόγος</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <Button
+                  variant="contained"
+                  startIcon={<SearchIcon />}
+                  onClick={applySearch}
+                  sx={{
+                    ml: { md: "auto" },
+                    borderRadius: 999,
+                    bgcolor: PRIMARY,
+                    "&:hover": { bgcolor: PRIMARY_HOVER },
+                    fontWeight: 900,
                   }}
                 >
-                  <Typography sx={{ color: MUTED, fontWeight: 700 }}>
-                    Δεν βρέθηκαν κτηνίατροι.
-                  </Typography>
-                </Paper>
-              ) : (
-                view.map((v) => (
-                  <VetCard key={v.id} vet={v} onView={() => navigate(`/owner/vets/${v.id}`)} />
-                ))
-              )}
-            </Stack>
+                  Αναζήτηση
+                </Button>
+              </Stack>
+            </Paper>
 
-            <Box sx={{ display: "flex", justifyContent: "right", mt: 1.5 }}>
-              <Pager
-                page={page}
-                pageCount={totalPages}
-                onChange={setPage}
-                color={PRIMARY}
-                maxButtons={4}
-              />
-            </Box>
-          </>
-        )}
-      </Container>
+            {loading && (
+              <Paper
+                elevation={0}
+                sx={{
+                  mt: 2.5,
+                  borderRadius: 2,
+                  p: 2,
+                  bgcolor: "#f6f8fb",
+                  border: "1px solid rgba(0,0,0,0.12)",
+                }}
+              >
+                <Typography sx={{ color: MUTED, fontWeight: 700 }}>Φόρτωση...</Typography>
+              </Paper>
+            )}
+
+            {!loading && err && (
+              <Paper
+                elevation={0}
+                sx={{
+                  mt: 2.5,
+                  borderRadius: 2,
+                  p: 2,
+                  bgcolor: "#fff3f3",
+                  border: "1px solid rgba(0,0,0,0.12)",
+                }}
+              >
+                <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
+              </Paper>
+            )}
+
+            {!loading && !err && (
+              <>
+                <Stack spacing={1.8} sx={{ mt: 2.5 }}>
+                  {view.length === 0 ? (
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        borderRadius: 2,
+                        border: "1px solid rgba(0,0,0,0.12)",
+                        p: 2,
+                        bgcolor: "#f6f8fb",
+                      }}
+                    >
+                      <Typography sx={{ color: MUTED, fontWeight: 700 }}>Δεν βρέθηκαν κτηνίατροι.</Typography>
+                    </Paper>
+                  ) : (
+                    view.map((v) => <VetCard key={v.id} vet={v} onView={() => navigate(`/owner/vets/${v.id}`)} />)
+                  )}
+                </Stack>
+
+                <Box sx={{ display: "flex", justifyContent: "right", mt: 1.5 }}>
+                  <Pager page={page} pageCount={totalPages} onChange={setPage} color={PRIMARY} maxButtons={4} />
+                </Box>
+              </>
+            )}
+          </Container>
+        </Box>
+      </Box>
 
       <Footer />
     </Box>

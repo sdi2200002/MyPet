@@ -20,6 +20,7 @@ import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import WizardStepper from "../../components/WizardStepper";
 import { useAuth } from "../../auth/AuthContext";
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
 
 const COLORS = {
   primary: "#0b3d91",
@@ -241,7 +242,7 @@ export default function LostWizard() {
     petId: "",
     petName: "",
     sex: "",
-    breedOrSpecies: "", // ✅ φυλή/είδος ενιαίο
+    breedOrSpecies: "",
     color: "",
     microchip: "",
 
@@ -510,470 +511,126 @@ export default function LostWizard() {
     }
   }
 
+  function OwnerPageShell({ children }) {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
+        <PublicNavbar />
+
+        <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
+          {/* spacer */}
+          <Box
+            sx={{
+              width: OWNER_SIDEBAR_W,
+              flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+              display: { xs: "none", lg: "block" },
+              alignSelf: "flex-start",
+            }}
+          />
+
+          <OwnerNavbar mode="navbar" />
+
+          <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+        </Box>
+
+        <Footer />
+      </Box>
+    );
+  }
+
   return (
-    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
-      <PublicNavbar />
+    <OwnerPageShell>
+      <Container maxWidth="lg" sx={{ py: 3 }}>
+        <Box>
+          <AppBreadcrumbs />
+        </Box>
 
-      <Box sx={{ flex: 1 }}>
-        <Container maxWidth="lg" sx={{ py: 3 }}>
-          <Box>
-            <AppBreadcrumbs />
-          </Box>
+        <Typography sx={{ fontWeight: 900, color: COLORS.title, fontSize: 26 }}>
+          Δήλωση Απολεσθέντος Κατοικιδίου
+        </Typography>
 
-          <Typography sx={{ fontWeight: 900, color: COLORS.title, fontSize: 26 }}>
-            Δήλωση Απολεσθέντος Κατοικιδίου
-          </Typography>
+        <WizardStepper activeStep={activeStep} steps={WIZARD_STEPS} />
 
-          <WizardStepper activeStep={activeStep} steps={WIZARD_STEPS} />
+        {/* ================== STEP 0: PET PICK ================== */}
+        {activeStep === 0 && (
+          <Panel>
+            <Box sx={{ maxWidth: 760, mx: "auto" }}>
+              <Typography sx={{ fontWeight: 900, fontSize: 18, mb: 1 }}>Επιλογή Κατοικιδίου *</Typography>
+              <Typography sx={{ fontSize: 12, color: "#1a1a1a", opacity: 0.75, mb: 2 }}>
+                Διάλεξε το κατοικίδιο για το οποίο θα κάνεις δήλωση απώλειας.
+              </Typography>
 
-          {/* ================== STEP 0: PET PICK ================== */}
-          {activeStep === 0 && (
-            <Panel>
-              <Box sx={{ maxWidth: 760, mx: "auto" }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 18, mb: 1 }}>Επιλογή Κατοικιδίου *</Typography>
-                <Typography sx={{ fontSize: 12, color: "#1a1a1a", opacity: 0.75, mb: 2 }}>
-                  Διάλεξε το κατοικίδιο για το οποίο θα κάνεις δήλωση απώλειας.
-                </Typography>
-
-                {petsLoading ? (
-                  <Typography sx={{ color: "#1a1a1a", opacity: 0.8, fontWeight: 800 }}>Φόρτωση...</Typography>
-                ) : petsErr ? (
-                  <Paper
-                    elevation={0}
-                    sx={{ borderRadius: 2, p: 2, bgcolor: "#fff3f3", border: "1px solid rgba(0,0,0,0.12)" }}
-                  >
-                    <Typography sx={{ color: "#b00020", fontWeight: 900 }}>{petsErr}</Typography>
-                  </Paper>
-                ) : pets.length === 0 ? (
-                  <Paper
-                    elevation={0}
-                    sx={{ borderRadius: 2, p: 2, bgcolor: "#eef1f4", border: "1px solid rgba(0,0,0,0.08)" }}
-                  >
-                    <Typography sx={{ fontWeight: 900, color: "#111", fontSize: 12 }}>
-                      Δεν έχεις καταχωρήσει κατοικίδια.
-                    </Typography>
-                    <Typography sx={{ color: "#6b7a90", fontWeight: 700, fontSize: 12, mt: 0.6 }}>
-                      Πήγαινε στα «Τα Κατοικίδια μου» για να προσθέσεις.
-                    </Typography>
-                  </Paper>
-                ) : (
-                  <>
-                    {/* ✅ max 5 στην ίδια σειρά + horizontal scrollbar */}
-                    <Box
-                      sx={{
-                        width: "100%",
-                        overflowX: "auto",
-                        overflowY: "hidden",
-                        pb: 1,
-                        // λίγο πιο ωραία scrollbar (webkit)
-                        "&::-webkit-scrollbar": { height: 10 },
-                        "&::-webkit-scrollbar-track": { background: "rgba(0,0,0,0.08)", borderRadius: 99 },
-                        "&::-webkit-scrollbar-thumb": { background: "rgba(11,61,145,0.35)", borderRadius: 99 },
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          display: "grid",
-                          gridAutoFlow: "column",
-                          // 5 κάρτες / σειρά -> 120px + gap 16px περίπου
-                          gridAutoColumns: "120px",
-                          gap: 1.6,
-                          alignItems: "start",
-                          width: "max-content",
-                          pr: 1,
-                        }}
-                      >
-                        {pets.map((p) => (
-                          <PetPick
-                            key={p.id}
-                            pet={p}
-                            active={String(p.id) === String(form.petId)}
-                            onClick={() => {
-                              setForm((prev) => ({ ...prev, petId: p.id }));
-                              touch("petId");
-                            }}
-                          />
-                        ))}
-                      </Box>
-                    </Box>
-                  </>
-                )}
-
-                {touched.petId && errors.petId && (
-                  <Typography sx={{ mt: 1.2, fontSize: 12, color: "#d32f2f", fontWeight: 800 }}>
-                    {errors.petId}
+              {petsLoading ? (
+                <Typography sx={{ color: "#1a1a1a", opacity: 0.8, fontWeight: 800 }}>Φόρτωση...</Typography>
+              ) : petsErr ? (
+                <Paper
+                  elevation={0}
+                  sx={{ borderRadius: 2, p: 2, bgcolor: "#fff3f3", border: "1px solid rgba(0,0,0,0.12)" }}
+                >
+                  <Typography sx={{ color: "#b00020", fontWeight: 900 }}>{petsErr}</Typography>
+                </Paper>
+              ) : pets.length === 0 ? (
+                <Paper
+                  elevation={0}
+                  sx={{ borderRadius: 2, p: 2, bgcolor: "#eef1f4", border: "1px solid rgba(0,0,0,0.08)" }}
+                >
+                  <Typography sx={{ fontWeight: 900, color: "#111", fontSize: 12 }}>
+                    Δεν έχεις καταχωρήσει κατοικίδια.
                   </Typography>
-                )}
-
-                <Stack direction="row" justifyContent="right" spacing={3} sx={{ mt: 3 }}>
-                  <Button
-                    onClick={next}
-                    disabled={!isStep0Valid}
-                    variant="contained"
+                  <Typography sx={{ color: "#6b7a90", fontWeight: 700, fontSize: 12, mt: 0.6 }}>
+                    Πήγαινε στα «Τα Κατοικίδια μου» για να προσθέσεις.
+                  </Typography>
+                </Paper>
+              ) : (
+                <>
+                  {/* ✅ max 5 στη σειρά + horizontal scrollbar */}
+                  <Box
                     sx={{
-                      textTransform: "none",
-                      borderRadius: 2,
-                      px: 4,
-                      bgcolor: COLORS.primary,
-                      "&:hover": { bgcolor: COLORS.primaryHover },
+                      width: "100%",
+                      overflowX: "auto",
+                      overflowY: "hidden",
+                      pb: 1,
+                      "&::-webkit-scrollbar": { height: 10 },
+                      "&::-webkit-scrollbar-track": { background: "rgba(0,0,0,0.08)", borderRadius: 99 },
+                      "&::-webkit-scrollbar-thumb": { background: "rgba(11,61,145,0.35)", borderRadius: 99 },
                     }}
                   >
-                    Επόμενο
-                  </Button>
-                </Stack>
-              </Box>
-            </Panel>
-          )}
-
-          {/* ================== STEP 1: LOSS DETAILS ================== */}
-          {activeStep === 1 && (
-            <Panel>
-              <Box sx={{ maxWidth: 520, mx: "auto" }}>
-                <Box sx={{ display: "grid", gap: 2 }}>
-                  <TextField
-                    label="Ημερομηνία Απώλειας *"
-                    type="date"
-                    InputLabelProps={{ shrink: true }}
-                    value={form.date}
-                    onChange={handleChange("date")}
-                    onBlur={() => touch("date")}
-                    fullWidth
-                    sx={fieldSx}
-                    inputProps={{ max: todayYMD(), min: oneYearAgoYMD() }}
-                    error={!!errors.date && !!touched.date}
-                    helperText={touched.date ? errors.date || " " : " "}
-                  />
-
-                  <FormControl fullWidth sx={fieldSx} error={!!errors.area && !!touched.area}>
-                    <InputLabel>Περιοχή *</InputLabel>
-                    <Select
-                      label="Περιοχή *"
-                      value={form.area}
-                      onChange={handleChange("area")}
-                      onBlur={() => touch("area")}
-                    >
-                      <MenuItem value="">—</MenuItem>
-                      <MenuItem value="Αθήνα">Αθήνα</MenuItem>
-                      <MenuItem value="Θεσσαλονίκη">Θεσσαλονίκη</MenuItem>
-                      <MenuItem value="Πάτρα">Πάτρα</MenuItem>
-                      <MenuItem value="Άλλη">Άλλη</MenuItem>
-                    </Select>
-
-                    <Typography sx={{ fontSize: 12, mt: 0.5, color: "#d32f2f" }}>
-                      {touched.area ? errors.area || " " : " "}
-                    </Typography>
-                  </FormControl>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 1 }}>Περιγραφή</Typography>
-                    <TextField
-                      multiline
-                      minRows={5}
-                      value={form.notes}
-                      onChange={handleChange("notes")}
-                      fullWidth
-                      sx={fieldSx}
-                      placeholder="Περιγράψτε εμφανισιακά χαρακτηριστικά, λουράκι, σημάδια, συμπεριφορά ή ό,τι άλλο βοηθάει."
-                    />
-                  </Box>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 1 }}>Φωτογραφία Κατοικιδίου</Typography>
-
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      style={{ display: "none" }}
-                      onChange={onPickFile}
-                    />
-
-                    <Box
-                      onClick={() => fileInputRef.current?.click()}
-                      onDrop={onDrop}
-                      onDragOver={onDragOver}
-                      sx={{
-                        height: 140,
-                        borderRadius: 3,
-                        border: "2px solid #000",
-                        bgcolor: "#bfc8d3",
-                        display: "grid",
-                        placeItems: "center",
-                        p: 2,
-                        textAlign: "center",
-                        cursor: "pointer",
-                        overflow: "hidden",
-                        position: "relative",
-                      }}
-                      title="Κλικ για επιλογή εικόνας ή σύρε αρχείο εδώ"
-                    >
-                      {!photoPreview ? (
-                        <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>
-                          Ανεβάστε μια καθαρή
-                          <br />
-                          φωτογραφία του κατοικιδίου.
-                          <br />
-                          <span style={{ fontWeight: 600, opacity: 0.8 }}>(Click ή Drag & Drop)</span>
-                        </Typography>
-                      ) : (
-                        <Box
-                          component="img"
-                          src={photoPreview}
-                          alt="Preview"
-                          sx={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
-                      )}
-                    </Box>
-
-                    <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
-                      <Button
-                        variant="outlined"
-                        onClick={() => fileInputRef.current?.click()}
-                        sx={{ textTransform: "none", borderRadius: 2 }}
-                      >
-                        Επιλογή
-                      </Button>
-
-                      <Button
-                        variant="outlined"
-                        disabled={!photoPreview}
-                        onClick={removePhoto}
-                        sx={{ textTransform: "none", borderRadius: 2 }}
-                      >
-                        Αφαίρεση
-                      </Button>
-
-                      <Box sx={{ flex: 1 }} />
-                      <Typography sx={{ fontSize: 12, color: "#000", opacity: 0.7, alignSelf: "center" }}>
-                        {photoFile ? photoFile.name : ""}
-                      </Typography>
-                    </Stack>
-                  </Box>
-                </Box>
-
-                <Stack direction="row" justifyContent="right" spacing={3} sx={{ mt: 3 }}>
-                  <Button
-                    onClick={back}
-                    variant="outlined"
-                    sx={{ textTransform: "none", borderRadius: 2, borderColor: COLORS.primary, color: COLORS.primary }}
-                  >
-                    Πίσω
-                  </Button>
-
-                  <Button
-                    onClick={next}
-                    disabled={!isStep1Valid}
-                    variant="contained"
-                    sx={{
-                      textTransform: "none",
-                      borderRadius: 2,
-                      px: 4,
-                      bgcolor: COLORS.primary,
-                      "&:hover": { bgcolor: COLORS.primaryHover },
-                    }}
-                  >
-                    Επόμενο
-                  </Button>
-                </Stack>
-              </Box>
-            </Panel>
-          )}
-
-          {/* ================== STEP 2: PREVIEW ================== */}
-          {activeStep === 2 && (
-            <Panel>
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" },
-                  gap: 4,
-                  alignItems: "start",
-                }}
-              >
-                <Box sx={{ display: "grid", gap: 2 }}>
-                  <Typography sx={{ fontWeight: 900, fontSize: 20, mb: 0.5 }}>Στοιχεία Κατοικιδίου</Typography>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Όνομα</Typography>
-                    <TextField value={form.petName || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
-                  </Box>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Φυλή / Είδος</Typography>
-                    <TextField
-                      value={form.breedOrSpecies || "-"}
-                      fullWidth
-                      sx={fieldSx}
-                      InputProps={{ readOnly: true }}
-                    />
-                  </Box>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Φύλο</Typography>
-                    <TextField value={form.sex || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
-                  </Box>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Χρώμα</Typography>
-                    <TextField value={form.color || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
-                  </Box>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Microchip</Typography>
-                    <TextField value={form.microchip || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
-                  </Box>
-                </Box>
-
-                <Box sx={{ display: "grid", gap: 2 }}>
-                  <Typography sx={{ fontWeight: 900, fontSize: 20, mb: 0.5 }}>Στοιχεία Ιδιοκτήτη</Typography>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Όνομα</Typography>
-                    <TextField value={form.firstName || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
-                  </Box>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Επώνυμο</Typography>
-                    <TextField value={form.lastName || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
-                  </Box>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Τηλέφωνο</Typography>
-                    <TextField
-                      value={normalizePhone(form.phone) || "-"}
-                      fullWidth
-                      sx={fieldSx}
-                      InputProps={{ readOnly: true }}
-                    />
-                  </Box>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Email</Typography>
-                    <TextField value={form.email || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
-                  </Box>
-                </Box>
-
-                <Box sx={{ display: "grid", gap: 2 }}>
-                  <Typography sx={{ fontWeight: 900, fontSize: 20, mb: 0.5 }}>Στοιχεία Απώλειας</Typography>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Ημερομηνία Απώλειας</Typography>
-                    <TextField
-                      value={form.date ? fmtDDMMYYYY(form.date) : "-"}
-                      fullWidth
-                      sx={fieldSx}
-                      InputProps={{ readOnly: true }}
-                    />
-                  </Box>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Περιοχή</Typography>
-                    <TextField value={form.area || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
-                  </Box>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Περιγραφή</Typography>
-                    <TextField
-                      value={form.notes || "—"}
-                      fullWidth
-                      multiline
-                      minRows={5}
-                      sx={fieldSx}
-                      InputProps={{ readOnly: true }}
-                    />
-                  </Box>
-
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Φωτογραφία Κατοικιδίου</Typography>
                     <Box
                       sx={{
-                        height: 140,
-                        borderRadius: 3,
-                        border: "2px solid #000",
-                        bgcolor: "#bfc8d3",
                         display: "grid",
-                        placeItems: "center",
-                        p: 2,
-                        textAlign: "center",
-                        overflow: "hidden",
+                        gridAutoFlow: "column",
+                        gridAutoColumns: "120px",
+                        gap: 1.6,
+                        alignItems: "start",
+                        width: "max-content",
+                        pr: 1,
                       }}
                     >
-                      {!photoPreview ? (
-                        <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>
-                          Ανεβάστε μια καθαρή
-                          <br />
-                          φωτογραφία του κατοικιδίου.
-                        </Typography>
-                      ) : (
-                        <Box
-                          component="img"
-                          src={photoPreview}
-                          alt="Preview"
-                          sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      {pets.map((p) => (
+                        <PetPick
+                          key={p.id}
+                          pet={p}
+                          active={String(p.id) === String(form.petId)}
+                          onClick={() => {
+                            setForm((prev) => ({ ...prev, petId: p.id }));
+                            touch("petId");
+                          }}
                         />
-                      )}
+                      ))}
                     </Box>
                   </Box>
-                </Box>
-              </Box>
+                </>
+              )}
 
-              <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
-                <FormControlLabel
-                  control={<Checkbox checked={form.acceptTerms} onChange={handleChange("acceptTerms")} />}
-                  label="Συμφωνώ με τους όρους & προϋποθέσεις"
-                />
-              </Box>
+              {touched.petId && errors.petId && (
+                <Typography sx={{ mt: 1.2, fontSize: 12, color: "#d32f2f", fontWeight: 800 }}>
+                  {errors.petId}
+                </Typography>
+              )}
 
-              <Stack direction="row" justifyContent="right" spacing={2} sx={{ mt: 2 }}>
+              <Stack direction="row" justifyContent="right" spacing={3} sx={{ mt: 3 }}>
                 <Button
-                  onClick={() => navigate(-1)}
-                  variant="contained"
-                  sx={{
-                    textTransform: "none",
-                    borderRadius: 2,
-                    px: 4,
-                    bgcolor: "#b7bcc3",
-                    color: "#000",
-                    "&:hover": { bgcolor: "#a9aeb6" },
-                  }}
-                >
-                  Ακύρωση
-                </Button>
-
-                <Button
-                  onClick={() => setActiveStep(1)}
-                  variant="contained"
-                  sx={{
-                    textTransform: "none",
-                    borderRadius: 2,
-                    px: 4,
-                    bgcolor: "#c9d0dd",
-                    color: "#000",
-                    "&:hover": { bgcolor: "#b8c0cf" },
-                  }}
-                >
-                  Επεξεργασία
-                </Button>
-
-                <Button
-                  onClick={saveDraft}
-                  disabled={saving || !isStep0Valid || !isStep1Valid}
-                  variant="contained"
-                  sx={{
-                    textTransform: "none",
-                    borderRadius: 2,
-                    px: 3,
-                    bgcolor: "#c9d0dd",
-                    color: "#000",
-                    "&:hover": { bgcolor: "#b8c0cf" },
-                  }}
-                >
-                  Προσωρινή Αποθήκευση
-                </Button>
-
-                <Button
-                  onClick={submitFinal}
-                  disabled={saving || !isStep0Valid || !isStep1Valid || !form.acceptTerms}
+                  onClick={next}
+                  disabled={!isStep0Valid}
                   variant="contained"
                   sx={{
                     textTransform: "none",
@@ -981,17 +638,353 @@ export default function LostWizard() {
                     px: 4,
                     bgcolor: COLORS.primary,
                     "&:hover": { bgcolor: COLORS.primaryHover },
+                    fontWeight: 900,
                   }}
                 >
-                  Οριστική Υποβολή
+                  Επόμενο
                 </Button>
               </Stack>
-            </Panel>
-          )}
-        </Container>
-      </Box>
+            </Box>
+          </Panel>
+        )}
 
-      <Footer />
-    </Box>
+        {/* ================== STEP 1: LOSS DETAILS ================== */}
+        {activeStep === 1 && (
+          <Panel>
+            <Box sx={{ maxWidth: 520, mx: "auto" }}>
+              <Box sx={{ display: "grid", gap: 2 }}>
+                <TextField
+                  label="Ημερομηνία Απώλειας *"
+                  type="date"
+                  InputLabelProps={{ shrink: true }}
+                  value={form.date}
+                  onChange={handleChange("date")}
+                  onBlur={() => touch("date")}
+                  fullWidth
+                  sx={fieldSx}
+                  inputProps={{ max: todayYMD(), min: oneYearAgoYMD() }}
+                  error={!!errors.date && !!touched.date}
+                  helperText={touched.date ? errors.date || " " : " "}
+                />
+
+                <FormControl fullWidth sx={fieldSx} error={!!errors.area && !!touched.area}>
+                  <InputLabel>Περιοχή *</InputLabel>
+                  <Select
+                    label="Περιοχή *"
+                    value={form.area}
+                    onChange={handleChange("area")}
+                    onBlur={() => touch("area")}
+                  >
+                    <MenuItem value="">—</MenuItem>
+                    <MenuItem value="Αθήνα">Αθήνα</MenuItem>
+                    <MenuItem value="Θεσσαλονίκη">Θεσσαλονίκη</MenuItem>
+                    <MenuItem value="Πάτρα">Πάτρα</MenuItem>
+                    <MenuItem value="Άλλη">Άλλη</MenuItem>
+                  </Select>
+
+                  <Typography sx={{ fontSize: 12, mt: 0.5, color: "#d32f2f" }}>
+                    {touched.area ? errors.area || " " : " "}
+                  </Typography>
+                </FormControl>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 1 }}>Περιγραφή</Typography>
+                  <TextField
+                    multiline
+                    minRows={5}
+                    value={form.notes}
+                    onChange={handleChange("notes")}
+                    fullWidth
+                    sx={fieldSx}
+                    placeholder="Περιγράψτε εμφανισιακά χαρακτηριστικά, λουράκι, σημάδια, συμπεριφορά ή ό,τι άλλο βοηθάει."
+                  />
+                </Box>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 1 }}>Φωτογραφία Κατοικιδίου</Typography>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={onPickFile}
+                  />
+
+                  <Box
+                    onClick={() => fileInputRef.current?.click()}
+                    onDrop={onDrop}
+                    onDragOver={onDragOver}
+                    sx={{
+                      height: 140,
+                      borderRadius: 3,
+                      border: "2px solid #000",
+                      bgcolor: "#bfc8d3",
+                      display: "grid",
+                      placeItems: "center",
+                      p: 2,
+                      textAlign: "center",
+                      cursor: "pointer",
+                      overflow: "hidden",
+                      position: "relative",
+                    }}
+                    title="Κλικ για επιλογή εικόνας ή σύρε αρχείο εδώ"
+                  >
+                    {!photoPreview ? (
+                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>
+                        Ανεβάστε μια καθαρή
+                        <br />
+                        φωτογραφία του κατοικιδίου.
+                        <br />
+                        <span style={{ fontWeight: 600, opacity: 0.8 }}>(Click ή Drag & Drop)</span>
+                      </Typography>
+                    ) : (
+                      <Box component="img" src={photoPreview} alt="Preview" sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    )}
+                  </Box>
+
+                  <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+                    <Button
+                      variant="outlined"
+                      onClick={() => fileInputRef.current?.click()}
+                      sx={{ textTransform: "none", borderRadius: 2 }}
+                    >
+                      Επιλογή
+                    </Button>
+
+                    <Button
+                      variant="outlined"
+                      disabled={!photoPreview}
+                      onClick={removePhoto}
+                      sx={{ textTransform: "none", borderRadius: 2 }}
+                    >
+                      Αφαίρεση
+                    </Button>
+
+                    <Box sx={{ flex: 1 }} />
+                    <Typography sx={{ fontSize: 12, color: "#000", opacity: 0.7, alignSelf: "center" }}>
+                      {photoFile ? photoFile.name : ""}
+                    </Typography>
+                  </Stack>
+                </Box>
+              </Box>
+
+              <Stack direction="row" justifyContent="right" spacing={3} sx={{ mt: 3 }}>
+                <Button
+                  onClick={back}
+                  variant="outlined"
+                  sx={{ textTransform: "none", borderRadius: 2, borderColor: COLORS.primary, color: COLORS.primary, fontWeight: 900 }}
+                >
+                  Πίσω
+                </Button>
+
+                <Button
+                  onClick={next}
+                  disabled={!isStep1Valid}
+                  variant="contained"
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: 2,
+                    px: 4,
+                    bgcolor: COLORS.primary,
+                    "&:hover": { bgcolor: COLORS.primaryHover },
+                    fontWeight: 900,
+                  }}
+                >
+                  Επόμενο
+                </Button>
+              </Stack>
+            </Box>
+          </Panel>
+        )}
+
+        {/* ================== STEP 2: PREVIEW ================== */}
+        {activeStep === 2 && (
+          <Panel>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" },
+                gap: 4,
+                alignItems: "start",
+              }}
+            >
+              <Box sx={{ display: "grid", gap: 2 }}>
+                <Typography sx={{ fontWeight: 900, fontSize: 20, mb: 0.5 }}>Στοιχεία Κατοικιδίου</Typography>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Όνομα</Typography>
+                  <TextField value={form.petName || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
+                </Box>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Φυλή / Είδος</Typography>
+                  <TextField value={form.breedOrSpecies || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
+                </Box>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Φύλο</Typography>
+                  <TextField value={form.sex || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
+                </Box>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Χρώμα</Typography>
+                  <TextField value={form.color || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
+                </Box>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Microchip</Typography>
+                  <TextField value={form.microchip || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
+                </Box>
+              </Box>
+
+              <Box sx={{ display: "grid", gap: 2 }}>
+                <Typography sx={{ fontWeight: 900, fontSize: 20, mb: 0.5 }}>Στοιχεία Ιδιοκτήτη</Typography>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Όνομα</Typography>
+                  <TextField value={form.firstName || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
+                </Box>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Επώνυμο</Typography>
+                  <TextField value={form.lastName || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
+                </Box>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Τηλέφωνο</Typography>
+                  <TextField value={normalizePhone(form.phone) || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
+                </Box>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Email</Typography>
+                  <TextField value={form.email || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
+                </Box>
+              </Box>
+
+              <Box sx={{ display: "grid", gap: 2 }}>
+                <Typography sx={{ fontWeight: 900, fontSize: 20, mb: 0.5 }}>Στοιχεία Απώλειας</Typography>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Ημερομηνία Απώλειας</Typography>
+                  <TextField value={form.date ? fmtDDMMYYYY(form.date) : "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
+                </Box>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Περιοχή</Typography>
+                  <TextField value={form.area || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
+                </Box>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Περιγραφή</Typography>
+                  <TextField value={form.notes || "—"} fullWidth multiline minRows={5} sx={fieldSx} InputProps={{ readOnly: true }} />
+                </Box>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Φωτογραφία Κατοικιδίου</Typography>
+                  <Box
+                    sx={{
+                      height: 140,
+                      borderRadius: 3,
+                      border: "2px solid #000",
+                      bgcolor: "#bfc8d3",
+                      display: "grid",
+                      placeItems: "center",
+                      p: 2,
+                      textAlign: "center",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {!photoPreview ? (
+                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>
+                        Ανεβάστε μια καθαρή
+                        <br />
+                        φωτογραφία του κατοικιδίου.
+                      </Typography>
+                    ) : (
+                      <Box component="img" src={photoPreview} alt="Preview" sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    )}
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+              <FormControlLabel
+                control={<Checkbox checked={form.acceptTerms} onChange={handleChange("acceptTerms")} />}
+                label="Συμφωνώ με τους όρους & προϋποθέσεις"
+              />
+            </Box>
+
+            <Stack direction="row" justifyContent="right" spacing={2} sx={{ mt: 2, flexWrap: "wrap" }}>
+              <Button
+                onClick={() => navigate(-1)}
+                variant="contained"
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                  px: 4,
+                  bgcolor: "#b7bcc3",
+                  color: "#000",
+                  "&:hover": { bgcolor: "#a9aeb6" },
+                  fontWeight: 900,
+                }}
+              >
+                Ακύρωση
+              </Button>
+
+              <Button
+                onClick={() => setActiveStep(1)}
+                variant="contained"
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                  px: 4,
+                  bgcolor: "#c9d0dd",
+                  color: "#000",
+                  "&:hover": { bgcolor: "#b8c0cf" },
+                  fontWeight: 900,
+                }}
+              >
+                Επεξεργασία
+              </Button>
+
+              <Button
+                onClick={saveDraft}
+                disabled={saving || !isStep0Valid || !isStep1Valid}
+                variant="contained"
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                  px: 3,
+                  bgcolor: "#c9d0dd",
+                  color: "#000",
+                  "&:hover": { bgcolor: "#b8c0cf" },
+                  fontWeight: 900,
+                }}
+              >
+                Προσωρινή Αποθήκευση
+              </Button>
+
+              <Button
+                onClick={submitFinal}
+                disabled={saving || !isStep0Valid || !isStep1Valid || !form.acceptTerms}
+                variant="contained"
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                  px: 4,
+                  bgcolor: COLORS.primary,
+                  "&:hover": { bgcolor: COLORS.primaryHover },
+                  fontWeight: 900,
+                }}
+              >
+                Οριστική Υποβολή
+              </Button>
+            </Stack>
+          </Panel>
+        )}
+      </Container>
+    </OwnerPageShell>
   );
 }

@@ -17,6 +17,8 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useAuth } from "../../auth/AuthContext";
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+
 
 const PRIMARY = "#0b3d91";
 const PRIMARY_HOVER = "#08316f";
@@ -150,11 +152,41 @@ export default function VetReviewDetails() {
 
   const vetName = vet?.name || "Κτηνίατρος";
 
-  return (
-    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
-      <PublicNavbar />
+  function OwnerPageShell({ children }) {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
+        <PublicNavbar />
 
-      <Container maxWidth="lg" sx={{ py: 2.5, flex: 1 }}>
+        <Box
+          sx={{
+            flex: 1,
+            display: { xs: "block", lg: "flex" },
+            alignItems: "flex-start",
+          }}
+        >
+          {/* spacer */}
+          <Box
+            sx={{
+              width: OWNER_SIDEBAR_W,
+              flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+              display: { xs: "none", lg: "block" },
+            }}
+          />
+
+          <OwnerNavbar mode="navbar" />
+
+          <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+        </Box>
+
+        <Footer />
+      </Box>
+    );
+  }
+
+
+  return (
+    <OwnerPageShell>
+      <Container maxWidth="lg" sx={{ py: 2.5 }}>
         <Box>
           <AppBreadcrumbs />
         </Box>
@@ -190,7 +222,7 @@ export default function VetReviewDetails() {
           </Paper>
         ) : (
           <Stack direction={{ xs: "column", md: "row" }} spacing={3} alignItems="flex-start" sx={{ mt: 2 }}>
-            {/* LEFT CARD (ίδιο look με VetNewReview) */}
+            {/* LEFT CARD */}
             <Paper
               elevation={0}
               sx={{
@@ -223,20 +255,16 @@ export default function VetReviewDetails() {
               </Stack>
             </Paper>
 
-            {/* RIGHT DISPLAY (read-only) */}
+            {/* RIGHT DISPLAY */}
             <Box sx={{ flex: 1, width: "100%" }}>
               <Typography variant="h5" sx={{ fontWeight: 900, color: TITLE, mb: 1 }}>
                 Αξιολόγηση
               </Typography>
 
               <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 1 }}>
-                <Typography sx={{ color: MUTED, fontWeight: 900, fontSize: 13 }}>
-                  {displayName}
-                </Typography>
+                <Typography sx={{ color: MUTED, fontWeight: 900, fontSize: 13 }}>{displayName}</Typography>
                 <Typography sx={{ color: MUTED, fontWeight: 900, fontSize: 13 }}>•</Typography>
-                <Typography sx={{ color: MUTED, fontWeight: 900, fontSize: 13 }}>
-                  {displayDate}
-                </Typography>
+                <Typography sx={{ color: MUTED, fontWeight: 900, fontSize: 13 }}>{displayDate}</Typography>
               </Stack>
 
               <Rating value={Number(review?.rating || 0)} readOnly size="large" sx={{ mb: 2 }} />
@@ -250,15 +278,14 @@ export default function VetReviewDetails() {
                 }}
               >
                 <Stack spacing={2}>
-                  {/* ✅ Scrollable text area (δεξιά μπάρα αν είναι μεγάλο) */}
                   <Box
                     sx={{
                       border: "1px solid rgba(0,0,0,0.12)",
                       borderRadius: 2,
                       p: 1.5,
                       bgcolor: "#fff",
-                      height: 240,            // άλλαξέ το αν θες πιο ψηλό
-                      overflowY: "auto",       // 👈 scrollbar δεξιά
+                      height: 240,
+                      overflowY: "auto",
                       whiteSpace: "pre-wrap",
                       wordBreak: "break-word",
                       fontWeight: 700,
@@ -275,8 +302,7 @@ export default function VetReviewDetails() {
           </Stack>
         )}
       </Container>
-
-      <Footer />
-    </Box>
+    </OwnerPageShell>
   );
+
 }
