@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Box, Paper, Stack, Typography, Button } from "@mui/material";
+import { useAuth } from "../auth/AuthContext";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import PetsRoundedIcon from "@mui/icons-material/PetsRounded";
 import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
@@ -47,12 +48,10 @@ export default function OwnerNavbar({ mode = "navbar" }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const { logout } = useAuth(); // ✅ ΕΔΩ
   const handleLogout = () => {
-    logout?.();
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("user_role");
-    localStorage.removeItem("user");
-    navigate("/", { replace: true });
+    logout();
+    navigate("/");
   };
 
   const go = (to) => navigate(to);

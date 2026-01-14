@@ -162,7 +162,7 @@ export default function LostPetDetails() {
                 {/* Details */}
                 <Box>
                   <Typography sx={{ fontWeight: 900, color: COLORS.title, fontSize: 28 }}>
-                    {item.petName || "Κατοικίδιο"}
+                    {item.petName || item.breed || item.species || "Κατοικίδιο"}
                   </Typography>
 
                   <Box sx={{ height: 2, bgcolor: "#0b3d91", opacity: 0.25, my: 1.5 }} />
@@ -172,7 +172,7 @@ export default function LostPetDetails() {
 
                   {/* LostWizard fields */}
                   <Row label="Φύλο" value={item.sex} />
-                  <Row label="Φυλή/Είδος" value={item.breedOrSpecies} />
+                  <Row label="Φυλή/Είδος" value={item.breed || item.species} />
                   <Row label="Χρώμα" value={item.color} />
                   <Row label="Microchip" value={item.microchip} />
 

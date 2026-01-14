@@ -8,6 +8,7 @@ import Contact from "./pages/public/Contact.jsx";
 
 import OwnerDashboard from "./pages/owner/OwnerDashboard.jsx";
 import MyDeclarations from "./pages/owner/MyDeclarations.jsx";
+import DeclarationsNew from "./pages/owner/DeclarationsNew.jsx";
 import MyAppointments from "./pages/owner/MyAppointments.jsx";
 
 import VetDashboard from "./pages/vet/VetDashboard.jsx";
@@ -19,6 +20,7 @@ import DeclarationSuccess from "./pages/owner/DeclarationSuccess.jsx";
 
 import LostPets from "./pages/public/LostPets";
 import LostPetDetails from "./pages/public/LostPetDetails";
+import FoundPetDetails from "./pages/public/FoundPetDetails";
 
 import ForgotPassword from "./pages/public/ForgotPassword.jsx";
 import RegisterOwner from "./pages/public/RegisterOwner.jsx";
@@ -58,15 +60,17 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 
           <Route path="/lost" element={<LostPets />} />
           <Route path="/lost/:id" element={<LostPetDetails />} />
+          <Route path="/found/:id" element={<FoundPetDetails />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/found/new" element={<FoundWizard showSidebar={false} />} />
 
           {/* Owner */}
           <Route path="/owner" element={<OwnerDashboard />} />
           <Route path="/owner/declarations" element={<MyDeclarations />} />
+          <Route path="/owner/declarations/new" element={<DeclarationsNew />} />
           <Route path="/owner/appointments" element={<MyAppointments />} />
-          <Route path="/owner/found/new" element={<FoundWizard showSidebar={true} />} />
-          <Route path="/owner/lost/new" element={<LostWizard showSidebar={true} />} />
+          <Route path="/owner/declarations/found/new" element={<FoundWizard showSidebar={true} />} />
+          <Route path="/owner/declarations/lost/new" element={<LostWizard showSidebar={true} />} />
           <Route path="/owner/declarations/success" element={<DeclarationSuccess />} />
           <Route path="/owner/pets" element={<MyPets />} />
           <Route path="/owner/pets/:id/booklet" element={<PetBookletDetails />} />

@@ -32,9 +32,14 @@ import AppBreadcrumbs from "../../components/Breadcrumbs";
 
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { listNotifications, markAllRead, markNotificationRead } from "../../api/notifications";
 import Pager from "../../components/Pager"; // βάλε το σωστό path
+
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs from "dayjs";
+
 
 import { useAuth } from "../../auth/AuthContext";
 
@@ -537,6 +542,25 @@ function QuickAction({ icon, title, text, onClick }) {
   );
 }
 
+/** ✅ δέχεται "YYYY-MM-DD" ή "DD/MM/YYYY" ή "DD-MM-YYYY" και το κάνει "YYYY-MM-DD" */
+function normalizeGreekDateToISO(s) {
+  if (!s) return "";
+  const t = String(s).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const m = t.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  return "";
+}
+
+function dateToISOFromDayjs(dj) {
+  if (!dj) return "";
+  const d = dj.toDate();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 function VetsSearchPanel() {
   const navigate = useNavigate();
   const [vetArea, setVetArea] = useState("");
@@ -589,15 +613,16 @@ function VetsSearchPanel() {
           </Select>
         </FormControl>
 
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DatePicker
             value={vetDateObj}
+            minDate={dayjs()} // ✅ δεν επιτρέπει “χτες”
+            maxDate={dayjs().add(1, "year")}
             onChange={(newValue) => {
               setVetDateObj(newValue);
-              setVetDate(dateToISO(newValue));
+              setVetDate(dateToISOFromDayjs(newValue)); // ✅ ISO
             }}
-            format="dd/MM/yyyy"
-            minDate={new Date()}
+            format="DD/MM/YYYY"
             slotProps={{
               textField: {
                 size: "small",
@@ -1024,13 +1049,13 @@ export default function OwnerDashboard() {
                     icon={<CampaignIcon sx={{ fontSize: 100, color: PRIMARY }} />}
                     title="Δήλωση Απώλειας"
                     text="Καταχωρίστε την απώλεια του κατοικιδίου σας για άμεση ενημέρωση."
-                    onClick={() => navigate("/owner/lost/new")}
+                    onClick={() => navigate("/owner/declarations/lost/new")}
                   />
                   <QuickAction
                     icon={<SearchIcon sx={{ fontSize: 100, color: PRIMARY }} />}
                     title="Δήλωση Εύρεσης"
                     text="Καταχωρίστε την εύρεση για να εντοπιστεί ο ιδιοκτήτης."
-                    onClick={() => navigate("/owner/found/new")}
+                    onClick={() => navigate("/owner/declarations/found/new")}
                   />
                 </Stack>
               </Box>

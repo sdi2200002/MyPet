@@ -276,12 +276,12 @@ export default function MyDeclarations() {
 
     // Πρόχειρες -> άνοιξε wizard σε preview mode (ή στο step που θες)
     if (status === "Πρόχειρη" && item.type === "lost") {
-      navigate("/owner/lost/new", { state: { draftId: item.id, step: 2 } });
+      navigate("/owner/declarations/lost/new", { state: { draftId: item.id, step: 2 } });
       return;
     }
     if (status === "Πρόχειρη" && item.type === "found") {
       // ✅ ΔΙΟΡΘΩΣΗ: πριν πήγαινε λάθος σε /lost/new
-      navigate("/owner/found/new", { state: { draftId: item.id, step: 2 } });
+      navigate("/owner/declarations/found/new", { state: { draftId: item.id, step: 2 } });
       return;
     }
 
@@ -293,11 +293,11 @@ export default function MyDeclarations() {
     if (status !== "Πρόχειρη") return;
 
     if (item.type === "lost") {
-      navigate("/owner/lost/new", { state: { draftId: item.id, step: 1 } });
+      navigate("/owner/declarations/lost/new", { state: { draftId: item.id, step: 2 } });
       return;
     }
 
-    navigate("/owner/found/new", { state: { draftId: item.id, step: 1 } });
+    navigate("/owner/declarations/found/new", { state: { draftId: item.id, step: 2 } });
   };
 
   const handleDelete = async (item) => {
