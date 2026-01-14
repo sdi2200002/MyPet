@@ -594,7 +594,7 @@ export default function OwnerDashboard() {
                   icon={<SearchIcon sx={{ fontSize: 100, color: PRIMARY }} />}
                   title="Δήλωση Εύρεσης"
                   text="Καταχωρίστε την εύρεση για να εντοπιστεί ο ιδιοκτήτης."
-                  onClick={() => navigate("/lost/new")}
+                  onClick={() => navigate("/owner/found/new")}
                 />
               </Stack>
             </Box>

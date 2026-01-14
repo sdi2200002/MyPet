@@ -59,13 +59,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route path="/lost" element={<LostPets />} />
           <Route path="/lost/:id" element={<LostPetDetails />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/lost/new" element={<FoundWizard />} />
+          <Route path="/found/new" element={<FoundWizard showSidebar={false} />} />
 
           {/* Owner */}
           <Route path="/owner" element={<OwnerDashboard />} />
           <Route path="/owner/declarations" element={<MyDeclarations />} />
           <Route path="/owner/appointments" element={<MyAppointments />} />
-          <Route path="/owner/lost/new" element={<LostWizard />} />
+          <Route path="/owner/found/new" element={<FoundWizard showSidebar={true} />} />
           <Route path="/owner/declarations/success" element={<DeclarationSuccess />} />
           <Route path="/owner/pets" element={<MyPets />} />
           <Route path="/owner/pets/:id/booklet" element={<PetBookletDetails />} />

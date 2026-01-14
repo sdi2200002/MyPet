@@ -400,7 +400,7 @@ export default function LostPets() {
           <Stack alignItems="center" sx={{ mt: 5 }}>
             <Button
               variant="contained"
-              onClick={() => navigate("/lost/new")}
+              onClick={() => navigate("/found/new")}
               sx={{
                 textTransform: "none",
                 borderRadius: 2,
