@@ -51,6 +51,60 @@ async function fetchJSON(path, options) {
   return res.json();
 }
 
+function norm(s) {
+  return String(s ?? "").trim().toLowerCase();
+}
+
+function looksLikeMatch(found, lost) {
+  // ΜΙΝΙΜΑΛ matching: ίδιο είδος + περιοχή + χρώμα (χαλαρό)
+  const sameSpecies = norm(found?.species) && norm(found?.species) === norm(lost?.species);
+  const sameArea = norm(found?.area) && norm(found?.area) === norm(lost?.area);
+
+  // χρώμα: αν το ένα "περιέχει" το άλλο (π.χ. "άσπρο-καφέ" vs "καφέ")
+  const fColor = norm(found?.color);
+  const lColor = norm(lost?.color);
+  const colorOk = fColor && lColor && (fColor.includes(lColor) || lColor.includes(fColor));
+
+  return sameSpecies && sameArea && colorOk;
+}
+
+// δημιουργεί notification στον owner της δήλωσης απώλειας
+async function notifyOwnerForFoundMatch({ foundDecl, lostDecl }) {
+  // Προϋπόθεση: η lost declaration πρέπει να έχει ownerId (ή userId) για να ξέρουμε ποιον ειδοποιούμε.
+  const ownerId = lostDecl?.ownerId ?? lostDecl?.userId;
+  if (!ownerId) return;
+
+  const payload = {
+    id: `n_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+    userId: String(ownerId),
+    role: "owner",
+
+    type: "pet_found_match",
+    title: "Βρέθηκε πιθανό ταίριασμα!",
+    message: `Υπάρχει νέα δήλωση εύρεσης που μοιάζει με τη δήλωση απώλειάς σας (${lostDecl?.area || "—"}).`,
+
+    refType: "foundDeclaration",
+    refId: String(foundDecl?.id ?? ""), // για να ανοίγει τη found δήλωση
+    createdAt: new Date().toISOString(),
+    readAt: null,
+
+    meta: {
+      lostDeclarationId: String(lostDecl?.id ?? ""),
+      foundDeclarationId: String(foundDecl?.id ?? ""),
+      area: foundDecl?.area,
+      species: foundDecl?.species,
+      color: foundDecl?.color,
+    },
+  };
+
+  await fetchJSON(`/api/notifications`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+
 function Panel({ children }) {
   return (
     <Paper
@@ -432,19 +486,34 @@ export default function FoundWizard() {
     try {
       const payload = await buildPayload("Οριστική");
 
+      let createdOrUpdated = null;
+
       if (editingId) {
-        await fetchJSON(`/api/foundDeclarations/${encodeURIComponent(String(editingId))}`, {
+        createdOrUpdated = await fetchJSON(`/api/foundDeclarations/${encodeURIComponent(String(editingId))}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
       } else {
-        const created = await fetchJSON(`/api/foundDeclarations`, {
+        createdOrUpdated = await fetchJSON(`/api/foundDeclarations`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        setEditingId(String(created?.id));
+        setEditingId(String(createdOrUpdated?.id));
+      }
+
+      // ✅ 1) Φέρε τις ΟΡΙΣΤΙΚΕΣ δηλώσεις απώλειας
+      // άλλαξε το endpoint αν το έχεις αλλιώς (π.χ. /api/lostDeclarations)
+      const lostList = await fetchJSON(`/api/lostDeclarations?status=Οριστική`);
+
+      // ✅ 2) Βρες matches
+      const lostArr = Array.isArray(lostList) ? lostList : [];
+      const matches = lostArr.filter((lost) => looksLikeMatch(createdOrUpdated, lost));
+
+      // ✅ 3) Στείλε notification σε κάθε owner match
+      for (const lostDecl of matches) {
+        await notifyOwnerForFoundMatch({ foundDecl: createdOrUpdated, lostDecl });
       }
 
       if (isOwnerRoute) {

@@ -20,6 +20,31 @@ async function fetchJSON(path, options) {
   return res.json();
 }
 
+function makeNotifId() {
+  return `n_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+async function createNotification(payload) {
+  // ✅ Δεν αφήνουμε να σπάσει το flow αν αποτύχει το notification
+  const body = {
+    id: payload.id || makeNotifId(),
+    userId: String(payload.userId),
+    createdAt: payload.createdAt || new Date().toISOString(),
+    readAt: null,
+    type: payload.type || "info",
+    title: payload.title || "",
+    message: payload.message || "",
+    refType: payload.refType || "",
+    refId: payload.refId || "",
+  };
+
+  return fetchJSON(`/api/notifications`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 function formatDate(iso) {
   if (!iso || !iso.includes("-")) return "—";
   const [y, m, d] = iso.split("-");
@@ -92,7 +117,6 @@ function OwnerPageShell({ children }) {
           alignItems: "flex-start",
         }}
       >
-        {/* spacer ώστε το content να μη μπαίνει κάτω απ’ το sidebar */}
         <Box
           sx={{
             width: OWNER_SIDEBAR_W,
@@ -165,10 +189,7 @@ export default function VetNewAppointment() {
       const petsArr = Array.isArray(p) ? p : [];
       setVet(v || null);
       setPets(petsArr);
-
-      // default select 1ο pet
       setPetId((prev) => prev || (petsArr[0]?.id ?? ""));
-
       setLoading(false);
     })().catch((e) => {
       console.error(e);
@@ -184,7 +205,6 @@ export default function VetNewAppointment() {
     };
   }, [id, user?.id]);
 
-  // ✅ robust (string/number)
   const chosenPet = useMemo(
     () => pets.find((p) => String(p.id) === String(petId)) || null,
     [pets, petId]
@@ -233,6 +253,36 @@ export default function VetNewAppointment() {
       body: JSON.stringify(newAppt),
     });
 
+    // ✅ Notifications (Owner + Vet)
+    try {
+      const whenGR = new Date(created.when).toLocaleString("el-GR", { dateStyle: "short", timeStyle: "short" });
+
+      // 1) Owner notification
+      await createNotification({
+        userId: created.ownerId,
+        type: "appointment_pending",
+        title: "Νέο ραντεβού (Εκκρεμές)",
+        message: `Υποβλήθηκε αίτημα ραντεβού για ${created.petName} (${created.service}) στις ${whenGR}.`,
+        refType: "appointment",
+        refId: created.id,
+      });
+
+      // 2) Vet notification (αν ο vet έχει userId, το χρησιμοποιούμε)
+      // Αν στο /api/vets έχεις πεδίο vet.userId => ✅ σωστό
+      if (vet?.userId != null) {
+        await createNotification({
+          userId: vet.userId,
+          type: "new_request",
+          title: "Νέο αίτημα ραντεβού",
+          message: `Νέο αίτημα από ${created.petName} (${created.service}) στις ${whenGR}.`,
+          refType: "appointment",
+          refId: created.id,
+        });
+      }
+    } catch (e) {
+      console.warn("Notification failed (ignored):", e);
+    }
+
     navigate(
       `/owner/appointments/success?apptId=${encodeURIComponent(String(created?.id))}&vetId=${encodeURIComponent(
         String(id)
@@ -240,7 +290,6 @@ export default function VetNewAppointment() {
     );
   };
 
-  // ------- UI STATES -------
   if (loading) {
     return (
       <OwnerPageShell>
@@ -306,7 +355,6 @@ export default function VetNewAppointment() {
               p: 2,
             }}
           >
-            {/* Vet Header */}
             <Stack direction="row" spacing={2} alignItems="center">
               <Box
                 component="img"
@@ -334,7 +382,6 @@ export default function VetNewAppointment() {
               </Box>
             </Stack>
 
-            {/* Services + Pets */}
             <Box
               sx={{
                 display: "grid",
@@ -343,7 +390,6 @@ export default function VetNewAppointment() {
                 mt: 2.5,
               }}
             >
-              {/* Services */}
               <Box>
                 <Typography sx={{ fontWeight: 900, color: TITLE, mb: 1.2 }}>Επιλογή Υπηρεσίας</Typography>
                 <Stack spacing={1}>
@@ -369,7 +415,6 @@ export default function VetNewAppointment() {
                 </Stack>
               </Box>
 
-              {/* Pets */}
               <Box>
                 <Typography sx={{ fontWeight: 900, color: TITLE, mb: 0.6 }}>Επιλογή Κατοικιδίου</Typography>
                 <Typography sx={{ fontSize: 12, color: MUTED, fontWeight: 700, mb: 1.4 }}>
@@ -394,13 +439,7 @@ export default function VetNewAppointment() {
                     </Typography>
                   </Paper>
                 ) : (
-                  <Box
-                    sx={{
-                      maxHeight: 350, // ✅ scroll
-                      overflowY: "auto",
-                      pr: 0.5,
-                    }}
-                  >
+                  <Box sx={{ maxHeight: 350, overflowY: "auto", pr: 0.5 }}>
                     <Box
                       sx={{
                         display: "grid",
@@ -411,7 +450,12 @@ export default function VetNewAppointment() {
                       }}
                     >
                       {pets.map((p) => (
-                        <PetPick key={p.id} pet={p} active={String(p.id) === String(petId)} onClick={() => setPetId(p.id)} />
+                        <PetPick
+                          key={p.id}
+                          pet={p}
+                          active={String(p.id) === String(petId)}
+                          onClick={() => setPetId(p.id)}
+                        />
                       ))}
                     </Box>
                   </Box>
@@ -420,7 +464,6 @@ export default function VetNewAppointment() {
             </Box>
           </Paper>
 
-          {/* Right details */}
           <Paper
             elevation={0}
             sx={{

@@ -46,6 +46,27 @@ function getPetPhotoFromProfile(pet) {
   return isValidPhoto(candidate) ? candidate : "";
 }
 
+async function createNotification(payload) {
+  return fetchJSON(`/api/notifications`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+function makeNotif({ userId, type, title, message, meta }) {
+  return {
+    userId: String(userId),
+    type: type || "info",            // info | success | warning | error
+    title: title || "",
+    message: message || "",
+    meta: meta || {},                // π.χ. { apptId, petId, vetId }
+    isRead: false,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+
 function StatusChip({ status }) {
   const label = status || "Εκκρεμές";
 
@@ -312,11 +333,12 @@ export default function MyAppointments() {
   };
 
   const confirmCancel = async () => {
-    if (!cancelItem?.id) return;
+    if (!cancelItem?.id || !user?.id) return;
 
     try {
       setCancelSaving(true);
 
+      // 1) PATCH appointment -> Ακυρωμένο
       const payload = {
         status: "Ακυρωμένο",
         canceledAt: new Date().toISOString(),
@@ -329,10 +351,45 @@ export default function MyAppointments() {
         body: JSON.stringify(payload),
       });
 
+      // 2) Update local state για να φανεί άμεσα
       setAppointments((prev) =>
         prev.map((x) => (String(x.id) === String(cancelItem.id) ? { ...x, ...updated } : x))
       );
 
+      // 3) Notifications (owner + vet)
+      // Προσοχή: παίρνουμε ids από updated αν υπάρχουν, αλλιώς από cancelItem
+      const apptId = String(updated?.id ?? cancelItem.id);
+      const vetId = String(updated?.vetId ?? cancelItem.vetId ?? "");
+      const vetName = String(updated?.vetName ?? cancelItem.vetName ?? "Κτηνίατρος");
+      const petName = String(updated?.petName ?? cancelItem.petName ?? "κατοικίδιο");
+      const whenISO = String(updated?.when ?? cancelItem.when ?? "");
+
+      const dateStr = whenISO ? fmtDate(whenISO) : "—";
+      const timeStr = whenISO ? fmtTime(whenISO) : "—";
+
+      const ownerNotif = makeNotif({
+        userId: user.id,
+        type: "error",
+        title: "Ακύρωση ραντεβού",
+        message: `Ακυρώσατε το ραντεβού με ${vetName} για ${petName} στις ${dateStr} ${timeStr}.`,
+        meta: { apptId, vetId, petName, when: whenISO },
+      });
+
+      const vetNotif = vetId
+        ? makeNotif({
+            userId: vetId, // ⚠️ Εδώ θεωρούμε ότι το "userId" του vet στα notifications είναι vetId
+            type: "error",
+            title: "Ακύρωση ραντεβού από ιδιοκτήτη",
+            message: `Ακυρώθηκε ραντεβού για ${petName} στις ${dateStr} ${timeStr}.`,
+            meta: { apptId, ownerId: String(user.id), petName, when: whenISO },
+          })
+        : null;
+
+      // Κάνε POST (και τα 2 αν υπάρχει vetId)
+      await createNotification(ownerNotif);
+      if (vetNotif) await createNotification(vetNotif);
+
+      // 4) Κλείσε dialog
       closeCancelDialog();
       setCancelSaving(false);
     } catch (e) {
