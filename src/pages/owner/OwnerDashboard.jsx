@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -10,7 +10,6 @@ import {
   Select,
   Stack,
   Typography,
-  TextField,
   Divider,
 } from "@mui/material";
 
@@ -18,18 +17,32 @@ import SearchIcon from "@mui/icons-material/Search";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
-import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import LocalHospitalOutlinedIcon from "@mui/icons-material/LocalHospitalOutlined";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import InputAdornment from "@mui/material/InputAdornment";
 
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
 import { useNavigate } from "react-router-dom";
 
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 
+
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";;
+
+
+
+
+
+
+
+// Αν έχεις auth context:
+import { useAuth } from "../../auth/AuthContext";
 // ✅ public/images -> ΔΕΝ κάνουμε import, βάζουμε απευθείας paths
 const dog1 = "/images/dog1.png";
 const cat1 = "/images/cat1.png";
@@ -41,11 +54,6 @@ const PRIMARY = "#0b3d91";
 const PRIMARY_HOVER = "#08316f";
 const PANEL_BG = "#cfe3ff";
 const PANEL_BORDER = "#8fb4e8";
-
-// ✅ Sidebar layout constants
-const NAVBAR_H = 72; // άλλαξέ το αν το navbar σου έχει άλλο ύψος
-const SIDEBAR_W = 280;
-const HERO_H = 240; 
 
 function safeLoad(key) {
   try {
@@ -64,21 +72,211 @@ function isLikelyValidPhotoPath(p) {
   return p.startsWith("/") || p.startsWith("data:");
 }
 
+function dateToISO(d) {
+  if (!d) return "";
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+
+// status colors
+const STATUS_COLOR = {
+  pending: "red",       // Εκκρεμές
+  canceled: "orange",   // Ακυρωμένο
+  scheduled: "blue",    // Προγραμματισμένο / άλλο
+};
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+function toISODateLocal(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function startOfMonth(d) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+function daysInMonth(d) {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+}
+// We want Sunday=0...Saturday=6 like your labels
+function sundayFirstDayIndex(d) {
+  // JS getDay() already returns 0..6 Sunday..Saturday
+  return d.getDay();
+}
+function monthLabel(d) {
+  // Ελληνικό label (ταιριάζει με UI)
+  return d.toLocaleString("el-GR", { month: "long" });
+}
+function normalizeStatusToKey(status) {
+  const s = String(status || "").trim().toLowerCase();
+  if (s === "εκκρεμές") return "pending";
+  if (s === "ακυρωμένο") return "canceled";
+  return "scheduled";
+}
+
+async function fetchJSON(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`HTTP ${res.status} on ${path}`);
+  return res.json();
+}
+
 /** ✅ πιο “μαζεμένο” calendar όπως στο mock */
 function MiniCalendar() {
-  const monthLabel = "November";
-  const yearLabel = "2025";
+  const { user } = useAuth?.() || {};
+  const [monthCursor, setMonthCursor] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
 
-  const days = Array.from({ length: 30 }, (_, i) => i + 1);
-  const padStart = 5;
+  const [appts, setAppts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const mark = { 7: "red", 19: "blue", 24: "orange", 26: "gray" };
+  // --- helper: πάρε logged-in ownerId (useAuth ή localStorage fallback)
+  const ownerId = useMemo(() => {
+    const idFromAuth = user?.id ?? user?.user?.id;
+    if (idFromAuth != null) return String(idFromAuth);
+
+    // fallback σε localStorage (αν το project σου αποθηκεύει κάτι τέτοιο)
+    try {
+      const raw = localStorage.getItem("user");
+      if (!raw) return "";
+      const parsed = JSON.parse(raw);
+      return String(parsed?.id ?? parsed?.user?.id ?? "");
+    } catch {
+      return "";
+    }
+  }, [user]);
+
+  // --- fetch appointments
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/appointments");
+        if (!res.ok) throw new Error("Failed to fetch /api/appointments");
+        const data = await res.json();
+        if (!alive) return;
+        setAppts(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error(e);
+        if (!alive) return;
+        setAppts([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // --- Month label (Ελληνικά)
+  const monthNamesGenitive = [
+    "Ιανουαρίου",
+    "Φεβρουαρίου",
+    "Μαρτίου",
+    "Απριλίου",
+    "Μαΐου",
+    "Ιουνίου",
+    "Ιουλίου",
+    "Αυγούστου",
+    "Σεπτεμβρίου",
+    "Οκτωβρίου",
+    "Νοεμβρίου",
+    "Δεκεμβρίου",
+  ];
+
+  const monthLabel = `${monthNamesGenitive[monthCursor.getMonth()]} ${monthCursor.getFullYear()}`;
+
+  // --- Εξάγουμε status ανά μέρα (timezone-safe: ISO date από string)
+  // Χρωματική προτεραιότητα:
+  // Ακυρωμένο (κόκκινο) > Εκκρεμές (πορτοκαλί) > άλλο/προγραμματισμένο (μπλε)
+  const dayColorByISO = useMemo(() => {
+    const map = new Map(); // dateISO -> "blue" | "orange" | "red"
+
+    const myAppts = appts.filter((a) => String(a?.ownerId ?? "") === String(ownerId));
+
+    for (const a of myAppts) {
+      const when = String(a?.when ?? "");
+      if (!when) continue;
+
+      const dateISO = when.slice(0, 10); // ✅ YYYY-MM-DD (χωρίς timezone shift)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateISO)) continue;
+
+      const status = String(a?.status ?? "");
+      let c = "blue";
+      if (status === "Εκκρεμές") c = "orange";
+      if (status === "Ακυρωμένο") c = "red";
+
+      const prev = map.get(dateISO);
+
+      // priority: red > orange > blue
+      const rank = (x) => (x === "red" ? 3 : x === "orange" ? 2 : 1);
+      if (!prev || rank(c) > rank(prev)) {
+        map.set(dateISO, c);
+      }
+    }
+
+    return map;
+  }, [appts, ownerId]);
+
+  // --- days for current month grid
+  const year = monthCursor.getFullYear();
+  const month = monthCursor.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  // Θέλουμε εβδομάδα Sun..Sat για να ταιριάζει με το mock σου (Sun Mon Tue...)
+  const firstDow = new Date(year, month, 1).getDay(); // 0=Sun..6=Sat
+  const padStart = firstDow;
+
+  const todayISO = useMemo(() => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }, []);
+
+  const borderFor = (iso) => {
+    const c = dayColorByISO.get(iso);
+    if (c === "red") return "2px solid #e11d48"; // ακυρωμένο
+    if (c === "orange") return "2px solid #f59e0b"; // εκκρεμές
+    if (c === "blue") return "2px solid #2563eb"; // προγραμματισμένο
+    return "1px solid rgba(0,0,0,0.10)";
+  };
+
+  const bgFor = (iso) => {
+    const c = dayColorByISO.get(iso);
+    if (!c) return "transparent";
+    return "rgba(11,61,145,0.04)";
+  };
+
+  const isInThisMonth = (iso) => {
+    if (!iso) return false;
+    return iso.startsWith(`${year}-${String(month + 1).padStart(2, "0")}-`);
+  };
+
+  function goPrevMonth() {
+    setMonthCursor((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+  }
+  function goNextMonth() {
+    setMonthCursor((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+  }
+  function goToday() {
+    const d = new Date();
+    setMonthCursor(new Date(d.getFullYear(), d.getMonth(), 1));
+  }
 
   return (
     <Paper
       elevation={0}
       sx={{
-        width: 280,
+        width: 360,
         borderRadius: 3,
         bgcolor: "#fff",
         border: "2px solid #c7d4e8",
@@ -86,31 +284,59 @@ function MiniCalendar() {
         overflow: "hidden",
       }}
     >
+      {/* Header */}
       <Box
         sx={{
-          px: 1.8,
-          py: 1.1,
+          px: 2,
+          py: 1.2,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          gap: 1,
         }}
       >
-        <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 14 }}>
-          {monthLabel}{" "}
-          <span style={{ fontWeight: 700, opacity: 0.8 }}>{yearLabel}</span>
+        <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 16 }}>
+          {monthLabel}
         </Typography>
-        <CalendarMonthOutlinedIcon sx={{ color: PRIMARY }} fontSize="small" />
+
+        <Stack direction="row" spacing={0.6} alignItems="center">
+          <IconButton
+            size="small"
+            onClick={goPrevMonth}
+            sx={{ width: 34, height: 34, border: "1px solid rgba(0,0,0,0.10)" }}
+          >
+            ‹
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={goNextMonth}
+            sx={{ width: 34, height: 34, border: "1px solid rgba(0,0,0,0.10)" }}
+          >
+            ›
+          </IconButton>
+
+          <IconButton
+            size="small"
+            onClick={goToday}
+            sx={{ width: 34, height: 34, border: "1px solid rgba(0,0,0,0.10)" }}
+            title="Σήμερα"
+          >
+            <CalendarMonthOutlinedIcon sx={{ color: PRIMARY }} fontSize="small" />
+          </IconButton>
+        </Stack>
       </Box>
 
-      <Box sx={{ px: 1.8, pb: 1.4 }}>
+      {/* Body */}
+      <Box sx={{ px: 2, pb: 1.8 }}>
+        {/* Weekdays */}
         <Box
           sx={{
             display: "grid",
             gridTemplateColumns: "repeat(7, 1fr)",
-            gap: 0.55,
-            fontSize: 11,
+            gap: 0.7,
+            fontSize: 12,
             color: MUTED,
-            mb: 0.8,
+            mb: 1,
           }}
         >
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
@@ -120,51 +346,78 @@ function MiniCalendar() {
           ))}
         </Box>
 
-        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 0.55 }}>
+        {/* Grid */}
+        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 0.7 }}>
           {Array.from({ length: padStart }).map((_, i) => (
-            <Box key={`pad-${i}`} sx={{ height: 26 }} />
+            <Box key={`pad-${i}`} sx={{ height: 34 }} />
           ))}
 
-          {days.map((d) => (
-            <Box
-              key={d}
-              sx={{
-                height: 26,
-                borderRadius: 99,
-                display: "grid",
-                placeItems: "center",
-                fontSize: 11,
-                fontWeight: 800,
-                color: TITLE,
-                border: mark[d] ? `2px solid ${mark[d]}` : "1px solid rgba(0,0,0,0.08)",
-                bgcolor: mark[d] ? "rgba(11,61,145,0.04)" : "transparent",
-              }}
-            >
-              {d}
-            </Box>
-          ))}
+          {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+            const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+            const isToday = iso === todayISO;
+
+            return (
+              <Box
+                key={iso}
+                sx={{
+                  height: 34,
+                  borderRadius: 999,
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: 12.5,
+                  fontWeight: 900,
+                  color: TITLE,
+                  border: borderFor(iso),
+                  bgcolor: bgFor(iso),
+                  boxShadow: isToday ? "inset 0 0 0 2px rgba(11,61,145,0.18)" : "none",
+                  opacity: isInThisMonth(iso) ? 1 : 0.5,
+                  userSelect: "none",
+                }}
+              >
+                {day}
+              </Box>
+            );
+          })}
         </Box>
 
-        <Box sx={{ mt: 1.1, fontSize: 11, color: TITLE }}>
-          <Stack spacing={0.5}>
+        {/* Legend */}
+        <Box sx={{ mt: 1.4, fontSize: 12, color: TITLE }}>
+          <Stack spacing={0.6}>
             <Stack direction="row" spacing={1} alignItems="center">
-              <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "blue" }} />
-              <Typography sx={{ fontSize: 11 }}>Προγραμματισμένο ραντεβού</Typography>
+              <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#2563eb" }} />
+              <Typography sx={{ fontSize: 12 }}>Προγραμματισμένο ραντεβού</Typography>
             </Stack>
+
+            {/* ✅ Εκκρεμές = πορτοκαλί */}
             <Stack direction="row" spacing={1} alignItems="center">
-              <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "red" }} />
-              <Typography sx={{ fontSize: 11 }}>Εκκρεμές</Typography>
+              <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#f59e0b" }} />
+              <Typography sx={{ fontSize: 12 }}>Εκκρεμές</Typography>
             </Stack>
+
+            {/* ✅ Ακυρωμένο = κόκκινο */}
             <Stack direction="row" spacing={1} alignItems="center">
-              <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "orange" }} />
-              <Typography sx={{ fontSize: 11 }}>Ακυρωμένο</Typography>
+              <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#e11d48" }} />
+              <Typography sx={{ fontSize: 12 }}>Ακυρωμένο</Typography>
             </Stack>
+
+            {loading && (
+              <Typography sx={{ mt: 0.6, color: MUTED, fontWeight: 700, fontSize: 12 }}>
+                Φόρτωση ραντεβού...
+              </Typography>
+            )}
+            {!loading && !ownerId && (
+              <Typography sx={{ mt: 0.6, color: MUTED, fontWeight: 700, fontSize: 12 }}>
+                Δεν βρέθηκε χρήστης (ownerId).
+              </Typography>
+            )}
           </Stack>
         </Box>
       </Box>
     </Paper>
   );
 }
+
+
 
 function PetTile({ pet }) {
   return (
@@ -257,84 +510,134 @@ function QuickAction({ icon, title, text, onClick }) {
   );
 }
 
-/** ✅ Searchbar: placeholders γκρι + ίδιο “feeling” με Home */
+/** ✅ Searchbar (Owner Dashboard): χωρίς ώρα + calendar dropdown + minDate=σήμερα */
 function VetsSearchPanel() {
-  const pillSx = {
-    minWidth: 160,
-    bgcolor: "#fff",
-    borderRadius: 999,
-    "& .MuiOutlinedInput-root": { borderRadius: 999 },
-    "& .MuiOutlinedInput-input": { fontWeight: 700, color: TITLE },
-    "& .MuiSelect-select": { fontWeight: 700, color: TITLE },
-  };
+  const navigate = useNavigate();
 
-  const placeholderSpan = (text) => <span style={{ color: MUTED, fontWeight: 700 }}>{text}</span>;
+  const [vetArea, setVetArea] = useState("");
+  const [vetSpecialty, setVetSpecialty] = useState("");
+
+  // date: ISO + picker object
+  const [vetDate, setVetDate] = useState(""); // "YYYY-MM-DD"
+  const [vetDateObj, setVetDateObj] = useState(null);
+
+  const hasActiveVetFilters = Boolean(vetArea?.trim() || vetDate?.trim() || vetSpecialty?.trim());
+
+  function goToVetsSearch() {
+    const params = new URLSearchParams();
+    if (vetArea) params.set("area", vetArea);
+    if (vetSpecialty) params.set("specialty", vetSpecialty);
+    if (vetDate) params.set("date", vetDate);
+    navigate(`/owner/vets?${params.toString()}`);
+  }
+
+  function clearVetFilters() {
+    setVetArea("");
+    setVetSpecialty("");
+    setVetDate("");
+    setVetDateObj(null);
+  }
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        bgcolor: PANEL_BG,
-        borderRadius: 4,
-        p: 2.5,
-        border: `2px solid ${PANEL_BORDER}`,
-        boxShadow: "0 10px 22px rgba(0,0,0,0.10)",
-      }}
-    >
-      <Typography sx={{ fontWeight: 900, color: TITLE, mb: 1.6 }}>
+    <Paper elevation={0} sx={{ bgcolor: "#cfe0f7", borderRadius: 4, p: 2.2 }}>
+      <Typography sx={{ fontWeight: 800, mb: 1.8, color: "#1c2b39" }}>
         Αναζήτηση Κτηνιάτρων
       </Typography>
 
-      <Stack direction={{ xs: "column", md: "row" }} spacing={1.2} alignItems="center">
-        <FormControl size="small" sx={pillSx}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={1.6} alignItems="center">
+        {/* Περιοχή */}
+        <FormControl
+          size="small"
+          hiddenLabel
+          sx={{
+            minWidth: 170,
+            bgcolor: "white",
+            borderRadius: 999,
+            "& .MuiOutlinedInput-root": { borderRadius: 999 },
+          }}
+        >
           <Select
-            value=""
+            value={vetArea}
+            onChange={(e) => setVetArea(e.target.value)}
             displayEmpty
-            startAdornment={<LocationOnOutlinedIcon sx={{ mr: 1, color: MUTED }} />}
-            renderValue={(v) => (v ? v : placeholderSpan("Περιοχή"))}
+            startAdornment={
+              <InputAdornment position="start">
+                <LocationOnOutlinedIcon sx={{ color: "#6b7a90", ml: 0.5 }} />
+              </InputAdornment>
+            }
+            renderValue={(selected) => (
+              <span style={{ color: selected ? "#1c2b39" : "#6b7a90" }}>
+                {selected || "Περιοχή"}
+              </span>
+            )}
           >
-            <MenuItem value="">Περιοχή</MenuItem>
+            <MenuItem value="">Όλες</MenuItem>
             <MenuItem value="Αθήνα">Αθήνα</MenuItem>
             <MenuItem value="Πειραιάς">Πειραιάς</MenuItem>
             <MenuItem value="Θεσσαλονίκη">Θεσσαλονίκη</MenuItem>
           </Select>
         </FormControl>
 
-        <TextField
+        {/* Ημερομηνία */}
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <DatePicker
+            value={vetDateObj}
+            onChange={(newValue) => {
+              setVetDateObj(newValue);
+              setVetDate(dateToISO(newValue));
+            }}
+            format="dd/MM/yyyy"
+            minDate={new Date()}
+            slotProps={{
+              textField: {
+                size: "small",
+                placeholder: "Ημερομηνία",
+                sx: {
+                  bgcolor: "white",
+                  borderRadius: 999,
+                  minWidth: 230,
+                  "& .MuiOutlinedInput-root": { borderRadius: 999 },
+                  "& input::placeholder": { color: "#6b7a90", opacity: 1 },
+                },
+                InputProps: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <CalendarMonthOutlinedIcon sx={{ color: "#6b7a90" }} />
+                    </InputAdornment>
+                  ),
+                },
+              },
+            }}
+          />
+        </LocalizationProvider>
+
+        {/* Ειδικότητα */}
+        <FormControl
           size="small"
-          placeholder="DD / MM / YYYY"
+          hiddenLabel
           sx={{
-            ...pillSx,
-            minWidth: 220,
-            "& input::placeholder": { color: MUTED, opacity: 1, fontWeight: 700 },
+            minWidth: 170,
+            bgcolor: "white",
+            borderRadius: 999,
+            "& .MuiOutlinedInput-root": { borderRadius: 999 },
           }}
-          InputProps={{
-            startAdornment: <CalendarMonthOutlinedIcon sx={{ mr: 1, color: MUTED }} />,
-          }}
-        />
-
-        <FormControl size="small" sx={pillSx}>
+        >
           <Select
-            value=""
+            value={vetSpecialty}
+            onChange={(e) => setVetSpecialty(e.target.value)}
             displayEmpty
-            startAdornment={<AccessTimeOutlinedIcon sx={{ mr: 1, color: MUTED }} />}
-            renderValue={(v) => (v ? v : placeholderSpan("Ώρα"))}
+            startAdornment={
+              <InputAdornment position="start">
+                <LocalHospitalOutlinedIcon sx={{ color: "#6b7a90", ml: 0.5 }} />
+              </InputAdornment>
+            }
+            renderValue={(selected) => (
+              <span style={{ color: selected ? "#1c2b39" : "#6b7a90" }}>
+                {selected || "Ειδικότητα"}
+              </span>
+            )}
           >
-            <MenuItem value="">Ώρα</MenuItem>
-            <MenuItem value="10:00">10:00</MenuItem>
-            <MenuItem value="12:00">12:00</MenuItem>
-            <MenuItem value="17:30">17:30</MenuItem>
-          </Select>
-        </FormControl>
-
-        <FormControl size="small" sx={pillSx}>
-          <Select
-            value=""
-            displayEmpty
-            startAdornment={<LocalHospitalOutlinedIcon sx={{ mr: 1, color: MUTED }} />}
-            renderValue={(v) => (v ? v : placeholderSpan("Ειδικότητα"))}
-          >
-            <MenuItem value="">Ειδικότητα</MenuItem>
+            <MenuItem value="">Όλες</MenuItem>
             <MenuItem value="Γενικός">Γενικός</MenuItem>
             <MenuItem value="Χειρουργός">Χειρουργός</MenuItem>
             <MenuItem value="Δερματολόγος">Δερματολόγος</MenuItem>
@@ -344,20 +647,38 @@ function VetsSearchPanel() {
         <Button
           variant="contained"
           startIcon={<SearchIcon />}
+          onClick={goToVetsSearch}
           sx={{
             textTransform: "none",
             borderRadius: 999,
             px: 3.2,
             ml: { md: "auto" },
-            bgcolor: PRIMARY,
-            "&:hover": { bgcolor: PRIMARY_HOVER },
-            boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
+            bgcolor: "#0b3d91",
+            "&:hover": { bgcolor: "#08316f" },
+            boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
             minWidth: 140,
-            fontWeight: 900,
+            fontWeight: 800,
           }}
         >
           Αναζήτηση
         </Button>
+
+        {hasActiveVetFilters && (
+          <IconButton
+            onClick={clearVetFilters}
+            aria-label="Καθαρισμός φίλτρων"
+            sx={{
+              ml: 0.6,
+              width: 42,
+              height: 42,
+              bgcolor: "white",
+              border: "1px solid rgba(0,0,0,0.12)",
+              "&:hover": { bgcolor: "rgba(0,0,0,0.04)" },
+            }}
+          >
+            <CloseRoundedIcon sx={{ fontSize: 20, color: "#6b7a90" }} />
+          </IconButton>
+        )}
       </Stack>
     </Paper>
   );
@@ -366,9 +687,7 @@ function VetsSearchPanel() {
 function LatestUpdates() {
   return (
     <Box sx={{ mt: 3 }}>
-      <Typography sx={{ fontWeight: 900, color: TITLE, mb: 1.2 }}>
-        Τελευταίες Ενημερώσεις
-      </Typography>
+      <Typography sx={{ fontWeight: 900, color: TITLE, mb: 1.2 }}>Τελευταίες Ενημερώσεις</Typography>
 
       <Paper
         elevation={0}
@@ -386,8 +705,6 @@ function LatestUpdates() {
     </Box>
   );
 }
-
-
 
 export default function OwnerDashboard() {
   const navigate = useNavigate();
@@ -496,11 +813,11 @@ export default function OwnerDashboard() {
           <Box
             sx={{
               position: "sticky",
-              top: 16, // ✅ αρχίζει αμέσως κάτω από hero (επειδή μπαίνει μετά το hero)
+              top: 16,
               maxHeight: "calc(100vh - 16px)",
             }}
           >
-            <OwnerNavbar mode="hero"/>
+            <OwnerNavbar mode="hero" />
           </Box>
         </Box>
 
@@ -517,102 +834,104 @@ export default function OwnerDashboard() {
                 alignItems: "start",
               }}
             >
-            {/* Left: pets panel */}
-            <Box sx={{ pt: 0.2 }}>
-              <Typography
-                sx={{
-                  fontWeight: 900,
-                  color: TITLE,
-                  mb: 1.2,
-                  fontSize: 20,
-                  textAlign: "center",
-                }}
-              >
-                Τα Κατοικίδια μου
-              </Typography>
-
-              <Stack alignItems="center" spacing={1.2}>
-                <IconButton
-                  disabled={!canUp}
-                  onClick={() => setPetIndex((p) => Math.max(0, p - 1))}
+              {/* Left: pets panel */}
+              <Box sx={{ pt: 0.2 }}>
+                <Typography
                   sx={{
-                    width: 44,
-                    height: 32,
-                    borderRadius: 2,
-                    bgcolor: "rgba(11,61,145,0.08)",
-                    "&:hover": { bgcolor: "rgba(11,61,145,0.14)" },
+                    fontWeight: 900,
+                    color: TITLE,
+                    mb: 1.2,
+                    fontSize: 20,
+                    textAlign: "center",
                   }}
                 >
-                  <KeyboardArrowUpIcon sx={{ color: PRIMARY }} />
-                </IconButton>
+                  Τα Κατοικίδια μου
+                </Typography>
 
-                <Stack spacing={2}>
-                  {visiblePets.map((p) => (
-                    <PetTile key={p.id} pet={p} />
-                  ))}
+                <Stack alignItems="center" spacing={1.2}>
+                  <IconButton
+                    disabled={!canUp}
+                    onClick={() => setPetIndex((p) => Math.max(0, p - 1))}
+                    sx={{
+                      width: 44,
+                      height: 32,
+                      borderRadius: 2,
+                      bgcolor: "rgba(11,61,145,0.08)",
+                      "&:hover": { bgcolor: "rgba(11,61,145,0.14)" },
+                    }}
+                  >
+                    <KeyboardArrowUpIcon sx={{ color: PRIMARY }} />
+                  </IconButton>
+
+                  <Stack spacing={2}>
+                    {visiblePets.map((p) => (
+                      <PetTile key={p.id} pet={p} />
+                    ))}
+                  </Stack>
+
+                  <IconButton
+                    disabled={!canDown}
+                    onClick={() => setPetIndex((p) => Math.min(pets.length - 2, p + 1))}
+                    sx={{
+                      width: 44,
+                      height: 32,
+                      borderRadius: 2,
+                      bgcolor: "rgba(11,61,145,0.08)",
+                      "&:hover": { bgcolor: "rgba(11,61,145,0.14)" },
+                    }}
+                  >
+                    <KeyboardArrowDownIcon sx={{ color: PRIMARY }} />
+                  </IconButton>
                 </Stack>
+              </Box>
 
-                <IconButton
-                  disabled={!canDown}
-                  onClick={() => setPetIndex((p) => Math.min(pets.length - 2, p + 1))}
+              {/* Center: quick actions */}
+              <Box sx={{ pt: 0.2 }}>
+                <Typography
                   sx={{
-                    width: 44,
-                    height: 32,
-                    borderRadius: 2,
-                    bgcolor: "rgba(11,61,145,0.08)",
-                    "&:hover": { bgcolor: "rgba(11,61,145,0.14)" },
+                    fontWeight: 900,
+                    color: TITLE,
+                    mb: 6.5,
+                    fontSize: 20,
+                    textAlign: "center",
                   }}
                 >
-                  <KeyboardArrowDownIcon sx={{ color: PRIMARY }} />
-                </IconButton>
-              </Stack>
+                  Γρήγορες Ενέργειες
+                </Typography>
+
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                  <QuickAction
+                    icon={<CampaignIcon sx={{ fontSize: 100, color: PRIMARY }} />}
+                    title="Δήλωση Απώλειας"
+                    text="Καταχωρίστε την απώλεια του κατοικιδίου σας για άμεση ενημέρωση."
+                    onClick={() => navigate("/owner/lost/new")}
+                  />
+
+                  <QuickAction
+                    icon={<SearchIcon sx={{ fontSize: 100, color: PRIMARY }} />}
+                    title="Δήλωση Εύρεσης"
+                    text="Καταχωρίστε την εύρεση για να εντοπιστεί ο ιδιοκτήτης."
+                    onClick={() => navigate("/owner/found/new")}
+                  />
+                </Stack>
+              </Box>
+
+              {/* Right: calendar */}
+              <Box sx={{ pt: 10, display: "flex", justifyContent: { xs: "flex-start", md: "flex-end" } }}>
+                <MiniCalendar />
+              </Box>
             </Box>
 
-            {/* Center: quick actions */}
-            <Box sx={{ pt: 0.2 }}>
-              <Typography
-                sx={{
-                  fontWeight: 900,
-                  color: TITLE,
-                  mb: 6.5,
-                  fontSize: 20,
-                  textAlign: "center",
-                }}
-              >
-                Γρήγορες Ενέργειες
-              </Typography>
+            <Divider sx={{ my: 4 }} />
 
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                <QuickAction
-                  icon={<CampaignIcon sx={{ fontSize: 100, color: PRIMARY }} />}
-                  title="Δήλωση Απώλειας"
-                  text="Καταχωρίστε την απώλεια του κατοικιδίου σας για άμεση ενημέρωση."
-                  onClick={() => navigate("/owner/lost/new")}
-                />
-
-                <QuickAction
-                  icon={<SearchIcon sx={{ fontSize: 100, color: PRIMARY }} />}
-                  title="Δήλωση Εύρεσης"
-                  text="Καταχωρίστε την εύρεση για να εντοπιστεί ο ιδιοκτήτης."
-                  onClick={() => navigate("/owner/found/new")}
-                />
-              </Stack>
+            {/* SCROLL PART */}
+            <Box sx={{ mt: 1 }}>
+              <VetsSearchPanel />
+              <LatestUpdates />
             </Box>
-
-            {/* Right: calendar */}
-            <Box sx={{ pt: 10, display: "flex", justifyContent: { xs: "flex-start", md: "flex-end" } }}>
-              <MiniCalendar />
-            </Box>
-           </Box>
-
-      {/* SCROLL PART */}
-      <Box sx={{ mt: 4 }}>
-        <VetsSearchPanel />
-        <LatestUpdates />
+          </Container>
+        </Box>
       </Box>
-    </Container>
-  </Box>
-</Box>
 
       <Footer />
     </Box>

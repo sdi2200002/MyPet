@@ -9,14 +9,16 @@ import {
   Select,
   Stack,
   Typography,
-  TextField,
+  IconButton,
 } from "@mui/material";
+
 import SearchIcon from "@mui/icons-material/Search";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import LocalHospitalOutlinedIcon from "@mui/icons-material/LocalHospitalOutlined";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
-import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+
 import InputAdornment from "@mui/material/InputAdornment";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -26,6 +28,10 @@ import AppBreadcrumbs from "../../components/Breadcrumbs";
 import Pager from "../../components/Pager";
 import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
 
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+
 /* ====== THEME ====== */
 const PRIMARY = "#0b3d91";
 const PRIMARY_HOVER = "#08316f";
@@ -34,13 +40,14 @@ const MUTED = "#6b7a90";
 const PANEL_BG = "#cfe3ff";
 const PANEL_BORDER = "#8fb4e8";
 
-/* ====== HELPERS ====== */
+/* ====== API ====== */
 async function fetchJSON(path) {
   const res = await fetch(path);
   if (!res.ok) throw new Error(`HTTP ${res.status} on ${path}`);
   return res.json();
 }
 
+/* ====== DATE HELPERS ====== */
 // Δέχεται "13/01/2026" ή "2026-01-13" και επιστρέφει ISO "2026-01-13" (ή "")
 function normalizeDateToISO(s) {
   if (!s) return "";
@@ -50,13 +57,67 @@ function normalizeDateToISO(s) {
   if (m) return `${m[3]}-${m[2]}-${m[1]}`;
   return "";
 }
+function dateToISO(d) {
+  if (!d) return "";
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+function todayISO() {
+  return dateToISO(new Date());
+}
+function isPastISODate(dateISO) {
+  if (!dateISO) return false;
+  return dateISO < todayISO();
+}
+function dateISOFromWhen(when) {
+  if (!when) return "";
+  return String(when).slice(0, 10);
+}
+function timeHHMMFromWhen(when) {
+  if (!when) return "";
+  const s = String(when);
+  const t = s.indexOf("T");
+  if (t !== -1 && s.length >= t + 6) {
+    const hhmm = s.slice(t + 1, t + 6);
+    if (/^\d{2}:\d{2}$/.test(hhmm)) return hhmm;
+  }
+  return "";
+}
+function blocksSlot(status) {
+  // Με βάση τα data σου: "Ακυρωμένο" δεν μπλοκάρει slot
+  const st = String(status || "").trim().toLowerCase();
+  return st !== "ακυρωμένο";
+}
 
-function hhmmFromISO(isoString) {
-  const d = new Date(isoString);
-  if (Number.isNaN(d.getTime())) return "";
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
+/* ====== SLOTS ====== */
+// Σταθερά slots (γιατί στο vets schema δεν έχεις ωράριο)
+// ταιριάζει με το UI σου (30' βήμα)
+const POSSIBLE_SLOTS = [
+  "09:00", "09:30",
+  "10:00", "10:30",
+  "11:00", "11:30",
+  "12:00", "12:30",
+  "13:00", "13:30",
+  "14:00", "14:30",
+  "15:00", "15:30",
+  "16:00", "16:30",
+];
+
+function getAvailableSlotsForVetOnDate(vet, dateISO, appointments) {
+  if (!dateISO) return POSSIBLE_SLOTS;
+
+  const booked = new Set(
+    appointments
+      .filter((a) => String(a?.vetId) === String(vet?.id))
+      .filter((a) => dateISOFromWhen(a?.when) === dateISO)
+      .filter((a) => blocksSlot(a?.status))
+      .map((a) => timeHHMMFromWhen(a?.when))
+      .filter(Boolean)
+  );
+
+  return POSSIBLE_SLOTS.filter((t) => !booked.has(t));
 }
 
 function VetCard({ vet, onView }) {
@@ -103,9 +164,13 @@ function VetCard({ vet, onView }) {
 
         <Stack direction="row" spacing={1} sx={{ mt: 0.6, flexWrap: "wrap" }}>
           <Typography sx={{ fontWeight: 900, fontSize: 12 }}>⭐ {vet.rating ?? "—"}</Typography>
-          <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>({vet.reviewsCount ?? 0})</Typography>
+          <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
+            ({vet.reviewsCount ?? 0})
+          </Typography>
           <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>• {vet.area || "—"}</Typography>
-          <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>• {vet.specialty || "—"}</Typography>
+          <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
+            • {vet.specialty || "—"}
+          </Typography>
         </Stack>
 
         <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12, mt: 0.4 }}>
@@ -135,11 +200,11 @@ export default function VetSearch() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // filters
+  // filters (χωρίς ώρα)
   const [area, setArea] = useState("");
   const [spec, setSpec] = useState("");
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+  const [date, setDate] = useState(""); // ISO "YYYY-MM-DD"
+  const [dateObj, setDateObj] = useState(null); // Date | null
 
   const [vets, setVets] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -155,12 +220,15 @@ export default function VetSearch() {
     const p = new URLSearchParams(location.search);
     setArea(p.get("area") || "");
     setSpec(p.get("specialty") || "");
-    setDate(p.get("date") || "");
-    setTime(p.get("time") || "");
+
+    const d = p.get("date") || "";
+    setDate(d);
+    setDateObj(d ? new Date(`${d}T00:00:00`) : null);
+
     setPage(1);
   }, [location.search]);
 
-  // ✅ Load all data from API (use /api/* όπως το υπόλοιπο project)
+  // ✅ Load data
   useEffect(() => {
     let alive = true;
 
@@ -169,7 +237,10 @@ export default function VetSearch() {
         setLoading(true);
         setErr("");
 
-        const [vetsData, apptsData] = await Promise.all([fetchJSON("/api/vets"), fetchJSON("/api/appointments")]);
+        const [vetsData, apptsData] = await Promise.all([
+          fetchJSON("/api/vets"),
+          fetchJSON("/api/appointments"),
+        ]);
 
         if (!alive) return;
         setVets(Array.isArray(vetsData) ? vetsData : []);
@@ -188,48 +259,30 @@ export default function VetSearch() {
     };
   }, []);
 
-  // appointments grouped by vetId
-  const apptsByVetId = useMemo(() => {
-    const map = new Map();
-    for (const a of appointments) {
-      const vid = String(a?.vetId ?? "");
-      if (!vid) continue;
-      if (!map.has(vid)) map.set(vid, []);
-      map.get(vid).push(a);
-    }
-    return map;
-  }, [appointments]);
-
-  // filtering
+  // ✅ filtering based on real availability
   const filtered = useMemo(() => {
     const areaQ = area.trim();
     const specQ = spec.trim();
     const dateISO = normalizeDateToISO(date);
-    const timeQ = time.trim();
+
+    // Αν διάλεξε παρελθοντική ημερομηνία → κανένας
+    if (dateISO && isPastISODate(dateISO)) return [];
 
     return vets
       .filter((v) => {
         if (areaQ && String(v.area || "").toLowerCase() !== areaQ.toLowerCase()) return false;
         if (specQ && String(v.specialty || "").toLowerCase() !== specQ.toLowerCase()) return false;
 
-        // If date/time provided, keep vets that have an appointment matching those criteria
-        if (dateISO || timeQ) {
-          const list = apptsByVetId.get(String(v.id)) || [];
-          const ok = list.some((a) => {
-            if (!a?.when) return false;
-            const aDateISO = String(a.when).slice(0, 10);
-            const aTime = hhmmFromISO(a.when);
-            if (dateISO && aDateISO !== dateISO) return false;
-            if (timeQ && aTime !== timeQ) return false;
-            return true;
-          });
-          if (!ok) return false;
+        // ✅ Αν υπάρχει date filter: κρατάμε μόνο όσους έχουν τουλάχιστον 1 διαθέσιμο slot
+        if (dateISO) {
+          const available = getAvailableSlotsForVetOnDate(v, dateISO, appointments);
+          return available.length > 0;
         }
 
         return true;
       })
       .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
-  }, [vets, area, spec, date, time, apptsByVetId]);
+  }, [vets, appointments, area, spec, date]);
 
   // pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
@@ -242,18 +295,13 @@ export default function VetSearch() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const hasFilters = useMemo(
-    () => !!area.trim() || !!spec.trim() || !!date.trim() || !!time.trim(),
-    [area, spec, date, time]
-  );
+  const hasFilters = useMemo(() => !!area.trim() || !!spec.trim() || !!date.trim(), [area, spec, date]);
 
-  // write query params
   function applySearch() {
     const params = new URLSearchParams();
     if (area) params.set("area", area);
     if (spec) params.set("specialty", spec);
-    if (date) params.set("date", date);
-    if (time) params.set("time", time);
+    if (date) params.set("date", normalizeDateToISO(date));
     navigate(`/owner/vets?${params.toString()}`);
   }
 
@@ -261,7 +309,7 @@ export default function VetSearch() {
     setArea("");
     setSpec("");
     setDate("");
-    setTime("");
+    setDateObj(null);
     setPage(1);
     navigate("/owner/vets");
   }
@@ -280,9 +328,7 @@ export default function VetSearch() {
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <PublicNavbar />
 
-      {/* ✅ 2-column layout: sidebar + content */}
       <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
-        {/* LEFT spacer */}
         <Box
           sx={{
             width: OWNER_SIDEBAR_W,
@@ -294,7 +340,6 @@ export default function VetSearch() {
 
         <OwnerNavbar mode="navbar" />
 
-        {/* RIGHT content */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Container maxWidth="lg" sx={{ py: 2.5 }}>
             <Box>
@@ -310,22 +355,11 @@ export default function VetSearch() {
                 border: `2px solid ${PANEL_BORDER}`,
               }}
             >
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.6 }}>
-                <Typography sx={{ fontWeight: 900, color: TITLE }}>Αναζήτηση Κτηνιάτρων</Typography>
-
-                {hasFilters && (
-                  <Button
-                    variant="text"
-                    onClick={clearFilters}
-                    sx={{ textTransform: "none", fontWeight: 900, color: PRIMARY }}
-                  >
-                    Καθαρισμός
-                  </Button>
-                )}
-              </Stack>
+              <Typography sx={{ fontWeight: 900, color: TITLE, mb: 1.6 }}>
+                Αναζήτηση Κτηνιάτρων
+              </Typography>
 
               <Stack direction={{ xs: "column", md: "row" }} spacing={1.2} alignItems="center">
-                {/* Περιοχή */}
                 <FormControl size="small" sx={pillSx}>
                   <Select
                     value={area}
@@ -341,50 +375,39 @@ export default function VetSearch() {
                   </Select>
                 </FormControl>
 
-                {/* Ημερομηνία */}
-                <TextField
-                  size="small"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  placeholder="Ημερομηνία (πχ 13/01/2026)"
-                  sx={{
-                    minWidth: 230,
-                    bgcolor: "#fff",
-                    borderRadius: 999,
-                    "& .MuiOutlinedInput-root": { borderRadius: 999 },
-                  }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <CalendarMonthOutlinedIcon sx={{ color: MUTED }} />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
+                {/* ✅ Ημερομηνία - dropdown calendar */}
+                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                  <DatePicker
+                    value={dateObj}
+                    onChange={(newValue) => {
+                      setDateObj(newValue);
+                      setDate(dateToISO(newValue));
+                    }}
+                    format="dd/MM/yyyy"
+                    minDate={new Date()} // ✅ μην επιτρέπεις παρελθόν
+                    slotProps={{
+                      textField: {
+                        size: "small",
+                        placeholder: "Ημερομηνία",
+                        sx: {
+                          minWidth: 230,
+                          bgcolor: "#fff",
+                          borderRadius: 999,
+                          "& .MuiOutlinedInput-root": { borderRadius: 999 },
+                          "& input::placeholder": { color: MUTED, opacity: 1 },
+                        },
+                        InputProps: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <CalendarMonthOutlinedIcon sx={{ color: MUTED }} />
+                            </InputAdornment>
+                          ),
+                        },
+                      },
+                    }}
+                  />
+                </LocalizationProvider>
 
-                {/* Ώρα */}
-                <FormControl size="small" sx={{ ...pillSx, minWidth: 150 }}>
-                  <Select
-                    value={time}
-                    displayEmpty
-                    onChange={(e) => setTime(e.target.value)}
-                    startAdornment={
-                      <InputAdornment position="start">
-                        <AccessTimeOutlinedIcon sx={{ color: MUTED, mr: 1 }} />
-                      </InputAdornment>
-                    }
-                    renderValue={(v) => (v ? v : placeholder("Ώρα"))}
-                  >
-                    <MenuItem value="">Ώρα</MenuItem>
-                    <MenuItem value="09:00">09:00</MenuItem>
-                    <MenuItem value="10:00">10:00</MenuItem>
-                    <MenuItem value="12:00">12:00</MenuItem>
-                    <MenuItem value="15:00">15:00</MenuItem>
-                    <MenuItem value="17:30">17:30</MenuItem>
-                  </Select>
-                </FormControl>
-
-                {/* Ειδικότητα */}
                 <FormControl size="small" sx={pillSx}>
                   <Select
                     value={spec}
@@ -414,6 +437,23 @@ export default function VetSearch() {
                 >
                   Αναζήτηση
                 </Button>
+
+                {hasFilters && (
+                  <IconButton
+                    onClick={clearFilters}
+                    aria-label="Καθαρισμός φίλτρων"
+                    sx={{
+                      ml: 0.6,
+                      width: 42,
+                      height: 42,
+                      bgcolor: "white",
+                      border: "1px solid rgba(0,0,0,0.12)",
+                      "&:hover": { bgcolor: "rgba(0,0,0,0.04)" },
+                    }}
+                  >
+                    <CloseRoundedIcon sx={{ fontSize: 20, color: MUTED }} />
+                  </IconButton>
+                )}
               </Stack>
             </Paper>
 
@@ -460,10 +500,14 @@ export default function VetSearch() {
                         bgcolor: "#f6f8fb",
                       }}
                     >
-                      <Typography sx={{ color: MUTED, fontWeight: 700 }}>Δεν βρέθηκαν κτηνίατροι.</Typography>
+                      <Typography sx={{ color: MUTED, fontWeight: 700 }}>
+                        Δεν βρέθηκαν κτηνίατροι.
+                      </Typography>
                     </Paper>
                   ) : (
-                    view.map((v) => <VetCard key={v.id} vet={v} onView={() => navigate(`/owner/vets/${v.id}`)} />)
+                    view.map((v) => (
+                      <VetCard key={v.id} vet={v} onView={() => navigate(`/owner/vets/${v.id}`)} />
+                    ))
                   )}
                 </Stack>
 

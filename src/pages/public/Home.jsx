@@ -11,7 +11,6 @@ import {
   FormControl,
   Select,
   MenuItem,
-  TextField,
   IconButton,
 } from "@mui/material";
 
@@ -35,10 +34,16 @@ import MedicalServicesOutlinedIcon from "@mui/icons-material/MedicalServicesOutl
 import EventAvailableOutlinedIcon from "@mui/icons-material/EventAvailableOutlined";
 
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
-import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import LocalHospitalOutlinedIcon from "@mui/icons-material/LocalHospitalOutlined";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import ArrowForwardIosRoundedIcon from "@mui/icons-material/ArrowForwardIosRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+
+// ✅ DatePicker (χωρίς date-fns error)
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs from "dayjs";
 
 const LOST_KEY = "mypet_lost_declarations";
 
@@ -54,36 +59,31 @@ function safeLoad(key) {
 function normalizeGreekDateToISO(s) {
   if (!s) return "";
   const t = String(s).trim();
-
   if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
-
   const m = t.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
   if (m) return `${m[3]}-${m[2]}-${m[1]}`;
-
   return "";
 }
 
-function hhmmFromISO(isoString) {
-  const d = new Date(isoString);
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
+function dateToISOFromDayjs(dj) {
+  if (!dj) return "";
+  const d = dj.toDate();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 export default function Home() {
   const navigate = useNavigate();
 
-  // (τα κρατάς για άλλο section)
-  const [area, setArea] = useState("");
-  const [species, setSpecies] = useState("");
-  const [sex, setSex] = useState("");
-  const [color, setColor] = useState("");
-
-  // ✅ Vet search inputs
+  // ✅ Vet search inputs (ΩΡΑ: ΑΦΑΙΡΕΘΗΚΕ)
   const [vetArea, setVetArea] = useState("");
-  const [vetTime, setVetTime] = useState("");
   const [vetSpecialty, setVetSpecialty] = useState("");
-  const [vetDate, setVetDate] = useState("");
+
+  // ✅ date: κρατάμε ISO string + Dayjs object
+  const [vetDate, setVetDate] = useState(""); // ISO "YYYY-MM-DD"
+  const [vetDateObj, setVetDateObj] = useState(null); // dayjs | null
 
   // ✅ DB data
   const [vets, setVets] = useState([]);
@@ -94,6 +94,8 @@ export default function Home() {
 
   // ✅ “έγινε αναζήτηση;”
   const [didSearch, setDidSearch] = useState(false);
+
+  const hasActiveVetFilters = Boolean(vetArea?.trim() || vetDate?.trim() || vetSpecialty?.trim());
 
   // -----------------------------
   // Fetch vets
@@ -157,9 +159,7 @@ export default function Home() {
   // Top rated vets (default view)
   // -----------------------------
   const topVets = useMemo(() => {
-    return [...vets]
-      .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
-      .slice(0, 10); // ✅ πάρε αρκετούς ώστε να έχει νόημα το καρουζέλ
+    return [...vets].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 10);
   }, [vets]);
 
   // appointments grouped by vetId
@@ -181,34 +181,25 @@ export default function Home() {
     const areaQ = vetArea.trim();
     const specQ = vetSpecialty.trim();
     const dateISO = normalizeGreekDateToISO(vetDate);
-    const timeQ = vetTime.trim();
 
     return vets.filter((v) => {
       if (areaQ && String(v.area || "").toLowerCase() !== areaQ.toLowerCase()) return false;
       if (specQ && String(v.specialty || "").toLowerCase() !== specQ.toLowerCase()) return false;
 
-      // date/time using appointments (only if user set date or time)
-      if (dateISO || timeQ) {
+      // ✅ Αν έχει ημερομηνία: κράτα μόνο vets που έχουν appointment εκείνη τη μέρα
+      if (dateISO) {
         const list = apptsByVetId.get(String(v.id)) || [];
-
         const ok = list.some((a) => {
           if (!a?.when) return false;
-
           const aDateISO = String(a.when).slice(0, 10); // YYYY-MM-DD
-          const aTime = hhmmFromISO(a.when);
-
-          if (dateISO && aDateISO !== dateISO) return false;
-          if (timeQ && aTime !== timeQ) return false;
-
-          return true;
+          return aDateISO === dateISO;
         });
-
         if (!ok) return false;
       }
 
       return true;
     });
-  }, [vets, vetArea, vetSpecialty, vetDate, vetTime, apptsByVetId]);
+  }, [vets, vetArea, vetSpecialty, vetDate, apptsByVetId]);
 
   // =============================
   // ✅ VETS CAROUSEL
@@ -237,7 +228,6 @@ export default function Home() {
     setVetCarouselIndex((p) => Math.min(vetTotalPages - 1, p + 1));
   }
 
-  // όταν αλλάζει η λίστα αποτελεσμάτων, γύρνα στην αρχή
   useEffect(() => {
     setVetCarouselIndex(0);
   }, [vetsToShow.length]);
@@ -248,13 +238,12 @@ export default function Home() {
   function goToVetsSearch() {
     setDidSearch(true);
 
-    // πήγαινε στη σελίδα /owner/vets με query params
     const params = new URLSearchParams();
     if (vetArea) params.set("area", vetArea);
     if (vetSpecialty) params.set("specialty", vetSpecialty);
+
     const dateISO = normalizeGreekDateToISO(vetDate);
     if (dateISO) params.set("date", dateISO);
-    if (vetTime) params.set("time", vetTime);
 
     navigate(`/owner/vets?${params.toString()}`);
   }
@@ -263,7 +252,7 @@ export default function Home() {
     setVetArea("");
     setVetSpecialty("");
     setVetDate("");
-    setVetTime("");
+    setVetDateObj(null);
     setDidSearch(false);
   }
 
@@ -489,6 +478,7 @@ export default function Home() {
             </Typography>
 
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.6} alignItems="center">
+              {/* Περιοχή */}
               <FormControl
                 size="small"
                 hiddenLabel
@@ -521,59 +511,40 @@ export default function Home() {
                 </Select>
               </FormControl>
 
-              <TextField
-                size="small"
-                placeholder="Ημερομηνία (π.χ. 13/01/2026)"
-                value={vetDate}
-                onChange={(e) => setVetDate(e.target.value)}
-                sx={{
-                  bgcolor: "white",
-                  borderRadius: 999,
-                  minWidth: 230,
-                  "& .MuiOutlinedInput-root": { borderRadius: 999 },
-                  "& input::placeholder": { color: "#6b7a90", opacity: 1 },
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <CalendarMonthOutlinedIcon sx={{ color: "#6b7a90" }} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+              {/* Ημερομηνία (Calendar) - ✅ όχι παρελθόν */}
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  value={vetDateObj}
+                  minDate={dayjs()} // ✅ δεν επιτρέπει “χτες”
+                  onChange={(newValue) => {
+                    setVetDateObj(newValue);
+                    setVetDate(dateToISOFromDayjs(newValue)); // ✅ ISO
+                  }}
+                  format="DD/MM/YYYY"
+                  slotProps={{
+                    textField: {
+                      size: "small",
+                      placeholder: "Ημερομηνία",
+                      sx: {
+                        bgcolor: "white",
+                        borderRadius: 999,
+                        minWidth: 230,
+                        "& .MuiOutlinedInput-root": { borderRadius: 999 },
+                        "& input::placeholder": { color: "#6b7a90", opacity: 1 },
+                      },
+                      InputProps: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <CalendarMonthOutlinedIcon sx={{ color: "#6b7a90" }} />
+                          </InputAdornment>
+                        ),
+                      },
+                    },
+                  }}
+                />
+              </LocalizationProvider>
 
-              <FormControl
-                size="small"
-                hiddenLabel
-                sx={{
-                  minWidth: 150,
-                  bgcolor: "white",
-                  borderRadius: 999,
-                  "& .MuiOutlinedInput-root": { borderRadius: 999 },
-                }}
-              >
-                <Select
-                  value={vetTime}
-                  onChange={(e) => setVetTime(e.target.value)}
-                  displayEmpty
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <AccessTimeOutlinedIcon sx={{ color: "#6b7a90", ml: 0.5 }} />
-                    </InputAdornment>
-                  }
-                  renderValue={(selected) => (
-                    <span style={{ color: selected ? "#1c2b39" : "#6b7a90" }}>
-                      {selected || "Ώρα"}
-                    </span>
-                  )}
-                >
-                  <MenuItem value="">Όλες</MenuItem>
-                  <MenuItem value="10:00">10:00</MenuItem>
-                  <MenuItem value="12:00">12:00</MenuItem>
-                  <MenuItem value="17:30">17:30</MenuItem>
-                </Select>
-              </FormControl>
-
+              {/* Ειδικότητα */}
               <FormControl
                 size="small"
                 hiddenLabel
@@ -602,6 +573,7 @@ export default function Home() {
                   <MenuItem value="">Όλες</MenuItem>
                   <MenuItem value="Γενικός">Γενικός</MenuItem>
                   <MenuItem value="Χειρουργός">Χειρουργός</MenuItem>
+                  <MenuItem value="Δερματολόγος">Δερματολόγος</MenuItem>
                 </Select>
               </FormControl>
 
@@ -624,13 +596,23 @@ export default function Home() {
                 Αναζήτηση
               </Button>
 
-              <Button
-                variant="text"
-                onClick={clearVetFilters}
-                sx={{ textTransform: "none", fontWeight: 800, color: "#0b3d91" }}
-              >
-                Καθαρισμός
-              </Button>
+              {/* ✅ Minimal clear icon only when filters exist */}
+              {hasActiveVetFilters && (
+                <IconButton
+                  onClick={clearVetFilters}
+                  aria-label="Καθαρισμός φίλτρων"
+                  sx={{
+                    ml: 0.6,
+                    width: 42,
+                    height: 42,
+                    bgcolor: "white",
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    "&:hover": { bgcolor: "rgba(0,0,0,0.04)" },
+                  }}
+                >
+                  <CloseRoundedIcon sx={{ fontSize: 20, color: "#6b7a90" }} />
+                </IconButton>
+              )}
             </Stack>
           </Paper>
 
@@ -643,203 +625,189 @@ export default function Home() {
           </Stack>
 
           {/* CAROUSEL */}
-{isLoadingAny ? (
-  <Paper
-    elevation={0}
-    sx={{
-      p: 2,
-      borderRadius: 3,
-      border: "1px solid rgba(0,0,0,0.08)",
-      bgcolor: "white",
-    }}
-  >
-    <Typography sx={{ color: "text.secondary", fontWeight: 700 }}>
-      Φόρτωση κτηνιάτρων...
-    </Typography>
-  </Paper>
-) : vetsToShow.length === 0 ? (
-  <Paper
-    elevation={0}
-    sx={{
-      p: 2,
-      borderRadius: 3,
-      border: "1px solid rgba(0,0,0,0.08)",
-      bgcolor: "white",
-    }}
-  >
-    <Typography sx={{ fontWeight: 900, color: "#0d2c54" }}>
-      Δεν βρέθηκαν κτηνίατροι
-    </Typography>
-  </Paper>
-) : (
-  <Box
-    sx={{
-      position: "relative",
-      border: "1px solid rgba(11,61,145,0.10)",
-      bgcolor: "rgba(207,224,247,0.25)",
-      borderRadius: 3,
-
-      // ✅ “χώρος” αριστερά/δεξιά για να μπαίνουν τα βελάκια χωρίς να ακουμπάνε κάρτες
-      px: { xs: 5.5, md: 6.5 },
-      py: { xs: 1.6, md: 2 },
-
-      overflow: "hidden",
-    }}
-  >
-    {/* arrows */}
-    <IconButton
-      onClick={goPrevVets}
-      disabled={!canPrevVets}
-      sx={{
-        position: "absolute",
-        left: 14, // ✅ μέσα στο padding
-        top: "50%",
-        transform: "translateY(-50%)",
-        bgcolor: "white",
-        border: "1px solid rgba(0,0,0,0.12)",
-        "&:hover": { bgcolor: "white" },
-        zIndex: 2,
-      }}
-    >
-      <ChevronLeftIcon />
-    </IconButton>
-
-    <IconButton
-      onClick={goNextVets}
-      disabled={!canNextVets}
-      sx={{
-        position: "absolute",
-        right: 14, // ✅ μέσα στο padding
-        top: "50%",
-        transform: "translateY(-50%)",
-        bgcolor: "white",
-        border: "1px solid rgba(0,0,0,0.12)",
-        "&:hover": { bgcolor: "white" },
-        zIndex: 2,
-      }}
-    >
-      <ChevronRightIcon />
-    </IconButton>
-
-    {/* cards */}
-    <Stack
-      direction={{ xs: "column", md: "row" }}
-      spacing={3}                  // ✅ λίγο μεγαλύτερο κενό
-      alignItems="stretch"
-      justifyContent="center"      // ✅ πάντα στη μέση
-      sx={{ mt: 0.6 }}
-    >
-      {visibleVets.map((v) => (
-        <Paper
-          key={v.id}
-          elevation={0}
-          onClick={() => navigate(`/owner/vets/${v.id}`)}
-          sx={{
-            width: { xs: "100%", md: 300 },
-            borderRadius: 3,
-            border: "1px solid rgba(0,0,0,0.10)",
-            bgcolor: "white",
-            cursor: "pointer",
-            overflow: "hidden",
-            "&:hover": { transform: "translateY(-3px)" },
-            transition: "transform 160ms ease",
-            display: "flex",
-            flexDirection: "column",
-            height: "100%",
-          }}
-        >
-          <Box sx={{ height: 150, bgcolor: "#eef1f4", overflow: "hidden" }}>
-            <Box
-              component="img"
-              src={v.photo || "/images/demo-vet-avatar.png"}
-              alt={v.name}
+          {isLoadingAny ? (
+            <Paper
+              elevation={0}
               sx={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                objectPosition: "top",
+                p: 2,
+                borderRadius: 3,
+                border: "1px solid rgba(0,0,0,0.08)",
+                bgcolor: "white",
               }}
-            />
-          </Box>
-
-          <Box sx={{ p: 1.6, display: "flex", flexDirection: "column", flex: 1 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-              <Box sx={{ pr: 1 }}>
-                <Typography sx={{ color: "#0d2c54", fontWeight: 900, lineHeight: 1.2 }}>
-                  {v.name}
-                </Typography>
-                <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.2 }}>
-                  {v.specialty} · {v.clinic}
-                </Typography>
-              </Box>
-
-              <Box
+            >
+              <Typography sx={{ color: "text.secondary", fontWeight: 700 }}>Φόρτωση κτηνιάτρων...</Typography>
+            </Paper>
+          ) : vetsToShow.length === 0 ? (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                borderRadius: 3,
+                border: "1px solid rgba(0,0,0,0.08)",
+                bgcolor: "white",
+              }}
+            >
+              <Typography sx={{ fontWeight: 900, color: "#0d2c54" }}>Δεν βρέθηκαν κτηνίατροι</Typography>
+            </Paper>
+          ) : (
+            <Box
+              sx={{
+                position: "relative",
+                border: "1px solid rgba(11,61,145,0.10)",
+                bgcolor: "rgba(207,224,247,0.25)",
+                borderRadius: 3,
+                px: { xs: 5.5, md: 6.5 },
+                py: { xs: 1.6, md: 2 },
+                overflow: "hidden",
+              }}
+            >
+              {/* arrows */}
+              <IconButton
+                onClick={goPrevVets}
+                disabled={!canPrevVets}
                 sx={{
-                  px: 1,
-                  py: 0.4,
-                  borderRadius: 999,
-                  bgcolor: "#eef3ff",
-                  border: "1px solid rgba(11,61,145,0.18)",
-                  fontWeight: 900,
-                  color: "#0b3d91",
-                  fontSize: 13,
-                  whiteSpace: "nowrap",
+                  position: "absolute",
+                  left: 14,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  bgcolor: "white",
+                  border: "1px solid rgba(0,0,0,0.12)",
+                  "&:hover": { bgcolor: "white" },
+                  zIndex: 2,
                 }}
               >
-                {v.rating?.toFixed?.(1) ?? v.rating} ★
-              </Box>
-            </Stack>
+                <ChevronLeftIcon />
+              </IconButton>
 
-            <Typography variant="body2" sx={{ color: "#4b5b6b", mt: 1 }}>
-              Περιοχή: <b>{v.area}</b>
-              <br />
-              Από: <b>{v.priceRange}</b>
-            </Typography>
+              <IconButton
+                onClick={goNextVets}
+                disabled={!canNextVets}
+                sx={{
+                  position: "absolute",
+                  right: 14,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  bgcolor: "white",
+                  border: "1px solid rgba(0,0,0,0.12)",
+                  "&:hover": { bgcolor: "white" },
+                  zIndex: 2,
+                }}
+              >
+                <ChevronRightIcon />
+              </IconButton>
 
-            <Stack
-              direction="row"
-              justifyContent="flex-end"
-              alignItems="center"
-              sx={{ mt: "auto", pt: 1.2 }}
+              {/* cards */}
+              <Stack
+                direction={{ xs: "column", md: "row" }}
+                spacing={3}
+                alignItems="stretch"
+                justifyContent="center"
+                sx={{ mt: 0.6 }}
+              >
+                {visibleVets.map((v) => (
+                  <Paper
+                    key={v.id}
+                    elevation={0}
+                    onClick={() => navigate(`/owner/vets/${v.id}`)}
+                    sx={{
+                      width: { xs: "100%", md: 300 },
+                      borderRadius: 3,
+                      border: "1px solid rgba(0,0,0,0.10)",
+                      bgcolor: "white",
+                      cursor: "pointer",
+                      overflow: "hidden",
+                      "&:hover": { transform: "translateY(-3px)" },
+                      transition: "transform 160ms ease",
+                      display: "flex",
+                      flexDirection: "column",
+                      height: "100%",
+                    }}
+                  >
+                    <Box sx={{ height: 150, bgcolor: "#eef1f4", overflow: "hidden" }}>
+                      <Box
+                        component="img"
+                        src={v.photo || "/images/demo-vet-avatar.png"}
+                        alt={v.name}
+                        sx={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          objectPosition: "top",
+                        }}
+                      />
+                    </Box>
+
+                    <Box sx={{ p: 1.6, display: "flex", flexDirection: "column", flex: 1 }}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                        <Box sx={{ pr: 1 }}>
+                          <Typography sx={{ color: "#0d2c54", fontWeight: 900, lineHeight: 1.2 }}>
+                            {v.name}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.2 }}>
+                            {v.specialty} · {v.clinic}
+                          </Typography>
+                        </Box>
+
+                        <Box
+                          sx={{
+                            px: 1,
+                            py: 0.4,
+                            borderRadius: 999,
+                            bgcolor: "#eef3ff",
+                            border: "1px solid rgba(11,61,145,0.18)",
+                            fontWeight: 900,
+                            color: "#0b3d91",
+                            fontSize: 13,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {v.rating?.toFixed?.(1) ?? v.rating} ★
+                        </Box>
+                      </Stack>
+
+                      <Typography variant="body2" sx={{ color: "#4b5b6b", mt: 1 }}>
+                        Περιοχή: <b>{v.area}</b>
+                        <br />
+                        Από: <b>{v.priceRange}</b>
+                      </Typography>
+
+                      <Stack direction="row" justifyContent="flex-end" alignItems="center" sx={{ mt: "auto", pt: 1.2 }}>
+                        <Typography variant="body2" sx={{ color: "#0b3d91", fontWeight: 800 }}>
+                          Προβολή
+                        </Typography>
+                        <ArrowForwardIosRoundedIcon sx={{ ml: 0.6, fontSize: 16, color: "#0b3d91" }} />
+                      </Stack>
+                    </Box>
+                  </Paper>
+                ))}
+              </Stack>
+
+              {/* dots */}
+              <Stack direction="row" justifyContent="center" spacing={1} sx={{ mt: 1.4 }}>
+                {Array.from({ length: vetTotalPages }).map((_, i) => (
+                  <Box
+                    key={i}
+                    sx={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      bgcolor: i === vetCarouselIndex ? "#0b3d91" : "rgba(11,61,145,0.25)",
+                    }}
+                  />
+                ))}
+              </Stack>
+            </Box>
+          )}
+
+          <Stack alignItems="flex-end" sx={{ mt: 2 }}>
+            <Button
+              variant="text"
+              onClick={() => navigate("/owner/vets")}
+              sx={{ textTransform: "none", borderRadius: 2, fontWeight: 800, color: "#0b3d91" }}
             >
-              <Typography variant="body2" sx={{ color: "#0b3d91", fontWeight: 800 }}>
-                Προβολή
-              </Typography>
-              <ArrowForwardIosRoundedIcon sx={{ ml: 0.6, fontSize: 16, color: "#0b3d91" }} />
-            </Stack>
-          </Box>
-        </Paper>
-      ))}
-    </Stack>
-
-    {/* dots */}
-    <Stack direction="row" justifyContent="center" spacing={1} sx={{ mt: 1.4 }}>
-      {Array.from({ length: vetTotalPages }).map((_, i) => (
-        <Box
-          key={i}
-          sx={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            bgcolor: i === vetCarouselIndex ? "#0b3d91" : "rgba(11,61,145,0.25)",
-          }}
-        />
-      ))}
-    </Stack>
-  </Box>
-)}
-
-<Stack alignItems="flex-end" sx={{ mt: 2 }}>
-  <Button
-    variant="text"
-    onClick={() => navigate("/owner/vets")}
-    sx={{ textTransform: "none", borderRadius: 2, fontWeight: 800, color: "#0b3d91" }}
-  >
-    Δείτε όλους τους κτηνιάτρους →
-  </Button>
-</Stack>
-
-
+              Δείτε όλους τους κτηνιάτρους →
+            </Button>
+          </Stack>
         </Box>
       </Container>
 
