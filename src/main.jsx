@@ -42,7 +42,6 @@ import VetReviewDetails from "./pages/owner/VetReviewDetails.jsx";
 import OwnerProfile from "./pages/owner/Profile.jsx";
 
 
-
 // ✅ ΠΡΟΣΘΗΚΗ: AuthProvider
 import { AuthProvider } from "./auth/AuthContext.jsx";
 
@@ -61,33 +60,63 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route path="/lost" element={<LostPets />} />
           <Route path="/lost/:id" element={<LostPetDetails />} />
           <Route path="/found/:id" element={<FoundPetDetails />} />
-          <Route path="/contact" element={<Contact />} />
           <Route path="/found/new" element={<FoundWizard showSidebar={false} />} />
+
+          <Route path="/contact" element={<Contact />} />
 
           {/* Owner */}
           <Route path="/owner" element={<OwnerDashboard />} />
-          <Route path="/owner/declarations" element={<MyDeclarations />} />
-          <Route path="/owner/declarations/new" element={<DeclarationsNew />} />
-          <Route path="/owner/appointments" element={<MyAppointments />} />
-          <Route path="/owner/declarations/found/new" element={<FoundWizard showSidebar={true} />} />
-          <Route path="/owner/declarations/lost/new" element={<LostWizard showSidebar={true} />} />
-          <Route path="/owner/declarations/success" element={<DeclarationSuccess />} />
+
           <Route path="/owner/pets" element={<MyPets />} />
           <Route path="/owner/pets/:id/booklet" element={<PetBookletDetails />} />
           <Route path="/owner/pets/:id/booklet/vaccinations" element={<PetBookletVaccinations />} />
           <Route path="/owner/pets/:id/booklet/acts" element={<PetBookletActs />} />
+
           <Route path="/owner/vets" element={<VetSearch />} />
           <Route path="/owner/vets/:vetId" element={<VetProfile />} />
           <Route path="/owner/vets/:vetId/new" element={<VetNewAppointment />} />
           <Route path="/owner/vets/:vetId/reviews" element={<VetReviews />} />
           <Route path="/owner/vets/:vetId/reviews/:reviewId" element={<VetReviewDetails />} />
+
+          <Route path="/owner/appointments" element={<MyAppointments />} />
           <Route path="/owner/appointments/success" element={<AppointmentSuccess />} />
           <Route path="/owner/appointments/:appId" element={<AppointmentDetails />} />
           <Route path="/owner/appointments/:appId/review" element={<VetNewReview />} />
+
+          <Route path="/owner/declarations" element={<MyDeclarations />} />
+          <Route path="/owner/declarations/new" element={<DeclarationsNew />} />
+          <Route path="/owner/declarations/found/new" element={<FoundWizard showSidebar={true} />} />
+          <Route path="/owner/declarations/lost/new" element={<LostWizard showSidebar={true} />} />
+          <Route path="/owner/declarations/success" element={<DeclarationSuccess />} />
+
           <Route path="/owner/profile" element={<OwnerProfile />} />
 
           {/* Vet */}
           <Route path="/vet" element={<VetDashboard />} />
+
+          <Route path="/vet/mypets" element={<MyPets />} />
+          <Route path="/vet/mypets/:id/booklet" element={<PetBookletDetails />} />
+          <Route path="/vet/mypets/:id/booklet/vaccinations" element={<PetBookletVaccinations />} />
+          <Route path="/vet/mypets/:id/booklet/acts" element={<PetBookletActs />} />
+          
+          <Route path="/vet/pets" element={<VetSearch />} />
+          <Route path="/vet/pets/:vetId" element={<VetProfile />} />
+          <Route path="/vet/pets/:vetId/new" element={<VetNewAppointment />} />
+          <Route path="/vet/pets/:vetId/reviews" element={<VetReviews />} />
+          <Route path="/vet/pets/:vetId/reviews/:reviewId" element={<VetReviewDetails />} />
+
+          <Route path="/vet/appointments" element={<MyAppointments />} />
+          <Route path="/vet/appointments/success" element={<AppointmentSuccess />} />
+          <Route path="/vet/appointments/:appId" element={<AppointmentDetails />} />
+          <Route path="/vet/appointments/:appId/review" element={<VetNewReview />} />
+          
+          <Route path="/vet/declarations" element={<MyDeclarations />} />
+          <Route path="/vet/declarations/new" element={<DeclarationsNew />} />
+          <Route path="/vet/declarations/found/new" element={<FoundWizard showSidebar={true} />} />
+          <Route path="/vet/declarations/lost/new" element={<LostWizard showSidebar={true} />} />
+          <Route path="/vet/declarations/success" element={<DeclarationSuccess />} />
+
+          <Route path="/vet/profile" element={<VetProfile />} />
 
           {/* 404 */}
           <Route path="*" element={<NotFound />} />

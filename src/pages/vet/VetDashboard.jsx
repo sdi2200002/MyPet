@@ -25,7 +25,7 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { useNavigate } from "react-router-dom";
 
 import PublicNavbar from "../../components/PublicNavbar";
-import OwnerNavbar from "../../components/OwnerNavbar";
+import VetNavbar , { VET_SIDEBAR_W }from "../../components/VetNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 
@@ -163,7 +163,12 @@ export default function OwnerDashboard() {
           }}
         />
       </Box>
-
+      <Box sx={{ display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
+        <Box sx={{ width: VET_SIDEBAR_W, flex: `0 0 ${VET_SIDEBAR_W}px`, display: { xs: "none", lg: "block" }, alignSelf: "flex-start" }}>
+          <Box sx={{ position: "sticky", top: 16, maxHeight: "calc(100vh - 16px)" }}>
+            <VetNavbar mode="hero" />
+          </Box>
+        </Box>
       <Box sx={{ flex: 1 }}>
         <Container maxWidth="lg" sx={{ py: 2.5 }}>
 
@@ -218,6 +223,7 @@ export default function OwnerDashboard() {
             <LatestUpdates />
           </Box>
         </Container>
+      </Box>
       </Box>
 
       <Footer />

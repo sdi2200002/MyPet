@@ -48,7 +48,7 @@ export default function OwnerNavbar({ mode = "navbar" }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { logout } = useAuth(); // ✅ ΕΔΩ
+  const { user, logout } = useAuth(); // ✅ ΕΔΩ
   const handleLogout = () => {
     logout();
     navigate("/");
@@ -120,7 +120,7 @@ export default function OwnerNavbar({ mode = "navbar" }) {
 
           <Item
             icon={<PetsRoundedIcon />}
-            label="Τα κατοικίδιά μου"
+            label="Τα Κατοικίδιά μου"
             to="/owner/pets"
             active={isActive("/owner/pets")}
             onClick={go}
@@ -128,7 +128,7 @@ export default function OwnerNavbar({ mode = "navbar" }) {
 
           <Item
             icon={<SearchRoundedIcon />}
-            label="Αναζήτηση κτηνιάτρων"
+            label="Αναζήτηση Κτηνιάτρων"
             to="/owner/vets"
             active={isActive("/owner/vets")}
             onClick={go}
@@ -138,7 +138,7 @@ export default function OwnerNavbar({ mode = "navbar" }) {
 
           <Item
             icon={<EventAvailableRoundedIcon />}
-            label="Τα ραντεβού μου"
+            label="Τα Ραντεβού μου"
             to="/owner/appointments"
             active={isActive("/owner/appointments")}
             onClick={go}
@@ -146,7 +146,7 @@ export default function OwnerNavbar({ mode = "navbar" }) {
 
           <Item
             icon={<ReportProblemRoundedIcon />}
-            label="Οι δηλώσεις μου"
+            label="Οι Δηλώσεις μου"
             to="/owner/declarations"
             active={isActive("/owner/declarations")}
             onClick={go}
@@ -156,14 +156,14 @@ export default function OwnerNavbar({ mode = "navbar" }) {
 
           <Item
             icon={<SettingsRoundedIcon />}
-            label="Το προφίλ μου"
+            label="Το Προφίλ μου"
             to="/owner/profile"
             active={isActive("/owner/profile")}
             onClick={go}
           />
 
           <Box sx={{ my: 0.8, height: 1, bgcolor: "rgba(0,0,0,0.08)" }} />
-          <LogoutItem onClick={handleLogout} />
+          {user && <LogoutItem onClick={handleLogout} />}
         </Stack>
       </Paper>
     </Box>
