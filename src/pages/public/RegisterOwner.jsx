@@ -5,21 +5,9 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 
-const USERS_KEY = "mypet_users";
+const API_BASE = "http://localhost:3001"; // <-- json-server
+// αν έχεις proxy "/api" μπορείς να το κάνεις: const API_BASE = "/api";
 
-function safeLoadUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-function safeSaveUsers(items) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(items));
-}
-function makeId() {
-  return `u_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((email || "").trim());
 }
@@ -44,55 +32,92 @@ export default function RegisterOwner() {
   const touch = (k) => setTouched((p) => ({ ...p, [k]: true }));
   const setField = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
+  const [submitting, setSubmitting] = useState(false);
+
   const errors = useMemo(() => {
     const e = {};
     if (!form.firstName.trim()) e.firstName = "Υποχρεωτικό.";
     if (!form.lastName.trim()) e.lastName = "Υποχρεωτικό.";
+
     if (!form.password) e.password = "Υποχρεωτικό.";
     else if (form.password.length < 4) e.password = "Τουλάχιστον 4 χαρακτήρες.";
+
     if (!form.confirmPassword) e.confirmPassword = "Υποχρεωτικό.";
     else if (form.confirmPassword !== form.password) e.confirmPassword = "Οι κωδικοί δεν ταιριάζουν.";
+
     if (!form.email.trim()) e.email = "Υποχρεωτικό.";
     else if (!isValidEmail(form.email)) e.email = "Μη έγκυρο email.";
+
     if (!form.address.trim()) e.address = "Υποχρεωτικό.";
+
     const afm = onlyDigits(form.afm);
     if (!afm) e.afm = "Υποχρεωτικό.";
     else if (afm.length !== 9) e.afm = "Το ΑΦΜ πρέπει να είναι 9 ψηφία.";
+
     const phone = onlyDigits(form.phone);
     if (!phone) e.phone = "Υποχρεωτικό.";
     else if (phone.length < 10) e.phone = "Μη έγκυρο τηλέφωνο.";
+
     return e;
   }, [form]);
 
   const canSubmit = Object.keys(errors).length === 0;
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     Object.keys(form).forEach(touch);
-    if (!canSubmit) return;
+    if (!canSubmit || submitting) return;
 
-    const users = safeLoadUsers();
-    const exists = users.some((u) => (u.email || "").toLowerCase() === form.email.trim().toLowerCase());
-    if (exists) {
-      alert("Υπάρχει ήδη λογαριασμός με αυτό το email.");
-      return;
+    const email = form.email.trim().toLowerCase();
+
+    try {
+      setSubmitting(true);
+
+      // 1) check duplicate email in db.json
+      const checkRes = await fetch(`${API_BASE}/users?email=${encodeURIComponent(email)}`);
+      if (!checkRes.ok) throw new Error("Failed to check users");
+      const existing = await checkRes.json();
+
+      if (Array.isArray(existing) && existing.length > 0) {
+        alert("Υπάρχει ήδη λογαριασμός με αυτό το email.");
+        return;
+      }
+
+      // 2) create user in db.json
+      const payload = {
+        role: "owner",
+        email,
+        password: form.password,
+
+        // για να ταιριάξει με το schema που έχεις ήδη στο db.json:
+        name: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
+        address: form.address.trim(),
+        phone: onlyDigits(form.phone),
+
+        // extra πεδία (json-server τα κρατάει κανονικά)
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        afm: onlyDigits(form.afm),
+
+        createdAt: new Date().toISOString(),
+      };
+
+      const createRes = await fetch(`${API_BASE}/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!createRes.ok) throw new Error("Failed to create user");
+      await createRes.json();
+
+      navigate("/login");
+    } catch (err) {
+      console.error(err);
+      alert("Κάτι πήγε στραβά στην εγγραφή. Έλεγξε ότι τρέχει ο server (json-server).");
+    } finally {
+      setSubmitting(false);
     }
-
-    users.push({
-      id: makeId(),
-      role: "owner",
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      email: form.email.trim(),
-      password: form.password,
-      address: form.address.trim(),
-      afm: onlyDigits(form.afm),
-      phone: onlyDigits(form.phone),
-      createdAt: new Date().toISOString(),
-    });
-
-    safeSaveUsers(users);
-    navigate("/login");
   }
 
   const fieldSx = { "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: 2 } };
@@ -106,6 +131,7 @@ export default function RegisterOwner() {
           <Box>
             <AppBreadcrumbs />
           </Box>
+
           <Stack alignItems="center">
             <Paper
               elevation={0}
@@ -210,6 +236,7 @@ export default function RegisterOwner() {
                   <Button
                     type="submit"
                     variant="contained"
+                    disabled={!canSubmit || submitting}
                     sx={{
                       textTransform: "none",
                       borderRadius: 2,
@@ -221,7 +248,7 @@ export default function RegisterOwner() {
                       boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
                     }}
                   >
-                    Εγγραφή
+                    {submitting ? "Γίνεται εγγραφή..." : "Εγγραφή"}
                   </Button>
                 </Box>
 

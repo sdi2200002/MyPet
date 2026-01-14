@@ -386,10 +386,21 @@ export default function Home() {
 
                 <Stack direction="row" justifyContent="flex-end" sx={{ mt: "auto", pt: 1.6 }}>
                   <Button
-                    variant="outlined"
+                    variant="contained"
                     size="small"
                     onClick={() => navigate("/register/owner")}
-                    sx={{ textTransform: "none", borderRadius: 999, px: 2.2 }}
+                    sx={{
+                      textTransform: "none",
+                      borderRadius: 999,
+                      px: 2.4,
+                      bgcolor: "#0b3d91",
+                      color: "white",
+                      fontWeight: 800,
+                      boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
+                      "&:hover": {
+                        bgcolor: "#08316f",
+                      },
+                    }}
                   >
                     Εγγραφή ως Ιδιοκτήτης
                   </Button>
@@ -454,10 +465,21 @@ export default function Home() {
 
                 <Stack direction="row" justifyContent="flex-end" sx={{ mt: "auto", pt: 1.6 }}>
                   <Button
-                    variant="outlined"
+                    variant="contained"
                     size="small"
-                    onClick={() => navigate("/register/vet")}
-                    sx={{ textTransform: "none", borderRadius: 999, px: 2.2 }}
+                    onClick={() => navigate("/register/owner")}
+                    sx={{
+                      textTransform: "none",
+                      borderRadius: 999,
+                      px: 2.4,
+                      bgcolor: "#0b3d91",
+                      color: "white",
+                      fontWeight: 800,
+                      boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
+                      "&:hover": {
+                        bgcolor: "#08316f",
+                      },
+                    }}
                   >
                     Εγγραφή ως Κτηνίατρος
                   </Button>

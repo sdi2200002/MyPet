@@ -249,33 +249,45 @@ export default function MyAppointments() {
 
   const petMap = useMemo(() => new Map((pets || []).map((p) => [String(p.id), p])), [pets]);
 
-  const all = useMemo(() => {
-    const merged = [...appointments];
-    merged.sort((a, b) => new Date(a?.when || 0).getTime() - new Date(b?.when || 0).getTime());
-    return merged;
-  }, [appointments]);
+  const all = useMemo(() => [...appointments], [appointments]);
+
 
   const filtered = useMemo(() => {
-    const now = Date.now();
+  const now = Date.now();
 
-    const getTime = (x) => {
-      const t = new Date(x?.when || 0).getTime();
-      return Number.isFinite(t) ? t : 0;
-    };
+  const getTime = (x) => {
+    const t = new Date(x?.when || 0).getTime();
+    return Number.isFinite(t) ? t : 0;
+  };
 
-    if (tab === 0) {
-      return all.filter((x) => {
-        const t = getTime(x);
-        const status = x?.status || "Εκκρεμές";
-        return t >= now && status !== "Ακυρωμένο";
-      });
-    }
+  // 1) Φιλτράρισμα
+  const base =
+    tab === 0
+      ? all.filter((x) => {
+          const t = getTime(x);
+          const status = x?.status || "Εκκρεμές";
+          return t >= now && status !== "Ακυρωμένο";
+        })
+      : all.filter((x) => {
+          const t = getTime(x);
+          return t < now || x?.status === "Ακυρωμένο";
+        });
 
-    return all.filter((x) => {
-      const t = getTime(x);
-      return t < now || x?.status === "Ακυρωμένο";
-    });
-  }, [all, tab]);
+  // 2) Sorting ανά tab
+  base.sort((a, b) => {
+    const ta = getTime(a);
+    const tb = getTime(b);
+
+    // Επερχόμενα: πιο σύντομο -> πιο μακρινό
+    if (tab === 0) return ta - tb;
+
+    // Ιστορικό: πιο πρόσφατο -> πιο παλιό
+    return tb - ta;
+  });
+
+  return base;
+}, [all, tab]);
+
 
   const handleCreate = () => navigate("/owner/vets");
   const handleView = (item) => navigate(`/owner/appointments/${item.id}`);

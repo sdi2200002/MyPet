@@ -5,21 +5,8 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 
-const USERS_KEY = "mypet_users";
+const API_BASE = "http://localhost:3001"; // json-server
 
-function safeLoadUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-function safeSaveUsers(items) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(items));
-}
-function makeId() {
-  return `u_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((email || "").trim());
 }
@@ -55,22 +42,29 @@ export default function RegisterVet() {
   const [touched, setTouched] = useState({});
   const touch = (k) => setTouched((p) => ({ ...p, [k]: true }));
   const setField = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  const [submitting, setSubmitting] = useState(false);
 
   const errors = useMemo(() => {
     const e = {};
     if (!form.firstName.trim()) e.firstName = "Υποχρεωτικό.";
     if (!form.lastName.trim()) e.lastName = "Υποχρεωτικό.";
+
     if (!form.email.trim()) e.email = "Υποχρεωτικό.";
     else if (!isValidEmail(form.email)) e.email = "Μη έγκυρο email.";
+
     if (!form.password) e.password = "Υποχρεωτικό.";
     else if (form.password.length < 4) e.password = "Τουλάχιστον 4 χαρακτήρες.";
+
     if (!form.address.trim()) e.address = "Υποχρεωτικό.";
+
     const phone = onlyDigits(form.phone);
     if (!phone) e.phone = "Υποχρεωτικό.";
     else if (phone.length < 10) e.phone = "Μη έγκυρο τηλέφωνο.";
+
     const afm = onlyDigits(form.afm);
     if (!afm) e.afm = "Υποχρεωτικό.";
     else if (afm.length !== 9) e.afm = "Το ΑΦΜ πρέπει να είναι 9 ψηφία.";
+
     if (!form.specialty.trim()) e.specialty = "Υποχρεωτικό.";
     if (!form.education.trim()) e.education = "Υποχρεωτικό.";
     if (!form.experience.trim()) e.experience = "Υποχρεωτικό.";
@@ -89,39 +83,80 @@ export default function RegisterVet() {
     touch("photoDataUrl");
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     Object.keys(form).forEach(touch);
-    if (!canSubmit) return;
+    if (!canSubmit || submitting) return;
 
-    const users = safeLoadUsers();
-    const exists = users.some((u) => (u.email || "").toLowerCase() === form.email.trim().toLowerCase());
-    if (exists) {
-      alert("Υπάρχει ήδη λογαριασμός με αυτό το email.");
-      return;
+    const email = form.email.trim().toLowerCase();
+
+    try {
+      setSubmitting(true);
+
+      // 1️⃣ check duplicate email στους users
+      const checkRes = await fetch(`http://localhost:3001/users?email=${email}`);
+      const existing = await checkRes.json();
+
+      if (existing.length > 0) {
+        alert("Υπάρχει ήδη λογαριασμός με αυτό το email.");
+        return;
+      }
+
+      // 2️⃣ δημιουργία USER (για login)
+      const userPayload = {
+        role: "vet",
+        email,
+        password: form.password,
+        name: `Δρ. ${form.firstName} ${form.lastName}`,
+        phone: onlyDigits(form.phone),
+        createdAt: new Date().toISOString(),
+      };
+
+      const userRes = await fetch("http://localhost:3001/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userPayload),
+      });
+
+      if (!userRes.ok) throw new Error("Failed to create user");
+      const createdUser = await userRes.json();
+
+      // 3️⃣ δημιουργία VET (για λίστες / ραντεβού)
+      const vetPayload = {
+        id: createdUser.id, // 👈 ίδιο id με user (πολύ σημαντικό)
+        name: `Δρ. ${form.firstName} ${form.lastName}`,
+        clinic: "Ιδιωτικό Ιατρείο",
+        specialty: form.specialty,
+        area: form.address,
+        rating: 0,
+        reviewsCount: 0,
+        priceRange: "—",
+        address: form.address,
+        phone: onlyDigits(form.phone),
+        email,
+        experience: form.experience,
+        studies: form.education,
+        photo: form.photoDataUrl,
+        createdAt: new Date().toISOString(),
+      };
+
+      const vetRes = await fetch("http://localhost:3001/vets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(vetPayload),
+      });
+
+      if (!vetRes.ok) throw new Error("Failed to create vet");
+
+      navigate("/login");
+    } catch (err) {
+      console.error(err);
+      alert("Σφάλμα εγγραφής κτηνιάτρου. Έλεγξε τον server.");
+    } finally {
+      setSubmitting(false);
     }
-
-    users.push({
-      id: makeId(),
-      role: "vet",
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      email: form.email.trim(),
-      password: form.password,
-      address: form.address.trim(),
-      phone: onlyDigits(form.phone),
-      afm: onlyDigits(form.afm),
-      specialty: form.specialty.trim(),
-      education: form.education.trim(),
-      experience: form.experience.trim(),
-      sex: form.sex.trim(),
-      photoDataUrl: form.photoDataUrl,
-      createdAt: new Date().toISOString(),
-    });
-
-    safeSaveUsers(users);
-    navigate("/login");
   }
+
 
   const fieldSx = { "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: 2 } };
 
@@ -263,7 +298,7 @@ export default function RegisterVet() {
                   sx={fieldSx}
                 />
 
-                {/* Photo uploader panel */}
+                {/* Photo uploader */}
                 <Box sx={{ gridColumn: { xs: "1 / -1", md: "1 / 2" } }}>
                   <Typography sx={{ fontWeight: 900, color: "#0d2c54", mb: 0.8 }}>Φωτογραφία</Typography>
 
@@ -316,6 +351,7 @@ export default function RegisterVet() {
                   <Button
                     type="submit"
                     variant="contained"
+                    disabled={!canSubmit || submitting}
                     sx={{
                       textTransform: "none",
                       borderRadius: 2,
@@ -327,7 +363,7 @@ export default function RegisterVet() {
                       boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
                     }}
                   >
-                    Εγγραφή
+                    {submitting ? "Γίνεται εγγραφή..." : "Εγγραφή"}
                   </Button>
                 </Box>
 
