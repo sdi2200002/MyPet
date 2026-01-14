@@ -66,6 +66,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route path="/owner/declarations" element={<MyDeclarations />} />
           <Route path="/owner/appointments" element={<MyAppointments />} />
           <Route path="/owner/found/new" element={<FoundWizard showSidebar={true} />} />
+          <Route path="/owner/lost/new" element={<LostWizard showSidebar={true} />} />
           <Route path="/owner/declarations/success" element={<DeclarationSuccess />} />
           <Route path="/owner/pets" element={<MyPets />} />
           <Route path="/owner/pets/:id/booklet" element={<PetBookletDetails />} />
