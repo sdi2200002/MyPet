@@ -10,7 +10,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import { useAuth } from "../../auth/AuthContext";
@@ -35,6 +35,7 @@ async function fetchJSON(path) {
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
 
   const [email, setEmail] = useState("owner@test.gr");
@@ -46,6 +47,11 @@ export default function Login() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // ✅ query params: from + role (προαιρετικό)
+  const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const fromRaw = params.get("from"); // π.χ. "/owner/vets/3/new?date=...&time=..."
+  const roleWanted = (params.get("role") || "").toLowerCase(); // "owner" | "vet" | ""
 
   const errors = useMemo(() => {
     const e = {};
@@ -80,14 +86,33 @@ export default function Login() {
         return;
       }
 
+      // ✅ αν το login άνοιξε για συγκεκριμένο role, μην αφήσεις λάθος ρόλο να μπει
+      const loggedRole = (user?.role || "").toString().toLowerCase();
+      if (roleWanted && loggedRole !== roleWanted) {
+        setError(
+          roleWanted === "vet"
+            ? "Χρειάζεται σύνδεση Κτηνιάτρου για αυτό το βήμα."
+            : "Χρειάζεται σύνδεση Ιδιοκτήτη για αυτό το βήμα."
+        );
+        setLoading(false);
+        return;
+      }
+
       // ✅ session info (με numeric id)
       saveSession({ userId: user.id, role: user.role, email: user.email }, remember);
 
       // ✅ AuthContext: σώσε ΟΛΟ τον user (με id)
       login(user);
 
-      // ✅ redirect
-      navigate(user.role === "vet" ? "/vet" : "/owner");
+      // ✅ redirect priority:
+      // 1) from (αν υπάρχει)
+      // 2) fallback ανά ρόλο
+      if (fromRaw) {
+        navigate(fromRaw, { replace: true });
+        return;
+      }
+
+      navigate(loggedRole === "vet" ? "/vet" : "/owner", { replace: true });
     } catch (err) {
       console.error(err);
       setError("Αποτυχία σύνδεσης (server). Έλεγξε ότι τρέχει το json-server στη 3001.");

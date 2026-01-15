@@ -24,6 +24,11 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useNavigate } from "react-router-dom";
+import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+
+
 
 const COLORS = {
   primary: "#0b3d91",
@@ -234,6 +239,19 @@ export default function LostPets() {
     setPage(1);
   }
 
+  const hasActiveFilters = useMemo(() => {
+    return !!area || !!species || !!sex || !!(color || "").trim();
+  }, [area, species, sex, color]);
+
+  function clearFilters() {
+    setArea("");
+    setSpecies("");
+    setSex("");
+    setColor("");
+    setPage(1); // αν έχεις pagination
+  }
+
+
   // ✅ αν πέσει το totalPages, κράτα τη σελίδα valid
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -244,42 +262,41 @@ export default function LostPets() {
       <PublicNavbar />
 
       <Box sx={{ flex: 1 }}>
-        <Container maxWidth="lg" sx={{ mt: 2 }}>
-          <Box>
-            <AppBreadcrumbs />
-          </Box>
+        <Container maxWidth="lg" sx={{ mt: 2, pb: 3 }}>
+          <AppBreadcrumbs />
 
-          <Typography sx={{ fontWeight: 900, color: COLORS.title, fontSize: 26, mb: 2 }}>
-            Απολεσθέντα Κατοικίδια
-          </Typography>
-
-          {/* Search panel */}
-          <Paper
-            elevation={0}
-            sx={{
-              p: 2,
-              borderRadius: 4,
-              bgcolor: COLORS.panelBg,
-              border: `2px solid ${COLORS.panelBorder}`,
-              boxShadow: "0 10px 22px rgba(0,0,0,0.10)",
-            }}
-          >
-            <Typography sx={{ fontWeight: 900, color: COLORS.title, mb: 1 }}>
+          {/* SEARCH BAR */}
+          <Paper elevation={0} sx={{ bgcolor: "#cfe0f7", borderRadius: 4, p: 2.2, mt: 1.5 }}>
+            <Typography sx={{ fontWeight: 800, mb: 1.8, color: "#1c2b39" }}>
               Αναζήτηση Απολεσθέντων Κατοικιδίων
             </Typography>
 
-            <Stack
-              direction={{ xs: "column", md: "row" }}
-              spacing={1.2}
-              alignItems={{ xs: "stretch", md: "center" }}
-            >
-              <FormControl fullWidth sx={fieldSx}>
-                <InputLabel>Περιοχή</InputLabel>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1.6} alignItems="center">
+              {/* Περιοχή */}
+              <FormControl
+                size="small"
+                hiddenLabel
+                sx={{
+                  minWidth: 170,
+                  bgcolor: "white",
+                  borderRadius: 999,
+                  "& .MuiOutlinedInput-root": { borderRadius: 999 },
+                }}
+              >
                 <Select
                   value={area}
-                  label="Περιοχή"
                   onChange={(e) => setArea(e.target.value)}
-                  startAdornment={<LocationOnOutlinedIcon sx={{ mr: 1, color: COLORS.primary }} />}
+                  displayEmpty
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <LocationOnOutlinedIcon sx={{ color: "#6b7a90", ml: 0.5 }} />
+                    </InputAdornment>
+                  }
+                  renderValue={(selected) => (
+                    <span style={{ color: selected ? "#1c2b39" : "#6b7a90" }}>
+                      {selected || "Περιοχή"}
+                    </span>
+                  )}
                 >
                   <MenuItem value="">Όλες</MenuItem>
                   <MenuItem value="Αθήνα">Αθήνα</MenuItem>
@@ -289,13 +306,31 @@ export default function LostPets() {
                 </Select>
               </FormControl>
 
-              <FormControl fullWidth sx={fieldSx}>
-                <InputLabel>Είδος Ζώου</InputLabel>
+              {/* Είδος */}
+              <FormControl
+                size="small"
+                hiddenLabel
+                sx={{
+                  minWidth: 170,
+                  bgcolor: "white",
+                  borderRadius: 999,
+                  "& .MuiOutlinedInput-root": { borderRadius: 999 },
+                }}
+              >
                 <Select
                   value={species}
-                  label="Είδος Ζώου"
                   onChange={(e) => setSpecies(e.target.value)}
-                  startAdornment={<PetsOutlinedIcon sx={{ mr: 1, color: COLORS.primary }} />}
+                  displayEmpty
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <PetsOutlinedIcon sx={{ color: "#6b7a90", ml: 0.5 }} />
+                    </InputAdornment>
+                  }
+                  renderValue={(selected) => (
+                    <span style={{ color: selected ? "#1c2b39" : "#6b7a90" }}>
+                      {selected || "Είδος"}
+                    </span>
+                  )}
                 >
                   <MenuItem value="">Όλα</MenuItem>
                   <MenuItem value="Σκύλος">Σκύλος</MenuItem>
@@ -304,13 +339,31 @@ export default function LostPets() {
                 </Select>
               </FormControl>
 
-              <FormControl fullWidth sx={fieldSx}>
-                <InputLabel>Φύλο</InputLabel>
+              {/* Φύλο */}
+              <FormControl
+                size="small"
+                hiddenLabel
+                sx={{
+                  minWidth: 170,
+                  bgcolor: "white",
+                  borderRadius: 999,
+                  "& .MuiOutlinedInput-root": { borderRadius: 999 },
+                }}
+              >
                 <Select
                   value={sex}
-                  label="Φύλο"
                   onChange={(e) => setSex(e.target.value)}
-                  startAdornment={<WcOutlinedIcon sx={{ mr: 1, color: COLORS.primary }} />}
+                  displayEmpty
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <WcOutlinedIcon sx={{ color: "#6b7a90", ml: 0.5 }} />
+                    </InputAdornment>
+                  }
+                  renderValue={(selected) => (
+                    <span style={{ color: selected ? "#1c2b39" : "#6b7a90" }}>
+                      {selected || "Φύλο"}
+                    </span>
+                  )}
                 >
                   <MenuItem value="">Όλα</MenuItem>
                   <MenuItem value="Αρσενικό">Αρσενικό</MenuItem>
@@ -319,37 +372,69 @@ export default function LostPets() {
                 </Select>
               </FormControl>
 
+              {/* Χρώμα */}
               <TextField
-                fullWidth
-                label="Χρώμα"
+                size="small"
                 value={color}
                 onChange={(e) => setColor(e.target.value)}
-                sx={fieldSx}
+                placeholder="Χρώμα"
+                sx={{
+                  bgcolor: "white",
+                  borderRadius: 999,
+                  minWidth: 230,
+                  "& .MuiOutlinedInput-root": { borderRadius: 999 },
+                  "& input::placeholder": { color: "#6b7a90", opacity: 1 },
+                }}
                 InputProps={{
-                  startAdornment: <PaletteOutlinedIcon sx={{ mr: 1, color: COLORS.primary }} />,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PaletteOutlinedIcon sx={{ color: "#6b7a90" }} />
+                    </InputAdornment>
+                  ),
                 }}
               />
 
+              {/* Αναζήτηση */}
               <Button
-                onClick={doSearch}
                 variant="contained"
                 startIcon={<SearchIcon />}
+                onClick={doSearch}
                 sx={{
                   textTransform: "none",
                   borderRadius: 999,
-                  px: 3,
-                  bgcolor: COLORS.primary,
-                  "&:hover": { bgcolor: COLORS.primaryHover },
-                  boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
+                  px: 3.2,
+                  ml: { md: "auto" },
+                  bgcolor: "#0b3d91",
+                  "&:hover": { bgcolor: "#08316f" },
+                  boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
                   minWidth: 140,
+                  fontWeight: 800,
                 }}
               >
                 Αναζήτηση
               </Button>
+
+              {/* Minimal X μόνο όταν υπάρχουν φίλτρα */}
+              {hasActiveFilters && (
+                <IconButton
+                  onClick={clearFilters}
+                  aria-label="Καθαρισμός φίλτρων"
+                  sx={{
+                    ml: 0.6,
+                    width: 42,
+                    height: 42,
+                    bgcolor: "white",
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    "&:hover": { bgcolor: "rgba(0,0,0,0.04)" },
+                  }}
+                >
+                  <CloseRoundedIcon sx={{ fontSize: 20, color: "#6b7a90" }} />
+                </IconButton>
+              )}
             </Stack>
           </Paper>
 
-          {/* ✅ Loading / Error */}
+          {/* Loading / Error */}
           {loading && (
             <Typography sx={{ mt: 2, color: COLORS.muted, fontWeight: 800 }}>
               Φόρτωση δηλώσεων...
@@ -367,14 +452,12 @@ export default function LostPets() {
                 bgcolor: "rgba(180,35,24,0.06)",
               }}
             >
-              <Typography sx={{ fontWeight: 900, color: "#b42318" }}>
-                Αποτυχία φόρτωσης
-              </Typography>
+              <Typography sx={{ fontWeight: 900, color: "#b42318" }}>Αποτυχία φόρτωσης</Typography>
               <Typography sx={{ color: "#7a1b14" }}>{error}</Typography>
             </Paper>
           )}
 
-          {/* Cards grid */}
+          {/* Cards grid + pagination */}
           {!loading && !error && (
             <>
               <Box
@@ -396,30 +479,22 @@ export default function LostPets() {
                 </Typography>
               )}
 
-              {/* Pagination */}
               <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-                <Pagination
-                  count={totalPages}
-                  page={page}
-                  onChange={(_, p) => setPage(p)}
-                  shape="rounded"
-                />
+                <Pagination count={totalPages} page={page} onChange={(_, p) => setPage(p)} shape="rounded" />
               </Box>
             </>
           )}
-        </Container>
 
-        <Container maxWidth="lg" sx={{ mt: 2 }}>
+          {/* SECTION: Εύρεση κατοικιδίου */}
           <Typography sx={{ mt: 4, fontSize: 26, fontWeight: 900, color: "#0d2c54" }}>
             Εύρεση κατοικιδίου
           </Typography>
 
-          {/* steps */}
           <Stack
             direction={{ xs: "column", md: "row" }}
             justifyContent="space-between"
             spacing={4}
-            sx={{ mt: 6 }}
+            sx={{ mt: 3 }}
           >
             <StepCard
               icon={<SearchIcon sx={{ fontSize: 52, color: "#0b3d91" }} />}
@@ -440,8 +515,7 @@ export default function LostPets() {
             />
           </Stack>
 
-          {/* CTA button */}
-          <Stack alignItems="center" sx={{ mt: 5 }}>
+          <Stack alignItems="center" sx={{ mt: 4 }}>
             <Button
               variant="contained"
               onClick={() => navigate("/found/new")}
@@ -452,6 +526,7 @@ export default function LostPets() {
                 bgcolor: "#0b3d91",
                 "&:hover": { bgcolor: "#08316f" },
                 boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
+                fontWeight: 900,
               }}
             >
               + Δήλωση Εύρεσης
@@ -463,4 +538,5 @@ export default function LostPets() {
       <Footer />
     </Box>
   );
+
 }

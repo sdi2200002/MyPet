@@ -33,6 +33,8 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 
+import { useAuth } from "../../auth/AuthContext";
+
 /* ====== THEME ====== */
 const PRIMARY = "#0b3d91";
 const PRIMARY_HOVER = "#08316f";
@@ -49,7 +51,6 @@ async function fetchJSON(path) {
 }
 
 /* ====== DATE HELPERS ====== */
-// Δέχεται "13/01/2026" ή "2026-01-13" και επιστρέφει ISO "2026-01-13" (ή "")
 function normalizeDateToISO(s) {
   if (!s) return "";
   const t = String(s).trim();
@@ -87,23 +88,20 @@ function timeHHMMFromWhen(when) {
   return "";
 }
 function blocksSlot(status) {
-  // Με βάση τα data σου: "Ακυρωμένο" δεν μπλοκάρει slot
   const st = String(status || "").trim().toLowerCase();
   return st !== "ακυρωμένο";
 }
 
 /* ====== SLOTS ====== */
-// Σταθερά slots (γιατί στο vets schema δεν έχεις ωράριο)
-// ταιριάζει με το UI σου (30' βήμα)
 const POSSIBLE_SLOTS = [
-  "09:00", "09:30",
-  "10:00", "10:30",
-  "11:00", "11:30",
-  "12:00", "12:30",
-  "13:00", "13:30",
-  "14:00", "14:30",
-  "15:00", "15:30",
-  "16:00", "16:30",
+  "09:00","09:30",
+  "10:00","10:30",
+  "11:00","11:30",
+  "12:00","12:30",
+  "13:00","13:30",
+  "14:00","14:30",
+  "15:00","15:30",
+  "16:00","16:30",
 ];
 
 function getAvailableSlotsForVetOnDate(vet, dateISO, appointments) {
@@ -134,6 +132,7 @@ function VetCard({ vet, onView }) {
         gridTemplateColumns: "86px 1fr 120px",
         gap: 2,
         alignItems: "center",
+        bgcolor: "#fff",
       }}
     >
       <Box
@@ -197,16 +196,6 @@ function VetCard({ vet, onView }) {
   );
 }
 
-/** ✅ δέχεται "YYYY-MM-DD" ή "DD/MM/YYYY" ή "DD-MM-YYYY" και το κάνει "YYYY-MM-DD" */
-function normalizeGreekDateToISO(s) {
-  if (!s) return "";
-  const t = String(s).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
-  const m = t.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
-  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
-  return "";
-}
-
 function dateToISOFromDayjs(dj) {
   if (!dj) return "";
   const d = dj.toDate();
@@ -219,12 +208,17 @@ function dateToISOFromDayjs(dj) {
 export default function VetSearch() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
 
-  // filters (χωρίς ώρα)
+  // ✅ είσαι owner logged in;
+  const role = (user?.role ?? user?.user?.role ?? "").toString().toLowerCase();
+  const isOwnerLoggedIn = !!user && role !== "vet" && role !== "κτηνίατρος";
+
+  // filters
   const [area, setArea] = useState("");
   const [spec, setSpec] = useState("");
   const [date, setDate] = useState(""); // ISO "YYYY-MM-DD"
-  const [dateObj, setDateObj] = useState(null); // Date | null
+  const [dateObj, setDateObj] = useState(null);
 
   const [vets, setVets] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -235,7 +229,7 @@ export default function VetSearch() {
   const [page, setPage] = useState(1);
   const perPage = 8;
 
-  // ✅ Read query params when URL changes
+  // ✅ Read query params
   useEffect(() => {
     const p = new URLSearchParams(location.search);
     setArea(p.get("area") || "");
@@ -279,13 +273,12 @@ export default function VetSearch() {
     };
   }, []);
 
-  // ✅ filtering based on real availability
+  // ✅ filtering
   const filtered = useMemo(() => {
     const areaQ = area.trim();
     const specQ = spec.trim();
     const dateISO = normalizeDateToISO(date);
 
-    // Αν διάλεξε παρελθοντική ημερομηνία → κανένας
     if (dateISO && isPastISODate(dateISO)) return [];
 
     return vets
@@ -293,18 +286,15 @@ export default function VetSearch() {
         if (areaQ && String(v.area || "").toLowerCase() !== areaQ.toLowerCase()) return false;
         if (specQ && String(v.specialty || "").toLowerCase() !== specQ.toLowerCase()) return false;
 
-        // ✅ Αν υπάρχει date filter: κρατάμε μόνο όσους έχουν τουλάχιστον 1 διαθέσιμο slot
         if (dateISO) {
           const available = getAvailableSlotsForVetOnDate(v, dateISO, appointments);
           return available.length > 0;
         }
-
         return true;
       })
       .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
   }, [vets, appointments, area, spec, date]);
 
-  // pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const view = useMemo(() => {
     const start = (page - 1) * perPage;
@@ -317,21 +307,24 @@ export default function VetSearch() {
 
   const hasFilters = useMemo(() => !!area.trim() || !!spec.trim() || !!date.trim(), [area, spec, date]);
 
+  // ✅ APPLY SEARCH -> PUBLIC route
   function applySearch() {
     const params = new URLSearchParams();
     if (area) params.set("area", area);
     if (spec) params.set("specialty", spec);
     if (date) params.set("date", normalizeDateToISO(date));
-    navigate(`/owner/vets?${params.toString()}`);
+
+    navigate(`/vets?${params.toString()}`);
   }
 
+  // ✅ CLEAR -> PUBLIC route
   function clearFilters() {
     setArea("");
     setSpec("");
     setDate("");
     setDateObj(null);
     setPage(1);
-    navigate("/owner/vets");
+    navigate("/vets");
   }
 
   const pillSx = {
@@ -348,17 +341,27 @@ export default function VetSearch() {
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <PublicNavbar />
 
-      <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
-        <Box
-          sx={{
-            width: OWNER_SIDEBAR_W,
-            flex: `0 0 ${OWNER_SIDEBAR_W}px`,
-            display: { xs: "none", lg: "block" },
-            alignSelf: "flex-start",
-          }}
-        />
-
-        <OwnerNavbar mode="navbar" />
+      {/* ✅ Αν ΔΕΝ είσαι owner logged in -> καμία sidebar διάταξη */}
+      <Box
+        sx={{
+          flex: 1,
+          display: { xs: "block", lg: isOwnerLoggedIn ? "flex" : "block" },
+          alignItems: "flex-start",
+        }}
+      >
+        {isOwnerLoggedIn ? (
+          <>
+            <Box
+              sx={{
+                width: OWNER_SIDEBAR_W,
+                flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+                display: { xs: "none", lg: "block" },
+                alignSelf: "flex-start",
+              }}
+            />
+            <OwnerNavbar mode="navbar" />
+          </>
+        ) : null}
 
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Container maxWidth="lg" sx={{ py: 2.5 }}>
@@ -395,7 +398,6 @@ export default function VetSearch() {
                   </Select>
                 </FormControl>
 
-                {/* ✅ Ημερομηνία - dropdown calendar */}
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DatePicker
                     value={dateObj}
@@ -527,7 +529,8 @@ export default function VetSearch() {
                     </Paper>
                   ) : (
                     view.map((v) => (
-                      <VetCard key={v.id} vet={v} onView={() => navigate(`/owner/vets/${v.id}`)} />
+                      // ✅ PUBLIC profile
+                      <VetCard key={v.id} vet={v} onView={() => navigate(`/vets/${v.id}`)} />
                     ))
                   )}
                 </Stack>

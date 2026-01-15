@@ -8,7 +8,7 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import CalendarWithTimeSlots from "../../components/CalendarWithTimeSlots.jsx";
-import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+import { useAuth } from "../../auth/AuthContext.jsx";
 
 const PRIMARY = "#0b3d91";
 const PRIMARY_HOVER = "#08316f";
@@ -55,6 +55,12 @@ export default function VetProfile() {
   const { vetId } = useParams();
   const id = Number(vetId); // ✅ json-server: numeric ids
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // ✅ σωστό resolve user + role
+  const resolvedUser = user?.user ?? user;
+  const isLoggedIn = !!resolvedUser?.id;
+  const role = (resolvedUser?.role ?? "").toString().toLowerCase();
 
   const [vet, setVet] = useState(null);
   const [appointments, setAppointments] = useState([]);
@@ -128,324 +134,310 @@ export default function VetProfile() {
     return arr.slice(0, 3);
   }, [reviews]);
 
+  // ✅ ΠΑΤΑΩ "Επόμενο βήμα" -> μόνο τότε ζητάω login (owner)
+  function onNextStep() {
+    if (!canProceed) return;
+
+    const dateStr = pick.date.format("YYYY-MM-DD");
+    const timeStr = pick.time;
+
+    const target = `/owner/vets/${id}/new?date=${encodeURIComponent(dateStr)}&time=${encodeURIComponent(timeStr)}`;
+
+    // αν δεν είναι logged in ή είναι άλλος ρόλος (πχ vet) -> ζήτα login ως owner
+    if (!isLoggedIn || role !== "owner") {
+      navigate(`/login?from=${encodeURIComponent(target)}&role=owner`);
+      return;
+    }
+
+    // owner logged in -> πάμε κανονικά στο next step (protected route)
+    navigate(target);
+  }
+
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
       <PublicNavbar />
 
-      {/* ✅ 2-column layout: sidebar + content */}
-      <Box
-        sx={{
-          flex: 1,
-          display: { xs: "block", lg: "flex" },
-          alignItems: "flex-start",
-        }}
-      >
-        {/* LEFT: spacer column */}
-        <Box
-          sx={{
-            width: OWNER_SIDEBAR_W,
-            flex: `0 0 ${OWNER_SIDEBAR_W}px`,
-            display: { xs: "none", lg: "block" },
-            alignSelf: "flex-start",
-          }}
-        />
+      <Box sx={{ flex: 1 }}>
+        <Container maxWidth="lg" sx={{ py: 2.5 }}>
+          <Box>
+            <AppBreadcrumbs />
+          </Box>
 
-        {/* Sidebar κάτω από PublicNavbar */}
-        <OwnerNavbar mode="navbar" />
-
-        {/* RIGHT: content */}
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Container maxWidth="lg" sx={{ py: 2.5 }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1.1fr 0.9fr" },
+              gap: 2,
+              alignItems: "start",
+            }}
+          >
+            {/* Left */}
             <Box>
-              <AppBreadcrumbs />
-            </Box>
+              <Paper
+                elevation={0}
+                sx={{
+                  borderRadius: 2,
+                  border: `2px solid ${BORDER}`,
+                  boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+                  p: 3,
+                }}
+              >
+                {loading ? (
+                  <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
+                ) : err ? (
+                  <>
+                    <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
 
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "1.1fr 0.9fr" },
-                gap: 2,
-                alignItems: "start",
-              }}
-            >
-              {/* Left */}
-              <Box>
+                    <Button
+                      variant="contained"
+                      onClick={() => navigate("/vets")}
+                      sx={{
+                        mt: 2,
+                        textTransform: "none",
+                        borderRadius: 2,
+                        bgcolor: PRIMARY,
+                        "&:hover": { bgcolor: PRIMARY_HOVER },
+                        fontWeight: 900,
+                        boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
+                      }}
+                    >
+                      Επιστροφή στην αναζήτηση
+                    </Button>
+                  </>
+                ) : (
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "110px 1fr",
+                      gap: 2,
+                      alignItems: "start",
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={vet?.photo || "/images/demo-vet-avatar.png"}
+                      alt={vet?.name || "vet"}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = "/images/demo-vet-avatar.png";
+                      }}
+                      sx={{
+                        width: 98,
+                        height: 98,
+                        borderRadius: 2,
+                        objectFit: "cover",
+                        border: "1px solid rgba(0,0,0,0.15)",
+                        bgcolor: "#fff",
+                      }}
+                    />
+
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 900, color: "#111", fontSize: 16 }} noWrap>
+                        {vet?.name || "—"}
+                      </Typography>
+                      <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }} noWrap>
+                        {vet?.clinic || "—"}
+                      </Typography>
+
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                        <Typography sx={{ fontWeight: 900, fontSize: 12 }}>
+                          ⭐ {vet?.rating ?? "—"}
+                        </Typography>
+                        <Typography sx={{ color: MUTED, fontWeight: 800, fontSize: 12 }}>
+                          ({vet?.reviewsCount ?? 0})
+                        </Typography>
+                      </Stack>
+                    </Box>
+
+                    <Box sx={{ gridColumn: "1 / -1", mt: 1.5 }}>
+                      <Stack spacing={0.8}>
+                        <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 12 }}>
+                          Ιδιωτικό Ιατρείο:{" "}
+                          <span style={{ fontWeight: 700, color: MUTED }}>{vet?.address || "—"}</span>
+                        </Typography>
+                        <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 12 }}>
+                          Τηλέφωνο:{" "}
+                          <span style={{ fontWeight: 700, color: MUTED }}>{vet?.phone || "—"}</span>
+                        </Typography>
+                        <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 12 }}>
+                          Email:{" "}
+                          <span style={{ fontWeight: 700, color: MUTED }}>{vet?.email || "—"}</span>
+                        </Typography>
+                        <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 12 }}>
+                          Εμπειρία:{" "}
+                          <span style={{ fontWeight: 700, color: MUTED }}>{vet?.experience || "—"}</span>
+                        </Typography>
+                        <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 12 }}>
+                          Σπουδές:{" "}
+                          <span style={{ fontWeight: 700, color: MUTED }}>{vet?.studies || "—"}</span>
+                        </Typography>
+                      </Stack>
+                    </Box>
+                  </Box>
+                )}
+              </Paper>
+
+              {/* Reviews preview */}
+              {!loading && !err && (
                 <Paper
                   elevation={0}
                   sx={{
+                    mt: 2,
                     borderRadius: 2,
                     border: `2px solid ${BORDER}`,
                     boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
-                    p: 3,
+                    p: 2,
                   }}
                 >
-                  {loading ? (
-                    <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
-                  ) : err ? (
-                    <>
-                      <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                    <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 15 }}>
+                      Αξιολογήσεις
+                    </Typography>
+                  </Stack>
 
-                      <Button
-                        variant="contained"
-                        onClick={() => navigate("/owner/vets")}
-                        sx={{
-                          mt: 2,
-                          textTransform: "none",
-                          borderRadius: 2,
-                          bgcolor: PRIMARY,
-                          "&:hover": { bgcolor: PRIMARY_HOVER },
-                          fontWeight: 900,
-                          boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
-                        }}
-                      >
-                        Επιστροφή στην αναζήτηση
-                      </Button>
-                    </>
-                  ) : (
-                    <Box
+                  {last3Reviews.length === 0 ? (
+                    <Paper
+                      elevation={0}
                       sx={{
-                        display: "grid",
-                        gridTemplateColumns: "110px 1fr",
-                        gap: 2,
-                        alignItems: "start",
+                        borderRadius: 2,
+                        bgcolor: "#eef1f4",
+                        border: "1px solid rgba(0,0,0,0.08)",
+                        p: 1.2,
                       }}
                     >
-                      <Box
-                        component="img"
-                        src={vet?.photo || "/images/demo-vet-avatar.png"}
-                        alt={vet?.name || "vet"}
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = "/images/demo-vet-avatar.png";
-                        }}
-                        sx={{
-                          width: 98,
-                          height: 98,
-                          borderRadius: 2,
-                          objectFit: "cover",
-                          border: "1px solid rgba(0,0,0,0.15)",
-                          bgcolor: "#fff",
-                        }}
-                      />
-
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography sx={{ fontWeight: 900, color: "#111", fontSize: 16 }} noWrap>
-                          {vet?.name || "—"}
-                        </Typography>
-                        <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }} noWrap>
-                          {vet?.clinic || "—"}
-                        </Typography>
-
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-                          <Typography sx={{ fontWeight: 900, fontSize: 12 }}>
-                            ⭐ {vet?.rating ?? "—"}
-                          </Typography>
-                          <Typography sx={{ color: MUTED, fontWeight: 800, fontSize: 12 }}>
-                            ({vet?.reviewsCount ?? 0})
-                          </Typography>
-                        </Stack>
-                      </Box>
-
-                      <Box sx={{ gridColumn: "1 / -1", mt: 1.5 }}>
-                        <Stack spacing={0.8}>
-                          <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 12 }}>
-                            Ιδιωτικό Ιατρείο:{" "}
-                            <span style={{ fontWeight: 700, color: MUTED }}>{vet?.address || "—"}</span>
-                          </Typography>
-                          <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 12 }}>
-                            Τηλέφωνο:{" "}
-                            <span style={{ fontWeight: 700, color: MUTED }}>{vet?.phone || "—"}</span>
-                          </Typography>
-                          <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 12 }}>
-                            Email:{" "}
-                            <span style={{ fontWeight: 700, color: MUTED }}>{vet?.email || "—"}</span>
-                          </Typography>
-                          <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 12 }}>
-                            Εμπειρία:{" "}
-                            <span style={{ fontWeight: 700, color: MUTED }}>{vet?.experience || "—"}</span>
-                          </Typography>
-                          <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 12 }}>
-                            Σπουδές:{" "}
-                            <span style={{ fontWeight: 700, color: MUTED }}>{vet?.studies || "—"}</span>
-                          </Typography>
-                        </Stack>
-                      </Box>
-                    </Box>
-                  )}
-                </Paper>
-
-                {/* Reviews preview */}
-                {!loading && !err && (
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      mt: 2,
-                      borderRadius: 2,
-                      border: `2px solid ${BORDER}`,
-                      boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
-                      p: 2,
-                    }}
-                  >
-                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                      <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 15 }}>
-                        Αξιολογήσεις
+                      <Typography sx={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
+                        Δεν υπάρχουν ακόμα αξιολογήσεις.
                       </Typography>
-                    </Stack>
-
-                    {last3Reviews.length === 0 ? (
-                      <Paper
-                        elevation={0}
-                        sx={{
-                          borderRadius: 2,
-                          bgcolor: "#eef1f4",
-                          border: "1px solid rgba(0,0,0,0.08)",
-                          p: 1.2,
-                        }}
+                    </Paper>
+                  ) : (
+                    <>
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={0.8}
+                        useFlexGap
+                        flexWrap="nowrap"
+                        sx={{ alignItems: "stretch", overflow: "hidden" }}
                       >
-                        <Typography sx={{ fontSize: 12, color: MUTED, fontWeight: 800 }}>
-                          Δεν υπάρχουν ακόμα αξιολογήσεις.
-                        </Typography>
-                      </Paper>
-                    ) : (
-                      <>
-                        <Stack
-                          direction={{ xs: "column", sm: "row" }}
-                          spacing={0.8}
-                          useFlexGap
-                          flexWrap="nowrap"
-                          sx={{ alignItems: "stretch", overflow: "hidden" }}
-                        >
-                          {last3Reviews.map((r) => (
-                            <Paper
-                              key={r.id}
-                              elevation={0}
+                        {last3Reviews.map((r) => (
+                          <Paper
+                            key={r.id}
+                            elevation={0}
+                            sx={{
+                              flex: { xs: "1 1 auto", sm: "1 1 0" },
+                              minWidth: 0,
+                              maxWidth: 220,
+                              borderRadius: 2,
+                              bgcolor: "#eef1f4",
+                              border: "1px solid rgba(0,0,0,0.08)",
+                              p: 0.9,
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 0.4,
+                            }}
+                          >
+                            <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                              <Typography sx={{ fontWeight: 900, fontSize: 11, color: "#111" }}>
+                                ⭐ {Number(r.rating || 0).toFixed(1)}
+                              </Typography>
+
+                              <Typography sx={{ fontSize: 10.5, color: MUTED, fontWeight: 800 }} noWrap>
+                                {r.date
+                                  ? String(r.date).includes("/")
+                                    ? r.date
+                                    : new Date(r.date).toLocaleDateString("el-GR")
+                                  : ""}
+                              </Typography>
+                            </Stack>
+
+                            <Typography
                               sx={{
-                                flex: { xs: "1 1 auto", sm: "1 1 0" },
-                                minWidth: 0,
-                                maxWidth: 220,
-                                borderRadius: 2,
-                                bgcolor: "#eef1f4",
-                                border: "1px solid rgba(0,0,0,0.08)",
-                                p: 0.9,
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 0.4,
+                                mt: 1,
+                                color: "#111",
+                                fontWeight: 700,
+                                fontSize: 11,
+                                display: "-webkit-box",
+                                WebkitLineClamp: 1,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
                               }}
                             >
-                              <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-                                <Typography sx={{ fontWeight: 900, fontSize: 11, color: "#111" }}>
-                                  ⭐ {Number(r.rating || 0).toFixed(1)}
-                                </Typography>
+                              {r.text || "—"}
+                            </Typography>
 
-                                <Typography sx={{ fontSize: 10.5, color: MUTED, fontWeight: 800 }} noWrap>
-                                  {r.date
-                                    ? String(r.date).includes("/")
-                                      ? r.date
-                                      : new Date(r.date).toLocaleDateString("el-GR")
-                                    : ""}
-                                </Typography>
-                              </Stack>
+                            <Typography
+                              sx={{
+                                fontSize: 10.5,
+                                color: MUTED,
+                                fontWeight: 800,
+                                mt: "auto",
+                              }}
+                              noWrap
+                              title={r.name || ""}
+                            >
+                              {r.name || "Ανώνυμος"}
+                            </Typography>
+                          </Paper>
+                        ))}
+                      </Stack>
 
-                              <Typography
-                                sx={{
-                                  mt: 1,
-                                  color: "#111",
-                                  fontWeight: 700,
-                                  fontSize: 11,
-                                  display: "-webkit-box",
-                                  WebkitLineClamp: 1,
-                                  WebkitBoxOrient: "vertical",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                }}
-                              >
-                                {r.text || "—"}
-                              </Typography>
+                      <Divider sx={{ mt: 1.2, opacity: 0.35 }} />
+                    </>
+                  )}
 
-                              <Typography
-                                sx={{
-                                  fontSize: 10.5,
-                                  color: MUTED,
-                                  fontWeight: 800,
-                                  mt: "auto",
-                                }}
-                                noWrap
-                                title={r.name || ""}
-                              >
-                                {r.name || "Ανώνυμος"}
-                              </Typography>
-                            </Paper>
-                          ))}
-                        </Stack>
-
-                        <Divider sx={{ mt: 1.2, opacity: 0.35 }} />
-                      </>
-                    )}
-
-                    <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1.7 }}>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => navigate(`/owner/vets/${id}/reviews`)}
-                        sx={{
-                          textTransform: "none",
-                          borderRadius: 2,
-                          fontWeight: 900,
-                          borderColor: "#c7d4e8",
-                          color: "#111",
-                          bgcolor: "#eef1f4",
-                          "&:hover": { bgcolor: "#e6ebf3", borderColor: "#c7d4e8" },
-                        }}
-                      >
-                        Περισσότερα
-                      </Button>
-                    </Box>
-                  </Paper>
-                )}
-              </Box>
-
-              {/* Right */}
-              <Box>
-                {!loading && !err && (
-                  <CalendarWithTimeSlots
-                    value={pick}
-                    onChange={setPick}
-                    title="Ραντεβού"
-                    subtitleDay="1. Διάλεξε ημέρα"
-                    subtitleTime="2. Διάλεξε ώρα"
-                    primary={PRIMARY}
-                    primaryHover={PRIMARY_HOVER}
-                    panelBg="#e7f1ff"
-                    disabledBg="#e0e0e0"
-                    disabledText="#9aa0a6"
-                    timeRange={{
-                      start: vet?.availability?.start || "09:00",
-                      end: vet?.availability?.end || "20:30",
-                      stepMinutes: vet?.availability?.stepMin || 30,
-                    }}
-                    getBookedTimes={getBookedTimes}
-                    onAction={() => {
-                      if (!canProceed) return;
-
-                      const dateStr = pick.date.format("YYYY-MM-DD");
-                      const timeStr = pick.time;
-
-                      navigate(
-                        `/owner/vets/${id}/new?date=${encodeURIComponent(dateStr)}&time=${encodeURIComponent(timeStr)}`
-                      );
-                    }}
-                    actionText="Επόμενο βήμα"
-                    actionDisabled={!canProceed}
-                  />
-                )}
-              </Box>
+                  <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1.7 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => navigate(`/vets/${id}/reviews`)}
+                      sx={{
+                        textTransform: "none",
+                        borderRadius: 2,
+                        fontWeight: 900,
+                        borderColor: "#c7d4e8",
+                        color: "#111",
+                        bgcolor: "#eef1f4",
+                        "&:hover": { bgcolor: "#e6ebf3", borderColor: "#c7d4e8" },
+                      }}
+                    >
+                      Περισσότερα
+                    </Button>
+                  </Box>
+                </Paper>
+              )}
             </Box>
-          </Container>
-        </Box>
+
+            {/* Right */}
+            <Box>
+              {!loading && !err && (
+                <CalendarWithTimeSlots
+                  value={pick}
+                  onChange={setPick}
+                  title="Ραντεβού"
+                  subtitleDay="1. Διάλεξε ημέρα"
+                  subtitleTime="2. Διάλεξε ώρα"
+                  primary={PRIMARY}
+                  primaryHover={PRIMARY_HOVER}
+                  panelBg="#e7f1ff"
+                  disabledBg="#e0e0e0"
+                  disabledText="#9aa0a6"
+                  timeRange={{
+                    start: vet?.availability?.start || "09:00",
+                    end: vet?.availability?.end || "20:30",
+                    stepMinutes: vet?.availability?.stepMin || 30,
+                  }}
+                  getBookedTimes={getBookedTimes}
+                  onAction={onNextStep}
+                  actionText="Επόμενο βήμα"
+                  actionDisabled={!canProceed}
+                />
+              )}
+            </Box>
+          </Box>
+        </Container>
       </Box>
 
       <Footer />
     </Box>
   );
-
 }

@@ -234,6 +234,63 @@
       "photoDataUrl": "",
       "createdAt": "2026-01-15T09:32:21.503Z",
       "updatedAt": "2026-01-15T09:32:21.503Z"
+    },
+    {
+      "id": "0beb",
+      "lostDeclarationId": "52bb",
+      "finderId": "",
+      "status": "Οριστική",
+      "date": "2026-01-15",
+      "area": "Θεσσαλονίκη",
+      "sex": "",
+      "species": "Γάτα",
+      "color": "Λευκό",
+      "notes": "",
+      "firstName": "KALAITZI",
+      "lastName": "MYRTO",
+      "phone": "6970450387",
+      "email": "",
+      "photoDataUrl": "",
+      "createdAt": "2026-01-15T11:08:53.345Z",
+      "updatedAt": "2026-01-15T11:08:53.345Z"
+    },
+    {
+      "id": "e456",
+      "lostDeclarationId": "1a26",
+      "finderId": "",
+      "status": "Οριστική",
+      "date": "2026-01-15",
+      "area": "Αθήνα",
+      "sex": "",
+      "species": "Σκύλος",
+      "color": "Χρυσαφί",
+      "notes": "",
+      "firstName": "kvstaw",
+      "lastName": "mpakaw",
+      "phone": "695038720",
+      "email": "kvst",
+      "photoDataUrl": "",
+      "createdAt": "2026-01-15T12:59:21.656Z",
+      "updatedAt": "2026-01-15T12:59:21.656Z"
+    },
+    {
+      "id": "3b14",
+      "lostDeclarationId": "1a26",
+      "finderId": "",
+      "status": "Οριστική",
+      "date": "2026-01-15",
+      "area": "Αθήνα",
+      "sex": "",
+      "species": "Σκύλος",
+      "color": "Χρυσαφί",
+      "notes": "",
+      "firstName": "Γιωργος",
+      "lastName": "Μπακας",
+      "phone": "6987654320",
+      "email": "mal@gmail.gr",
+      "photoDataUrl": "",
+      "createdAt": "2026-01-15T13:06:02.840Z",
+      "updatedAt": "2026-01-15T13:06:02.840Z"
     }
   ],
   "lostDeclarations": [
@@ -301,6 +358,27 @@
       "photoDataUrl": "",
       "createdAt": "2026-01-15T01:51:55.946Z",
       "updatedAt": "2026-01-15T01:51:55.946Z"
+    },
+    {
+      "id": "1a26",
+      "finderId": "1",
+      "status": "Οριστική",
+      "petId": "5",
+      "petName": "Νέλα",
+      "sex": "Θηλυκό",
+      "breedOrSpecies": "Σκύλος",
+      "color": "Χρυσαφί",
+      "microchip": "789123456",
+      "firstName": "Μυρτώ",
+      "lastName": "",
+      "phone": "6980218346",
+      "email": "owner@test.gr",
+      "date": "2026-01-14",
+      "area": "Αθήνα",
+      "notes": "",
+      "photoDataUrl": "",
+      "createdAt": "2026-01-15T12:52:52.025Z",
+      "updatedAt": "2026-01-15T12:52:52.025Z"
     }
   ],
   "appointments": [
@@ -568,6 +646,21 @@
       "createdAt": "2026-01-14T16:09:11.860Z",
       "canceledAt": "2026-01-14T16:20:40.167Z",
       "cancelReason": ""
+    },
+    {
+      "id": "0a11",
+      "vetId": 1,
+      "vetName": "Δρ. Κυριακή Νικολάου",
+      "ownerId": "1",
+      "petId": "5",
+      "petName": "Νέλα",
+      "petPhoto": "/images/dog3.png",
+      "petMicrochip": "789123456",
+      "service": "Μικροεπεμβάσεις",
+      "when": "2026-01-17T13:00:00.000Z",
+      "status": "Εκκρεμές",
+      "clinicAddress": "Λεωφόρος Κηφισίας 124, Αμπελόκηποι",
+      "createdAt": "2026-01-15T12:52:11.672Z"
     }
   ],
   "vets": [
@@ -946,6 +1039,67 @@
       "createdAt": "2026-01-15T09:32:21.503Z",
       "foundDeclarationId": "aa4a",
       "isRead": true
+    },
+    {
+      "id": "1c02",
+      "userId": "2",
+      "message": "Κάποιος βρήκε το κατοικίδιό σας",
+      "createdAt": "2026-01-15T11:08:53.345Z",
+      "isRead": false,
+      "refType": "found",
+      "refId": "0beb",
+      "lostDeclarationId": "52bb",
+      "foundDeclarationId": "0beb"
+    },
+    {
+      "id": "n_1768481531689_feded46d0d2588",
+      "userId": "1",
+      "createdAt": "2026-01-15T12:52:11.689Z",
+      "readAt": "2026-01-15T12:59:34.760Z",
+      "type": "appointment_pending",
+      "title": "Νέο ραντεβού (Εκκρεμές)",
+      "message": "Υποβλήθηκε αίτημα ραντεβού για Νέλα (Μικροεπεμβάσεις) στις 17/1/26, 3:00 μ.μ..",
+      "refType": "appointment",
+      "refId": "0a11"
+    },
+    {
+      "id": "086a",
+      "userId": "1",
+      "type": "lost_submitted",
+      "title": "Νέα δήλωση απώλειας",
+      "message": "Υποβλήθηκε δήλωση απώλειας για Νέλα (Αθήνα) στις 14/01/2026.",
+      "refType": "lostDeclaration",
+      "refId": "1a26",
+      "meta": {
+        "kind": "lost",
+        "status": "Οριστική",
+        "petId": "5",
+        "area": "Αθήνα",
+        "date": "2026-01-14",
+        "role": "owner"
+      }
+    },
+    {
+      "id": "ec37",
+      "userId": "1",
+      "message": "Κάποιος βρήκε το κατοικίδιό σας",
+      "createdAt": "2026-01-15T12:59:21.656Z",
+      "isRead": true,
+      "refType": "found",
+      "refId": "e456",
+      "lostDeclarationId": "1a26",
+      "foundDeclarationId": "e456"
+    },
+    {
+      "id": "6d78",
+      "userId": "1",
+      "message": "Κάποιος δήλωσε ότι βρήκε το κατοικίδιό σας",
+      "createdAt": "2026-01-15T13:06:02.840Z",
+      "isRead": true,
+      "refType": "found",
+      "refId": "3b14",
+      "lostDeclarationId": "1a26",
+      "foundDeclarationId": "3b14"
     }
   ]
 }

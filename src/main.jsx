@@ -42,15 +42,18 @@ import VetReviewDetails from "./pages/owner/VetReviewDetails.jsx";
 import OwnerProfile from "./pages/owner/Profile.jsx";
 import OwnerFoundDetails from "./pages/owner/OwnerFoundDetails.jsx";
 
-// ✅ ΠΡΟΣΘΗΚΗ: AuthProvider
+// ✅ Auth
 import { AuthProvider } from "./auth/AuthContext.jsx";
+
+// ✅ NEW: Route Guard
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public */}
+          {/* ---------------- Public ---------------- */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -61,65 +64,71 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route path="/lost/:id" element={<LostPetDetails />} />
           <Route path="/found/:id" element={<FoundPetDetails />} />
           <Route path="/found/new" element={<FoundWizard role="public" />} />
+          <Route path="/vets" element={<VetSearch role="public" />} />
+          <Route path="/vets/:vetId" element={<VetProfile role="public" />} />
 
           <Route path="/contact" element={<Contact />} />
 
-          {/* Owner */}
-          <Route path="/owner" element={<OwnerDashboard />} />
+          {/* ---------------- Owner (Protected) ---------------- */}
+          <Route element={<ProtectedRoute allow={["owner"]} />}>
+            <Route path="/owner" element={<OwnerDashboard />} />
 
-          <Route path="/owner/pets" element={<MyPets />} />
-          <Route path="/owner/pets/:id/booklet" element={<PetBookletDetails />} />
-          <Route path="/owner/pets/:id/booklet/vaccinations" element={<PetBookletVaccinations />} />
-          <Route path="/owner/pets/:id/booklet/acts" element={<PetBookletActs />} />
+            <Route path="/owner/pets" element={<MyPets />} />
+            <Route path="/owner/pets/:id/booklet" element={<PetBookletDetails />} />
+            <Route path="/owner/pets/:id/booklet/vaccinations" element={<PetBookletVaccinations />} />
+            <Route path="/owner/pets/:id/booklet/acts" element={<PetBookletActs />} />
 
-          <Route path="/owner/vets" element={<VetSearch />} />
-          <Route path="/owner/vets/:vetId" element={<VetProfile />} />
-          <Route path="/owner/vets/:vetId/new" element={<VetNewAppointment />} />
-          <Route path="/owner/vets/:vetId/reviews" element={<VetReviews role="owner" />} />
-          <Route path="/owner/vets/:vetId/reviews/:reviewId" element={<VetReviewDetails role="owner" />} />
+            <Route path="/owner/vets" element={<VetSearch />} />
+            <Route path="/owner/vets/:vetId" element={<VetProfile />} />
+            <Route path="/owner/vets/:vetId/new" element={<VetNewAppointment />} />
+            <Route path="/owner/vets/:vetId/reviews" element={<VetReviews role="owner" />} />
+            <Route path="/owner/vets/:vetId/reviews/:reviewId" element={<VetReviewDetails role="owner" />} />
 
-          <Route path="/owner/appointments" element={<MyAppointments />} />
-          <Route path="/owner/appointments/success" element={<AppointmentSuccess />} />
-          <Route path="/owner/appointments/:appId" element={<AppointmentDetails />} />
-          <Route path="/owner/appointments/:appId/review" element={<VetNewReview />} />
+            <Route path="/owner/appointments" element={<MyAppointments />} />
+            <Route path="/owner/appointments/success" element={<AppointmentSuccess />} />
+            <Route path="/owner/appointments/:appId" element={<AppointmentDetails />} />
+            <Route path="/owner/appointments/:appId/review" element={<VetNewReview />} />
 
-          <Route path="/owner/declarations" element={<MyDeclarations role="owner" />} />
-          <Route path="/owner/declarations/new" element={<DeclarationsNew role="owner" />} />
-          <Route path="/owner/declarations/found/new" element={<FoundWizard role="owner" />} />
-          <Route path="/owner/declarations/lost/new" element={<LostWizard role="owner" />} />
-          <Route path="/owner/declarations/success" element={<DeclarationSuccess role="owner" />} />
-          <Route path="/owner/found/:id" element={<OwnerFoundDetails />} />
+            <Route path="/owner/declarations" element={<MyDeclarations role="owner" />} />
+            <Route path="/owner/declarations/new" element={<DeclarationsNew role="owner" />} />
+            <Route path="/owner/declarations/found/new" element={<FoundWizard role="owner" />} />
+            <Route path="/owner/declarations/lost/new" element={<LostWizard role="owner" />} />
+            <Route path="/owner/declarations/success" element={<DeclarationSuccess role="owner" />} />
+            <Route path="/owner/found/:id" element={<OwnerFoundDetails />} />
 
-          <Route path="/owner/profile" element={<OwnerProfile role="owner" />} />
+            <Route path="/owner/profile" element={<OwnerProfile role="owner" />} />
+          </Route>
 
-          {/* Vet */}
-          <Route path="/vet" element={<VetDashboard />} />
+          {/* ---------------- Vet (Protected) ---------------- */}
+          <Route element={<ProtectedRoute allow={["vet"]} />}>
+            <Route path="/vet" element={<VetDashboard />} />
 
-          <Route path="/vet/mypets" element={<MyPets />} />
-          <Route path="/vet/mypets/:id/booklet" element={<PetBookletDetails />} />
-          <Route path="/vet/mypets/:id/booklet/vaccinations" element={<PetBookletVaccinations />} />
-          <Route path="/vet/mypets/:id/booklet/acts" element={<PetBookletActs />} />
-          
-          <Route path="/vet/pets" element={<VetSearch />} />
-          <Route path="/vet/pets/:vetId" element={<VetProfile />} />
-          <Route path="/vet/pets/:vetId/new" element={<VetNewAppointment />} />
+            <Route path="/vet/mypets" element={<MyPets />} />
+            <Route path="/vet/mypets/:id/booklet" element={<PetBookletDetails />} />
+            <Route path="/vet/mypets/:id/booklet/vaccinations" element={<PetBookletVaccinations />} />
+            <Route path="/vet/mypets/:id/booklet/acts" element={<PetBookletActs />} />
 
-          <Route path="/vet/appointments" element={<MyAppointments />} />
-          <Route path="/vet/appointments/success" element={<AppointmentSuccess />} />
-          <Route path="/vet/appointments/:appId" element={<AppointmentDetails />} />
-          <Route path="/vet/appointments/:appId/review" element={<VetNewReview />} />
-          
-          <Route path="/vet/declarations" element={<MyDeclarations role="vet" />} />
-          <Route path="/vet/declarations/new" element={<DeclarationsNew role="vet" />} />
-          <Route path="/vet/declarations/found/new" element={<FoundWizard role="vet" />} />
-          <Route path="/vet/declarations/lost/new" element={<LostWizard role="vet" />} />
-          <Route path="/vet/declarations/success" element={<DeclarationSuccess role="vet" />} />
+            <Route path="/vet/pets" element={<VetSearch />} />
+            <Route path="/vet/pets/:vetId" element={<VetProfile />} />
+            <Route path="/vet/pets/:vetId/new" element={<VetNewAppointment />} />
 
-          <Route path="/vet/profile" element={<OwnerProfile role="vet" />} />
-          <Route path="/vet/profile/:vetId/reviews" element={<VetReviews role="vet" />} />
-          <Route path="/vet/profile/:vetId/reviews/:reviewId" element={<VetReviewDetails role="vet" />} />
+            <Route path="/vet/appointments" element={<MyAppointments />} />
+            <Route path="/vet/appointments/success" element={<AppointmentSuccess />} />
+            <Route path="/vet/appointments/:appId" element={<AppointmentDetails />} />
+            <Route path="/vet/appointments/:appId/review" element={<VetNewReview />} />
 
-          {/* 404 */}
+            <Route path="/vet/declarations" element={<MyDeclarations role="vet" />} />
+            <Route path="/vet/declarations/new" element={<DeclarationsNew role="vet" />} />
+            <Route path="/vet/declarations/found/new" element={<FoundWizard role="vet" />} />
+            <Route path="/vet/declarations/lost/new" element={<LostWizard role="vet" />} />
+            <Route path="/vet/declarations/success" element={<DeclarationSuccess role="vet" />} />
+
+            <Route path="/vet/profile" element={<OwnerProfile role="vet" />} />
+            <Route path="/vet/profile/:vetId/reviews" element={<VetReviews role="vet" />} />
+            <Route path="/vet/profile/:vetId/reviews/:reviewId" element={<VetReviewDetails role="vet" />} />
+          </Route>
+
+          {/* ---------------- 404 ---------------- */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -7,7 +7,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
@@ -57,16 +57,53 @@ function fmtDate(isoOrYmd) {
 
 function ymd(value) {
   if (!value) return "";
-  // κρατάμε YYYY-MM-DD
   return String(value).slice(0, 10);
 }
 
-// ✅ mailto helper (χωρίς backend)
-function openMailTo({ to, subject, body }) {
-  const s = encodeURIComponent(subject || "");
-  const b = encodeURIComponent(body || "");
-  const link = `mailto:${encodeURIComponent(to || "")}?subject=${s}&body=${b}`;
-  window.location.href = link;
+function todayYMD() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/* =========================
+   ✅ VALIDATION HELPERS
+========================= */
+
+function isValidEmail(email) {
+  const e = String(email || "").trim();
+  if (!e) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+}
+
+// ✅ Greek mobile: accepts "69XXXXXXXX", "+3069XXXXXXXX", "003069XXXXXXXX" (and spaces/dashes)
+function normalizePhone(phone) {
+  return String(phone || "")
+    .replace(/\s+/g, "")
+    .replace(/-/g, "")
+    .trim();
+}
+
+function isValidGreekMobile(phone) {
+  const p = normalizePhone(phone);
+  if (!p) return false;
+
+  // keep only digits, but allow leading + by stripping it
+  const digits = p.startsWith("+") ? p.slice(1) : p;
+  if (!/^\d+$/.test(digits)) return false;
+
+  // 69XXXXXXXX (10 digits)
+  if (/^69\d{8}$/.test(digits)) return true;
+
+  // +30 69XXXXXXXX or 0030 69XXXXXXXX
+  if (/^30(69\d{8})$/.test(digits)) return true;
+  if (/^0030(69\d{8})$/.test(digits)) return true;
+
+  return false;
+}
+
+function isFutureYMD(dateStr) {
+  const d = ymd(dateStr);
+  if (!d) return false;
+  return d > todayYMD();
 }
 
 export default function LostPetDetails() {
@@ -90,6 +127,10 @@ export default function LostPetDetails() {
     foundDate: "",
     message: "",
   });
+
+  const [touched, setTouched] = useState({});
+  const touch = (k) => setTouched((p) => ({ ...p, [k]: true }));
+
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitOk, setSubmitOk] = useState(false);
@@ -102,16 +143,18 @@ export default function LostPetDetails() {
     setSubmitError("");
     setSubmitOk(false);
     setSubmitting(false);
+    setTouched({});
   }
 
   function openDialog() {
     resetFoundDialog();
+
     setFoundForm((p) => ({
       ...p,
       foundArea: p.foundArea || item?.area || "",
-      // default σήμερα
-      foundDate: p.foundDate || new Date().toISOString().slice(0, 10),
+      foundDate: p.foundDate || todayYMD(),
     }));
+
     setOpenFound(true);
   }
 
@@ -119,14 +162,63 @@ export default function LostPetDetails() {
     if (!submitting) setOpenFound(false);
   }
 
+  const validationErrors = useMemo(() => {
+    const e = {};
+
+    const firstName = String(foundForm.firstName || "").trim();
+    const lastName = String(foundForm.lastName || "").trim();
+    const email = String(foundForm.email || "").trim();
+    const phone = String(foundForm.phone || "").trim();
+    const foundArea = String(foundForm.foundArea || "").trim();
+    const foundDate = ymd(foundForm.foundDate);
+
+    if (!firstName) e.firstName = "Υποχρεωτικό πεδίο.";
+    if (lastName && lastName.length < 2) e.lastName = "Βάλε έγκυρο επώνυμο (τουλάχιστον 2 χαρακτήρες).";
+
+    // at least one contact
+    const hasPhone = !!phone;
+    const hasEmail = !!email;
+
+    if (!hasPhone && !hasEmail) {
+      e.phone = "Βάλε κινητό ή email.";
+      e.email = "Βάλε email ή κινητό.";
+    } else {
+      if (hasEmail && !isValidEmail(email)) e.email = "Μη έγκυρο email.";
+      if (hasPhone && !isValidGreekMobile(phone)) e.phone = "Μη έγκυρο κινητό (π.χ. 69XXXXXXXX ή +3069XXXXXXXX).";
+    }
+
+    if (!foundArea) e.foundArea = "Υποχρεωτικό πεδίο.";
+    if (!foundDate) e.foundDate = "Υποχρεωτικό πεδίο.";
+    else if (isFutureYMD(foundDate)) e.foundDate = "Η ημερομηνία δεν μπορεί να είναι στο μέλλον.";
+
+    return e;
+  }, [foundForm]);
+
+  const canSubmit = Object.keys(validationErrors).length === 0 && !submitting && !submitOk;
+
   async function submitFoundReport() {
     setSubmitError("");
     setSubmitOk(false);
 
-    if (!item?.id) return setSubmitError("Λείπει το id της δήλωσης.");
-    if (!foundForm.firstName.trim()) return setSubmitError("Βάλε όνομα.");
-    if (!foundForm.phone.trim() && !foundForm.email.trim()) {
-      return setSubmitError("Βάλε τηλέφωνο ή email για να μπορεί να σε βρει ο ιδιοκτήτης.");
+    // mark all touched so errors show
+    setTouched({
+      firstName: true,
+      lastName: true,
+      phone: true,
+      email: true,
+      foundArea: true,
+      foundDate: true,
+      message: true,
+    });
+
+    if (!item?.id) {
+      setSubmitError("Λείπει το id της δήλωσης.");
+      return;
+    }
+
+    if (!canSubmit) {
+      setSubmitError("Διόρθωσε τα πεδία με κόκκινο πριν την αποστολή.");
+      return;
     }
 
     try {
@@ -134,30 +226,26 @@ export default function LostPetDetails() {
 
       const now = new Date().toISOString();
 
-      // 1) ✅ Δημιουργία fast Found Declaration (στο json-server)
+      // 1) ✅ Δημιουργία Found Declaration (json-server)
       const createdFound = await fetchJSON("/api/foundDeclarations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // ✅ σύνδεση με το lost
           lostDeclarationId: String(item.id),
-
-          // προαιρετικά: αν έχεις logged in user, μπορείς να βάλεις finderId
           finderId: "",
 
-          // στο δικό σου σχήμα υπάρχουν αυτά:
           status: "Οριστική",
-          date: ymd(foundForm.foundDate) || new Date().toISOString().slice(0, 10),
-          area: foundForm.foundArea || item.area || "",
+          date: ymd(foundForm.foundDate) || todayYMD(),
+          area: String(foundForm.foundArea || item.area || "").trim(),
           sex: "",
           species: item.breedOrSpecies || item.species || "",
           color: item.color || "",
-          notes: foundForm.message || "",
+          notes: String(foundForm.message || "").trim(),
 
-          firstName: foundForm.firstName.trim(),
-          lastName: foundForm.lastName.trim(),
-          phone: foundForm.phone.trim(),
-          email: foundForm.email.trim(),
+          firstName: String(foundForm.firstName || "").trim(),
+          lastName: String(foundForm.lastName || "").trim(),
+          phone: normalizePhone(foundForm.phone),
+          email: String(foundForm.email || "").trim(),
           photoDataUrl: "",
 
           createdAt: now,
@@ -165,8 +253,7 @@ export default function LostPetDetails() {
         }),
       });
 
-      // 2) ✅ Notification στον ιδιοκτήτη της απώλειας (finderId)
-      // στο lostDeclarations έχεις finderId (αυτός έκανε τη δήλωση)
+      // 2) ✅ Notification στον ιδιοκτήτη (αυτός έκανε τη δήλωση απώλειας)
       const ownerUserId = item.finderId || item.ownerId || "";
       if (ownerUserId) {
         await fetchJSON("/api/notifications", {
@@ -174,48 +261,21 @@ export default function LostPetDetails() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: String(ownerUserId),
-            message: "Κάποιος βρήκε το κατοικίδιό σας",
+            message: "Κάποιος δήλωσε ότι βρήκε το κατοικίδιό σας",
             createdAt: now,
             isRead: false,
 
-            // ✅ ΜΟΝΟ αυτά για routing:
             refType: "found",
             refId: String(createdFound.id),
 
-            // ✅ κράτα το lost id σε ΑΛΛΟ πεδίο (ΟΧΙ refId):
+            // extra links (optional)
             lostDeclarationId: String(item.id),
             foundDeclarationId: String(createdFound.id),
           }),
-        });    
+        });
       }
 
-      // 3) ✅ “Email” χωρίς backend: ανοίγουμε mail client με mailto:
-      // (ο χρήστης πατάει Send)
-      if (item.email) {
-        const subject = `Βρέθηκε το κατοικίδιό σας: ${item.petName || "Κατοικίδιο"}`;
-        const body = [
-          `Γεια σας,`,
-          ``,
-          `Βρήκα το κατοικίδιό σας (${item.petName || ""}).`,
-          ``,
-          `Στοιχεία επικοινωνίας μου:`,
-          `- Όνομα: ${foundForm.firstName.trim()} ${foundForm.lastName.trim()}`.trim(),
-          `- Τηλέφωνο: ${foundForm.phone.trim() || "-"}`,
-          `- Email: ${foundForm.email.trim() || "-"}`,
-          ``,
-          `Στοιχεία εύρεσης:`,
-          `- Περιοχή: ${foundForm.foundArea || "-"}`,
-          `- Ημ/νία: ${ymd(foundForm.foundDate) || "-"}`,
-          ``,
-          `Μήνυμα:`,
-          `${foundForm.message || "-"}`,
-          ``,
-          `MyPet`,
-        ].join("\n");
-
-        openMailTo({ to: item.email, subject, body });
-      }
-
+      // ✅ ΤΕΛΟΣ: δεν στέλνουμε email (μόνο frontend)
       setSubmitOk(true);
     } catch (e) {
       setSubmitError(e?.message || "Κάτι πήγε στραβά στην αποστολή.");
@@ -390,15 +450,12 @@ export default function LostPetDetails() {
                           bgcolor: COLORS.primary,
                           "&:hover": { bgcolor: COLORS.primaryHover },
                           boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
+                          fontWeight: 900,
                         }}
                       >
                         Βρήκα το κατοικίδιο
                       </Button>
                     </Box>
-
-                    <Typography sx={{ mt: 1, fontSize: 12, color: COLORS.muted }}>
-                      * Χωρίς backend, το “email” ανοίγει στο πρόγραμμα email σας (mailto).
-                    </Typography>
                   </Box>
                 </Box>
 
@@ -411,8 +468,7 @@ export default function LostPetDetails() {
                   <DialogContent sx={{ pt: 1 }}>
                     {submitOk && (
                       <Alert severity="success" sx={{ mb: 2 }}>
-                        Στάλθηκε! Καταχωρήθηκε δήλωση εύρεσης και δημιουργήθηκε ειδοποίηση.
-                        Αν υπάρχει email, άνοιξε και έτοιμο μήνυμα αποστολής.
+                        Καταχωρήθηκε δήλωση εύρεσης και δημιουργήθηκε ειδοποίηση στον ιδιοκτήτη.
                       </Alert>
                     )}
 
@@ -426,46 +482,68 @@ export default function LostPetDetails() {
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2}>
                         <TextField
                           fullWidth
-                          label="Όνομα"
+                          label="Όνομα *"
                           value={foundForm.firstName}
                           onChange={(e) => updateFoundForm("firstName", e.target.value)}
+                          onBlur={() => touch("firstName")}
+                          error={!!validationErrors.firstName && !!touched.firstName}
+                          helperText={touched.firstName ? validationErrors.firstName || " " : " "}
                         />
                         <TextField
                           fullWidth
                           label="Επώνυμο"
                           value={foundForm.lastName}
                           onChange={(e) => updateFoundForm("lastName", e.target.value)}
+                          onBlur={() => touch("lastName")}
+                          error={!!validationErrors.lastName && !!touched.lastName}
+                          helperText={touched.lastName ? validationErrors.lastName || " " : " "}
                         />
                       </Stack>
 
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2}>
                         <TextField
                           fullWidth
-                          label="Τηλέφωνο"
+                          label="Κινητό"
                           value={foundForm.phone}
                           onChange={(e) => updateFoundForm("phone", e.target.value)}
+                          onBlur={() => touch("phone")}
+                          error={!!validationErrors.phone && !!touched.phone}
+                          helperText={
+                            touched.phone
+                              ? validationErrors.phone || "Π.χ. 69XXXXXXXX ή +3069XXXXXXXX"
+                              : " "
+                          }
                         />
                         <TextField
                           fullWidth
                           label="Email"
                           value={foundForm.email}
                           onChange={(e) => updateFoundForm("email", e.target.value)}
+                          onBlur={() => touch("email")}
+                          error={!!validationErrors.email && !!touched.email}
+                          helperText={touched.email ? validationErrors.email || " " : " "}
                         />
                       </Stack>
 
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2}>
                         <TextField
                           fullWidth
-                          label="Πού βρέθηκε (περιοχή)"
+                          label="Πού βρέθηκε (περιοχή) *"
                           value={foundForm.foundArea}
                           onChange={(e) => updateFoundForm("foundArea", e.target.value)}
+                          onBlur={() => touch("foundArea")}
+                          error={!!validationErrors.foundArea && !!touched.foundArea}
+                          helperText={touched.foundArea ? validationErrors.foundArea || " " : " "}
                         />
                         <TextField
                           fullWidth
                           type="date"
-                          label="Ημ/νία εύρεσης"
+                          label="Ημ/νία εύρεσης *"
                           value={foundForm.foundDate}
                           onChange={(e) => updateFoundForm("foundDate", e.target.value)}
+                          onBlur={() => touch("foundDate")}
+                          error={!!validationErrors.foundDate && !!touched.foundDate}
+                          helperText={touched.foundDate ? validationErrors.foundDate || " " : " "}
                           InputLabelProps={{ shrink: true }}
                         />
                       </Stack>
@@ -494,13 +572,14 @@ export default function LostPetDetails() {
                     <Button
                       variant="contained"
                       onClick={submitFoundReport}
-                      disabled={submitting || submitOk}
+                      disabled={!canSubmit || submitting || submitOk}
                       startIcon={submitting ? <CircularProgress size={18} /> : null}
                       sx={{
                         textTransform: "none",
                         borderRadius: 2,
                         bgcolor: COLORS.primary,
                         "&:hover": { bgcolor: COLORS.primaryHover },
+                        fontWeight: 900,
                       }}
                     >
                       Αποστολή

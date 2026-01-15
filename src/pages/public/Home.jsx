@@ -245,8 +245,9 @@ export default function Home() {
     const dateISO = normalizeGreekDateToISO(vetDate);
     if (dateISO) params.set("date", dateISO);
 
-    navigate(`/owner/vets?${params.toString()}`);
+    navigate(`/vets?${params.toString()}`);
   }
+
 
   function clearVetFilters() {
     setVetArea("");
@@ -731,7 +732,7 @@ export default function Home() {
                   <Paper
                     key={v.id}
                     elevation={0}
-                    onClick={() => navigate(`/owner/vets/${v.id}`)}
+                    onClick={() => navigate(`/vets/${v.id}`)}
                     sx={{
                       width: { xs: "100%", md: 300 },
                       borderRadius: 3,
@@ -825,7 +826,7 @@ export default function Home() {
           <Stack alignItems="flex-end" sx={{ mt: 2 }}>
             <Button
               variant="text"
-              onClick={() => navigate("/owner/vets")}
+              onClick={() => navigate("/vets")}
               sx={{ textTransform: "none", borderRadius: 2, fontWeight: 800, color: "#0b3d91" }}
             >
               Δείτε όλους τους κτηνιάτρους →

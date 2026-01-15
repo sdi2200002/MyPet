@@ -68,7 +68,7 @@ export default function DeclarationSuccess({ role = "owner" }) {
               placeItems: "center",
               color: "#fff",
               fontSize: 58,
-              fontWeight: 900,
+              fontWeight: 1100,
             }}
           >
             ✓
@@ -87,6 +87,7 @@ export default function DeclarationSuccess({ role = "owner" }) {
               borderRadius: 2,
               px: 4,
               bgcolor: COLORS.primary,
+              fontWeight: 900,              // ✅ εδώ
               "&:hover": { bgcolor: COLORS.primaryHover },
             }}
           >
