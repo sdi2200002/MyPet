@@ -51,6 +51,16 @@ export default function PublicNavbar() {
   const { user, logout } = useAuth();
   const isLoggedIn = Boolean(user);
 
+  const role = (user?.role ?? user?.user?.role ?? "").toString().toLowerCase();
+  const handleProfileClick = () => {
+    if (role === "vet" || role === "κτηνίατρος") {
+      navigate("/vet/profile");
+      return;
+    }
+    // default -> owner
+    navigate("/owner/profile");
+  };
+
   const handleLogout = () => {
     handleClose();
     logout();
@@ -97,7 +107,7 @@ export default function PublicNavbar() {
             </Button>
           ) : (
             <IconButton
-              onClick={() => navigate("/owner/profile")}
+              onClick={handleProfileClick}
               sx={{ color: "#0b3d91" }}
             >
               <AccountCircleIcon sx={{ fontSize: 40 }} />

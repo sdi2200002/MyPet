@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Box, Button, Container, Paper, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
-import { useAuth } from "../../auth/AuthContext";
-import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
 
+import { useAuth } from "../../auth/AuthContext";
+
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+import VetNavbar, { VET_SIDEBAR_W } from "../../components/VetNavbar";
 
 const COLORS = {
   primary: "#0b3d91",
@@ -39,23 +42,42 @@ function InfoRow({ label, value }) {
   );
 }
 
-export default function OwnerProfile() {
+/**
+ * ✅ Shared Profile Page
+ * role: "owner" | "vet"
+ */
+export default function Profile({ role = "owner" }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const base = role === "vet" ? "/vet" : "/owner";
+  const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
 
   const [dbUser, setDbUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // ✅ Φέρνουμε τον χρήστη από τη "βάση" (json-server) με βάση το id του logged-in χρήστη
+  // ✅ guard: αν ο logged user είναι άλλος ρόλος → πήγαινε στο σωστό profile
+  useEffect(() => {
+    if (!user) return;
+
+    const actualRole = (user?.role ?? user?.user?.role ?? "").toString().toLowerCase();
+    if (!actualRole) return;
+
+    if (actualRole !== role) {
+      navigate(actualRole === "vet" ? "/vet/profile" : "/owner/profile", { replace: true });
+    }
+  }, [user, role, navigate]);
+
+  // ✅ fetch από /api/users/:id
   useEffect(() => {
     let alive = true;
 
     (async () => {
       setErr("");
 
-      // αν δεν υπάρχει logged in user, πήγαινε login/home
       if (!user?.id) {
+        if (!alive) return;
         setDbUser(null);
         setLoading(false);
         return;
@@ -63,39 +85,33 @@ export default function OwnerProfile() {
 
       setLoading(true);
 
-      // IMPORTANT: το proxy σου κάνει /api -> http://localhost:3001
-      const data = await fetchJSON(`/api/users/${encodeURIComponent(String(user.id))}`);
-
-      if (!alive) return;
-      setDbUser(data);
-      setLoading(false);
-    })().catch((e) => {
-      console.error(e);
-      if (!alive) return;
-      setErr("Αποτυχία φόρτωσης προφίλ από τον server.");
-      setLoading(false);
-    });
+      try {
+        const data = await fetchJSON(`/api/users/${encodeURIComponent(String(user.id))}`);
+        if (!alive) return;
+        setDbUser(data);
+      } catch (e) {
+        console.error(e);
+        if (!alive) return;
+        setErr("Αποτυχία φόρτωσης προφίλ από τον server.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
 
     return () => {
       alive = false;
     };
   }, [user?.id]);
 
-  // ✅ Προστασία: αυτή η σελίδα είναι για owner
-  useEffect(() => {
-    if (user && user.role && user.role !== "owner") {
-      navigate("/");
-    }
-  }, [user, navigate]);
-
   const profile = useMemo(() => {
-    const u = dbUser || user; // fallback μόνο στο local "user" αν αργεί/σπάσει το fetch
+    const u = dbUser || user; // fallback στο auth user
     return {
       fullName: u?.name ?? "-",
       phone: u?.phone ?? "-",
       address: u?.address ?? "-",
       email: u?.email ?? "-",
       photoUrl: u?.photoUrl ?? "",
+      role: u?.role ?? user?.role ?? "-",
     };
   }, [dbUser, user]);
 
@@ -148,167 +164,157 @@ export default function OwnerProfile() {
   }
 
   return (
-      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
-        <PublicNavbar />
+    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
+      <PublicNavbar />
 
-        {/* ✅ 2-column layout: sidebar + content */}
+      <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
+        {/* spacer για fixed sidebar */}
         <Box
           sx={{
-            flex: 1,
-            display: { xs: "block", lg: "flex" },
-            alignItems: "flex-start",
+            width: sidebarW,
+            flex: `0 0 ${sidebarW}px`,
+            display: { xs: "none", lg: "block" },
+            alignSelf: "flex-start",
           }}
-        >
-          {/* LEFT: spacer column (κρατάει χώρο για το fixed sidebar) */}
-          <Box
-            sx={{
-              width: OWNER_SIDEBAR_W,
-              flex: `0 0 ${OWNER_SIDEBAR_W}px`,
-              display: { xs: "none", lg: "block" },
-              alignSelf: "flex-start",
-            }}
-          />
+        />
 
-          {/* Sidebar: κολλάει κάτω από PublicNavbar */}
-          <OwnerNavbar mode="navbar" />
+        {/* σωστό sidebar */}
+        {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
 
-          {/* RIGHT: page content */}
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Container maxWidth="lg" sx={{ mt: 2 }}>
-              <AppBreadcrumbs />
+        {/* content */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Container maxWidth="lg" sx={{ mt: 2 }}>
+            <AppBreadcrumbs />
 
-              <Box sx={{ mt: 2, display: "grid", placeItems: "center" }}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    width: { xs: "100%", sm: 650, md: 720 },
-                    bgcolor: COLORS.panelBg,
-                    border: `2px solid ${COLORS.panelBorder}`,
-                    borderRadius: 2,
-                    boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
-                    p: { xs: 2.2, sm: 3 },
-                  }}
-                >
-                  {loading ? (
-                    <Typography sx={{ fontWeight: 800, color: "#1c2b39" }}>Φόρτωση προφίλ...</Typography>
-                  ) : (
-                    <>
-                      {err && (
-                        <Typography sx={{ fontWeight: 900, color: "#b00020", mb: 2 }}>
-                          {err}
-                        </Typography>
-                      )}
+            <Box sx={{ mt: 2, display: "grid", placeItems: "center" }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  width: { xs: "100%", sm: 650, md: 720 },
+                  bgcolor: COLORS.panelBg,
+                  border: `2px solid ${COLORS.panelBorder}`,
+                  borderRadius: 2,
+                  boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+                  p: { xs: 2.2, sm: 3 },
+                }}
+              >
+                {loading ? (
+                  <Typography sx={{ fontWeight: 800, color: "#1c2b39" }}>Φόρτωση προφίλ...</Typography>
+                ) : (
+                  <>
+                    {err && (
+                      <Typography sx={{ fontWeight: 900, color: "#b00020", mb: 2 }}>
+                        {err}
+                      </Typography>
+                    )}
 
-                      {/* top row: photo + name */}
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "140px 1fr",
+                        gap: 3,
+                        alignItems: "start",
+                      }}
+                    >
                       <Box
                         sx={{
+                          width: 120,
+                          height: 120,
+                          borderRadius: 1,
+                          bgcolor: "rgba(255,255,255,0.45)",
+                          border: "1.5px solid rgba(13,44,84,0.35)",
+                          position: "relative",
+                          overflow: "hidden",
                           display: "grid",
-                          gridTemplateColumns: "140px 1fr",
-                          gap: 3,
-                          alignItems: "start",
+                          placeItems: "center",
+                          color: COLORS.title,
+                          fontWeight: 800,
                         }}
                       >
-                        <Box
-                          sx={{
-                            width: 120,
-                            height: 120,
-                            borderRadius: 1,
-                            bgcolor: "rgba(255,255,255,0.45)",
-                            border: "1.5px solid rgba(13,44,84,0.35)",
-                            position: "relative",
-                            overflow: "hidden",
-                            display: "grid",
-                            placeItems: "center",
-                            color: COLORS.title,
-                            fontWeight: 800,
-                          }}
-                        >
-                          {profile.photoUrl ? (
+                        {profile.photoUrl ? (
+                          <Box
+                            component="img"
+                            src={profile.photoUrl}
+                            alt="Φωτογραφία"
+                            sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        ) : (
+                          <Typography sx={{ fontWeight: 800 }}>Φωτογραφία</Typography>
+                        )}
+
+                        {!profile.photoUrl && (
+                          <>
                             <Box
-                              component="img"
-                              src={profile.photoUrl}
-                              alt="Φωτογραφία"
-                              sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              sx={{
+                                position: "absolute",
+                                inset: 0,
+                                borderTop: "1px solid rgba(13,44,84,0.35)",
+                                transform: "rotate(45deg)",
+                                transformOrigin: "center",
+                              }}
                             />
-                          ) : (
-                            <Typography sx={{ fontWeight: 800 }}>Φωτογραφία</Typography>
-                          )}
-
-                          {!profile.photoUrl && (
-                            <>
-                              <Box
-                                sx={{
-                                  position: "absolute",
-                                  inset: 0,
-                                  borderTop: "1px solid rgba(13,44,84,0.35)",
-                                  transform: "rotate(45deg)",
-                                  transformOrigin: "center",
-                                }}
-                              />
-                              <Box
-                                sx={{
-                                  position: "absolute",
-                                  inset: 0,
-                                  borderTop: "1px solid rgba(13,44,84,0.35)",
-                                  transform: "rotate(-45deg)",
-                                  transformOrigin: "center",
-                                }}
-                              />
-                            </>
-                          )}
-                        </Box>
-
-                        <Box>
-                          <Typography sx={{ fontWeight: 900, color: "#000", fontSize: 18, mt: 1 }}>
-                            {profile.fullName}
-                          </Typography>
-                          <Typography sx={{ color: "#1c2b39", fontWeight: 700, mt: 0.4 }}>
-                            Ρόλος: {dbUser?.role || user?.role || "-"}
-                          </Typography>
-                        </Box>
+                            <Box
+                              sx={{
+                                position: "absolute",
+                                inset: 0,
+                                borderTop: "1px solid rgba(13,44,84,0.35)",
+                                transform: "rotate(-45deg)",
+                                transformOrigin: "center",
+                              }}
+                            />
+                          </>
+                        )}
                       </Box>
 
-                      {/* info rows */}
-                      <Box sx={{ mt: 4 }}>
-                        <InfoRow label="Τηλέφωνο:" value={profile.phone} />
-                        <InfoRow label="Διεύθυνση:" value={profile.address} />
-                        <InfoRow label="Email:" value={profile.email} />
+                      <Box>
+                        <Typography sx={{ fontWeight: 900, color: "#000", fontSize: 18, mt: 1 }}>
+                          {profile.fullName}
+                        </Typography>
+                        <Typography sx={{ color: "#1c2b39", fontWeight: 700, mt: 0.4 }}>
+                          Ρόλος: {profile.role}
+                        </Typography>
                       </Box>
-                    </>
-                  )}
-                </Paper>
+                    </Box>
 
-                {/* Προαιρετικό: μπορείς να το αφαιρέσεις γιατί υπάρχει logout στο sidebar */}
-                <Box
+                    <Box sx={{ mt: 4 }}>
+                      <InfoRow label="Τηλέφωνο:" value={profile.phone} />
+                      <InfoRow label="Διεύθυνση:" value={profile.address} />
+                      <InfoRow label="Email:" value={profile.email} />
+                    </Box>
+                  </>
+                )}
+              </Paper>
+
+              {/* optional logout (αν το θες και εδώ) */}
+              <Box
+                sx={{
+                  width: { xs: "100%", sm: 650, md: 720 },
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  mt: 2.2,
+                }}
+              >
+                <Button
+                  variant="contained"
+                  onClick={handleLogout}
                   sx={{
-                    width: { xs: "100%", sm: 650, md: 720 },
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    mt: 2.2,
+                    textTransform: "none",
+                    borderRadius: 2,
+                    px: 3.2,
+                    bgcolor: COLORS.primary,
+                    "&:hover": { bgcolor: COLORS.primaryHover },
+                    boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
                   }}
                 >
-                  <Button
-                    variant="contained"
-                    onClick={handleLogout}
-                    sx={{
-                      textTransform: "none",
-                      borderRadius: 2,
-                      px: 3.2,
-                      bgcolor: COLORS.primary,
-                      "&:hover": { bgcolor: COLORS.primaryHover },
-                      boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
-                    }}
-                  >
-                    Αποσύνδεση
-                  </Button>
-                </Box>
+                  Αποσύνδεση
+                </Button>
               </Box>
-            </Container>
-          </Box>
+            </Box>
+          </Container>
         </Box>
-
-        <Footer />
       </Box>
-    );
 
+      <Footer />
+    </Box>
+  );
 }

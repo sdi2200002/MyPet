@@ -15,12 +15,15 @@ import {
   Typography,
 } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
+
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import WizardStepper from "../../components/WizardStepper";
 import { useAuth } from "../../auth/AuthContext";
+
 import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+import VetNavbar, { VET_SIDEBAR_W } from "../../components/VetNavbar";
 
 const COLORS = {
   primary: "#0b3d91",
@@ -42,44 +45,18 @@ const fieldSx = {
   "& .MuiInputLabel-root.Mui-focused": { color: COLORS.primary },
 };
 
+async function fetchJSON(path, options) {
+  const res = await fetch(path, options);
+  if (!res.ok) throw new Error(`HTTP ${res.status} on ${path}`);
+  return res.json();
+}
+
 async function createNotification(payload) {
   return fetchJSON(`/api/notifications`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-}
-
-function makeNotif({ userId, type, title, message, refType, refId, meta }) {
-  return {
-    // ✅ αν δεν βάλεις id, json-server βάζει numeric.
-    // Αν θες string id (προτείνω), βάλε το:
-    id: `n_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-
-    userId: String(userId),
-    createdAt: new Date().toISOString(),
-
-    // ✅ αυτό να είναι το "read/unread"
-    readAt: null,
-
-    type: type || "info", // info | success | warning | error
-    title: title || "",
-    message: message || "",
-
-    // ✅ link/reference fields (πολύ χρήσιμα)
-    refType: refType || "",
-    refId: refId || "",
-
-    // optional extra data
-    meta: meta || {},
-  };
-}
-
-
-async function fetchJSON(path, options) {
-  const res = await fetch(path, options);
-  if (!res.ok) throw new Error(`HTTP ${res.status} on ${path}`);
-  return res.json();
 }
 
 function Panel({ children }) {
@@ -107,13 +84,12 @@ function normalizePhone(raw) {
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result); // data:image/...;base64,...
+    reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
 
-// ✅ κρατάμε string-only (YYYY-MM-DD) -> εμφανίζουμε DD/MM/YYYY χωρίς Date()
 function fmtDDMMYYYY(value) {
   if (!value) return "";
   const [y, m, d] = String(value).split("-");
@@ -194,12 +170,45 @@ function PetPick({ pet, active, onClick }) {
   );
 }
 
+function DeclarationsShell({ role, sidebarW, children }) {
+  return (
+    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
+      <PublicNavbar />
+
+      <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
+        <Box
+          sx={{
+            width: sidebarW,
+            flex: `0 0 ${sidebarW}px`,
+            display: { xs: "none", lg: "block" },
+            alignSelf: "flex-start",
+          }}
+        />
+
+        {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
+
+        <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+      </Box>
+
+      <Footer />
+    </Box>
+  );
+}
+
+
 const WIZARD_STEPS = ["Επιλογή Κατοικιδίου", "Στοιχεία Απώλειας", "Προεπισκόπηση Αναφοράς"];
 
-export default function LostWizard() {
+/**
+ * ✅ Shared page
+ * role: "owner" | "vet"
+ */
+export default function LostWizard({ role = "owner" }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+
+  const base = role === "vet" ? "/vet" : "/owner";
+  const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
 
   const [editingId, setEditingId] = useState(null);
   const [activeStep, setActiveStep] = useState(0);
@@ -212,7 +221,7 @@ export default function LostWizard() {
 
   // ---------- Photo upload state ----------
   const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(""); // objectURL for preview or dataURL
+  const [photoPreview, setPhotoPreview] = useState("");
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -271,35 +280,25 @@ export default function LostWizard() {
   // ---------- Form ----------
   const [form, setForm] = useState({
     finderId: "",
-
-    // Step 0: pet selection
     petId: "",
     petName: "",
     sex: "",
     breedOrSpecies: "",
     color: "",
     microchip: "",
-
-    // owner/finder (optional)
     phone: "",
     email: "",
     firstName: "",
     lastName: "",
-
-    // Step 1: loss (string YYYY-MM-DD)
     date: "",
     area: "",
     notes: "",
-
-    // Step 2
     acceptTerms: false,
-
-    // server fields
     photoDataUrl: "",
     createdAt: "",
   });
 
-  // load pets from server
+  // ✅ load pets from server
   useEffect(() => {
     let alive = true;
 
@@ -316,10 +315,13 @@ export default function LostWizard() {
       }
 
       try {
-        const p = await fetchJSON(`/api/pets?ownerId=${encodeURIComponent(String(user.id))}`);
+        // ✅ Αν το schema σου είναι ίδιο και για vet, αυτό μένει ίδιο.
+        // Αν οι pets του vet είναι αλλού, εδώ αλλάζεις query.
+        const queryKey = role === "vet" ? "vetId" : "ownerId";
+        const p = await fetchJSON(`/api/pets?${queryKey}=${encodeURIComponent(String(user.id))}`);
+
         if (!alive) return;
-        const arr = Array.isArray(p) ? p : [];
-        setPets(arr);
+        setPets(Array.isArray(p) ? p : []);
         setPetsLoading(false);
       } catch (e) {
         console.error(e);
@@ -335,11 +337,10 @@ export default function LostWizard() {
     };
   }, [user?.id]);
 
-  // apply draft edit from route state (now from json-server)
+  // ✅ apply draft edit from route state
   useEffect(() => {
     const draftId = location.state?.draftId;
     const targetStep = location.state?.step;
-
     if (!draftId) return;
 
     let alive = true;
@@ -350,14 +351,8 @@ export default function LostWizard() {
         if (!alive) return;
 
         setEditingId(String(draftId));
+        setForm((p) => ({ ...p, ...draft, acceptTerms: false }));
 
-        setForm((p) => ({
-          ...p,
-          ...draft,
-          acceptTerms: false,
-        }));
-
-        // photo preview
         if (draft.photoDataUrl) {
           setPhotoPreview(draft.photoDataUrl);
           setPhotoFile(null);
@@ -378,11 +373,9 @@ export default function LostWizard() {
     };
   }, [location.state]);
 
-  const chosenPet = useMemo(() => {
-    return pets.find((p) => String(p.id) === String(form.petId)) || null;
-  }, [pets, form.petId]);
+  const chosenPet = useMemo(() => pets.find((p) => String(p.id) === String(form.petId)) || null, [pets, form.petId]);
 
-  // when choose a pet: fill in the read-only fields
+  // όταν επιλέξεις pet: fill τα read-only
   useEffect(() => {
     if (!chosenPet) return;
 
@@ -452,8 +445,6 @@ export default function LostWizard() {
     return {
       finderId: user?.id ?? form.finderId ?? "",
       status,
-
-      // pet
       petId: form.petId,
       petName: form.petName,
       sex: form.sex,
@@ -461,20 +452,16 @@ export default function LostWizard() {
       color: form.color,
       microchip: form.microchip,
 
-      // owner (optional)
       firstName: form.firstName,
       lastName: form.lastName,
       phone: normalizePhone(form.phone),
       email: form.email,
 
-      // loss (KEEP AS YYYY-MM-DD STRING!)
       date: form.date,
       area: form.area,
       notes: (form.notes || "").trim(),
 
-      // photo
       photoDataUrl,
-
       createdAt: form.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -503,7 +490,8 @@ export default function LostWizard() {
         setEditingId(String(created?.id));
       }
 
-      navigate("/owner/declarations/success", { state: { type: "lost", status: "Πρόχειρη" } });
+      // ✅ base-aware
+      navigate(`${base}/declarations/success`, { state: { type: "lost", status: "Πρόχειρη" } });
     } catch (e) {
       console.error(e);
       alert("Κάτι πήγε στραβά στην αποθήκευση.");
@@ -521,7 +509,6 @@ export default function LostWizard() {
     try {
       const payload = await buildPayload("Οριστική");
 
-      // 1) Δημιουργία / ενημέρωση δήλωσης
       let savedId = editingId;
 
       if (editingId) {
@@ -540,32 +527,32 @@ export default function LostWizard() {
         setEditingId(savedId);
       }
 
-      // 2) ✅ Notification 
+      // notification (non-blocking)
       try {
         await createNotification({
           userId: user?.id,
-          type: "lost_submitted", // ή "warning" αν θες
+          type: "lost_submitted",
           title: "Νέα δήλωση απώλειας",
-          message: `Υποβλήθηκε δήλωση απώλειας για ${
-            payload?.petName || "κατοικίδιο"
-          } (${payload?.area || "—"}) στις ${fmtDDMMYYYY(payload?.date)}.`,
+          message: `Υποβλήθηκε δήλωση απώλειας για ${payload?.petName || "κατοικίδιο"} (${payload?.area || "—"}) στις ${
+            fmtDDMMYYYY(payload?.date)
+          }.`,
           refType: "lostDeclaration",
           refId: String(savedId || ""),
-          // optional extra
           meta: {
             kind: "lost",
             status: "Οριστική",
             petId: String(payload?.petId || ""),
             area: payload?.area || "",
             date: payload?.date || "",
+            role,
           },
         });
       } catch (e) {
         console.warn("Notification failed (ignored):", e);
       }
 
-      // 3) Μετά πλοήγηση
-      navigate("/owner/declarations/success", { state: { type: "lost", status: "Οριστική" } });
+      // ✅ base-aware
+      navigate(`${base}/declarations/success`, { state: { type: "lost", status: "Οριστική" } });
     } catch (e) {
       console.error(e);
       alert("Κάτι πήγε στραβά στην υποβολή.");
@@ -574,35 +561,8 @@ export default function LostWizard() {
     }
   }
 
-
-  function OwnerPageShell({ children }) {
-    return (
-      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
-        <PublicNavbar />
-
-        <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
-          {/* spacer */}
-          <Box
-            sx={{
-              width: OWNER_SIDEBAR_W,
-              flex: `0 0 ${OWNER_SIDEBAR_W}px`,
-              display: { xs: "none", lg: "block" },
-              alignSelf: "flex-start",
-            }}
-          />
-
-          <OwnerNavbar mode="navbar" />
-
-          <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
-        </Box>
-
-        <Footer />
-      </Box>
-    );
-  }
-
   return (
-    <OwnerPageShell>
+    <DeclarationsShell role={role} sidebarW={sidebarW}>
       <Container maxWidth="lg" sx={{ py: 3 }}>
         <Box>
           <AppBreadcrumbs />
@@ -614,7 +574,7 @@ export default function LostWizard() {
 
         <WizardStepper activeStep={activeStep} steps={WIZARD_STEPS} />
 
-        {/* ================== STEP 0: PET PICK ================== */}
+        {/* STEP 0 */}
         {activeStep === 0 && (
           <Panel>
             <Box sx={{ maxWidth: 760, mx: "auto" }}>
@@ -645,44 +605,41 @@ export default function LostWizard() {
                   </Typography>
                 </Paper>
               ) : (
-                <>
-                  {/* ✅ max 5 στη σειρά + horizontal scrollbar */}
+                <Box
+                  sx={{
+                    width: "100%",
+                    overflowX: "auto",
+                    overflowY: "hidden",
+                    pb: 1,
+                    "&::-webkit-scrollbar": { height: 10 },
+                    "&::-webkit-scrollbar-track": { background: "rgba(0,0,0,0.08)", borderRadius: 99 },
+                    "&::-webkit-scrollbar-thumb": { background: "rgba(11,61,145,0.35)", borderRadius: 99 },
+                  }}
+                >
                   <Box
                     sx={{
-                      width: "100%",
-                      overflowX: "auto",
-                      overflowY: "hidden",
-                      pb: 1,
-                      "&::-webkit-scrollbar": { height: 10 },
-                      "&::-webkit-scrollbar-track": { background: "rgba(0,0,0,0.08)", borderRadius: 99 },
-                      "&::-webkit-scrollbar-thumb": { background: "rgba(11,61,145,0.35)", borderRadius: 99 },
+                      display: "grid",
+                      gridAutoFlow: "column",
+                      gridAutoColumns: "120px",
+                      gap: 1.6,
+                      alignItems: "start",
+                      width: "max-content",
+                      pr: 1,
                     }}
                   >
-                    <Box
-                      sx={{
-                        display: "grid",
-                        gridAutoFlow: "column",
-                        gridAutoColumns: "120px",
-                        gap: 1.6,
-                        alignItems: "start",
-                        width: "max-content",
-                        pr: 1,
-                      }}
-                    >
-                      {pets.map((p) => (
-                        <PetPick
-                          key={p.id}
-                          pet={p}
-                          active={String(p.id) === String(form.petId)}
-                          onClick={() => {
-                            setForm((prev) => ({ ...prev, petId: p.id }));
-                            touch("petId");
-                          }}
-                        />
-                      ))}
-                    </Box>
+                    {pets.map((p) => (
+                      <PetPick
+                        key={p.id}
+                        pet={p}
+                        active={String(p.id) === String(form.petId)}
+                        onClick={() => {
+                          setForm((prev) => ({ ...prev, petId: p.id }));
+                          touch("petId");
+                        }}
+                      />
+                    ))}
                   </Box>
-                </>
+                </Box>
               )}
 
               {touched.petId && errors.petId && (
@@ -1049,6 +1006,6 @@ export default function LostWizard() {
           </Panel>
         )}
       </Container>
-    </OwnerPageShell>
+    </DeclarationsShell>
   );
 }

@@ -6,8 +6,7 @@ import {
   Paper,
   Stack,
   Typography,
-  Rating,
-  Divider,
+  Rating
 } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import dayjs from "dayjs";
@@ -18,6 +17,7 @@ import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useAuth } from "../../auth/AuthContext";
 import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+import VetNavbar, { VET_SIDEBAR_W } from "../../components/VetNavbar";
 
 
 const PRIMARY = "#0b3d91";
@@ -60,7 +60,7 @@ function normalizeReview(r) {
   };
 }
 
-export default function VetReviewDetails() {
+export default function VetReviewDetails({ role = "owner" }) {
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -73,6 +73,10 @@ export default function VetReviewDetails() {
 
   const [vet, setVet] = useState(null);
   const [review, setReview] = useState(null);
+
+  const base = role === "vet" ? "/vet" : "/owner";
+  const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
+
 
   useEffect(() => {
     let alive = true;
@@ -105,9 +109,9 @@ export default function VetReviewDetails() {
         if (nr?.appointmentId && user?.id != null) {
           try {
             const a = await fetchJSON(`/api/appointments/${encodeURIComponent(String(nr.appointmentId))}`);
-            if (a?.ownerId != null && String(a.ownerId) !== String(user.id)) {
-              throw new Error("forbidden");
-            }
+            if (role === "owner" && a?.ownerId != null && String(a.ownerId) !== String(user.id)) throw new Error("forbidden");
+            if (role === "vet" && a?.vetId != null && String(a.vetId) !== String(user.id)) throw new Error("forbidden");
+ 
           } catch (e) {
             const msg = String(e?.message || "");
             if (msg.toLowerCase().includes("forbidden")) throw e;
@@ -133,7 +137,7 @@ export default function VetReviewDetails() {
     return () => {
       alive = false;
     };
-  }, [vetId, reviewId, user?.id]);
+  }, [vetId, reviewId, user?.id, role]);
 
   const displayDate = useMemo(() => {
     const d = review?.date || review?.createdAt || "";
@@ -152,7 +156,7 @@ export default function VetReviewDetails() {
 
   const vetName = vet?.name || "Κτηνίατρος";
 
-  function OwnerPageShell({ children }) {
+  function AppShell({ children }) {
     return (
       <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
         <PublicNavbar />
@@ -167,13 +171,13 @@ export default function VetReviewDetails() {
           {/* spacer */}
           <Box
             sx={{
-              width: OWNER_SIDEBAR_W,
-              flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+              width: sidebarW,
+              flex: `0 0 ${sidebarW}px`,
               display: { xs: "none", lg: "block" },
             }}
           />
 
-          <OwnerNavbar mode="navbar" />
+          {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
 
           <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
         </Box>
@@ -185,7 +189,7 @@ export default function VetReviewDetails() {
 
 
   return (
-    <OwnerPageShell>
+    <AppShell>
       <Container maxWidth="lg" sx={{ py: 2.5 }}>
         <Box>
           <AppBreadcrumbs />
@@ -302,7 +306,7 @@ export default function VetReviewDetails() {
           </Stack>
         )}
       </Container>
-    </OwnerPageShell>
+    </AppShell>
   );
 
 }

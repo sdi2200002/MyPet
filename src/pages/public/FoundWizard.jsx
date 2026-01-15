@@ -22,8 +22,8 @@ import AppBreadcrumbs from "../../components/Breadcrumbs";
 import WizardStepper from "../../components/WizardStepper";
 import { useAuth } from "../../auth/AuthContext";
 
-// ✅ owner layout
 import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+import VetNavbar, { VET_SIDEBAR_W } from "../../components/VetNavbar";
 
 const COLORS = {
   primary: "#0b3d91",
@@ -56,11 +56,9 @@ function norm(s) {
 }
 
 function looksLikeMatch(found, lost) {
-  // ΜΙΝΙΜΑΛ matching: ίδιο είδος + περιοχή + χρώμα (χαλαρό)
   const sameSpecies = norm(found?.species) && norm(found?.species) === norm(lost?.species);
   const sameArea = norm(found?.area) && norm(found?.area) === norm(lost?.area);
 
-  // χρώμα: αν το ένα "περιέχει" το άλλο (π.χ. "άσπρο-καφέ" vs "καφέ")
   const fColor = norm(found?.color);
   const lColor = norm(lost?.color);
   const colorOk = fColor && lColor && (fColor.includes(lColor) || lColor.includes(fColor));
@@ -68,10 +66,10 @@ function looksLikeMatch(found, lost) {
   return sameSpecies && sameArea && colorOk;
 }
 
-// δημιουργεί notification στον owner της δήλωσης απώλειας
+// notification στον owner της lost δήλωσης
 async function notifyOwnerForFoundMatch({ foundDecl, lostDecl }) {
-  // Προϋπόθεση: η lost declaration πρέπει να έχει ownerId (ή userId) για να ξέρουμε ποιον ειδοποιούμε.
-  const ownerId = lostDecl?.ownerId ?? lostDecl?.userId;
+  // Προϋπόθεση: lostDecl πρέπει να έχει ownerId/userId (ή ό,τι χρησιμοποιείς)
+  const ownerId = lostDecl?.ownerId ?? lostDecl?.userId ?? lostDecl?.finderId;
   if (!ownerId) return;
 
   const payload = {
@@ -84,7 +82,7 @@ async function notifyOwnerForFoundMatch({ foundDecl, lostDecl }) {
     message: `Υπάρχει νέα δήλωση εύρεσης που μοιάζει με τη δήλωση απώλειάς σας (${lostDecl?.area || "—"}).`,
 
     refType: "foundDeclaration",
-    refId: String(foundDecl?.id ?? ""), // για να ανοίγει τη found δήλωση
+    refId: String(foundDecl?.id ?? ""),
     createdAt: new Date().toISOString(),
     readAt: null,
 
@@ -103,7 +101,6 @@ async function notifyOwnerForFoundMatch({ foundDecl, lostDecl }) {
     body: JSON.stringify(payload),
   });
 }
-
 
 function Panel({ children }) {
   return (
@@ -158,10 +155,7 @@ function oneYearAgoYMD() {
   return `${y}-${m}-${day}`;
 }
 
-const WIZARD_STEPS = ["Στοιχεία Εύρεσης", "Στοιχεία Ευρετή", "Προεπισκόπηση Αναφοράς"];
-
-// ✅ Shells
-function OwnerPageShell({ children }) {
+function AuthedShell({ role, sidebarW, children }) {
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
       <PublicNavbar />
@@ -169,13 +163,13 @@ function OwnerPageShell({ children }) {
       <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
         <Box
           sx={{
-            width: OWNER_SIDEBAR_W,
-            flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+            width: sidebarW,
+            flex: `0 0 ${sidebarW}px`,
             display: { xs: "none", lg: "block" },
           }}
         />
 
-        <OwnerNavbar mode="navbar" />
+        {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
 
         <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
       </Box>
@@ -185,7 +179,7 @@ function OwnerPageShell({ children }) {
   );
 }
 
-function PublicPageShell({ children }) {
+function PublicShell({ children }) {
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
       <PublicNavbar />
@@ -195,15 +189,21 @@ function PublicPageShell({ children }) {
   );
 }
 
-export default function FoundWizard() {
+const WIZARD_STEPS = ["Στοιχεία Εύρεσης", "Στοιχεία Ευρετή", "Προεπισκόπηση Αναφοράς"];
+
+/**
+ * role: "public" | "owner" | "vet"
+ */
+export default function FoundWizard({ role = "public" }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
 
-  // ✅ Ο ΣΩΣΤΟΣ διαχωρισμός: από route (όχι από το αν είσαι logged in)
-  // Γιατί μπορεί να είσαι logged in, αλλά να πατήσεις το public route /found/new.
-  const isOwnerRoute = location.pathname.startsWith("/owner/");
-  const Shell = isOwnerRoute ? OwnerPageShell : PublicPageShell;
+  const isAuthedRoute = role === "owner" || role === "vet";
+  const base = role === "vet" ? "/vet" : role === "owner" ? "/owner" : "";
+  const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
+
+  const Shell = isAuthedRoute ? AuthedShell : PublicShell;
 
   const [editingId, setEditingId] = useState(null);
   const [activeStep, setActiveStep] = useState(0);
@@ -295,9 +295,9 @@ export default function FoundWizard() {
     status: "",
   });
 
-  // ✅ Prefill ΜΟΝΟ όταν είμαστε σε owner route (έτσι δεν “μπλέκεται” ο guest)
+  // ✅ Prefill only for owner/vet routes
   useEffect(() => {
-    if (!isOwnerRoute) return;
+    if (!isAuthedRoute) return;
     if (!user?.id) return;
 
     setForm((p) => ({
@@ -308,9 +308,9 @@ export default function FoundWizard() {
       phone: p.phone || user.phone || "",
       email: p.email || user.email || "",
     }));
-  }, [isOwnerRoute, user?.id, user?.firstName, user?.lastName, user?.name, user?.phone, user?.email]);
+  }, [isAuthedRoute, user?.id, user?.firstName, user?.lastName, user?.name, user?.phone, user?.email]);
 
-  // ✅ edit mode: φόρτωσε draft από json-server
+  // ✅ edit mode
   useEffect(() => {
     const draftId = location.state?.draftId;
     const targetStep = location.state?.step;
@@ -325,12 +325,7 @@ export default function FoundWizard() {
         if (!alive) return;
 
         setEditingId(String(draftId));
-
-        setForm((p) => ({
-          ...p,
-          ...draft,
-          acceptTerms: false,
-        }));
+        setForm((p) => ({ ...p, ...draft, acceptTerms: false }));
 
         if (draft.photoDataUrl) {
           setPhotoPreview(draft.photoDataUrl);
@@ -358,13 +353,8 @@ export default function FoundWizard() {
 
   const handleChange = (key) => (e) => {
     const value = e?.target?.type === "checkbox" ? e.target.checked : e.target.value;
-    knowChangeFix(key, value);
-  };
-
-  // μικρή βοήθεια για να μην “χάνεται” το state update
-  function knowChangeFix(key, value) {
     setForm((p) => ({ ...p, [key]: value }));
-  }
+  };
 
   const errors = useMemo(() => {
     const e = {};
@@ -415,9 +405,7 @@ export default function FoundWizard() {
     if (photoFile) photoDataUrl = await fileToBase64(photoFile);
 
     return {
-      // ✅ owner route -> βάζουμε user id αν υπάρχει, αλλιώς κρατάμε ό,τι έχει (ή "")
-      // ✅ public route -> αφήνουμε "" (ή ό,τι συμπληρώθηκε)
-      finderId: isOwnerRoute ? user?.id ?? form.finderId ?? "" : form.finderId ?? "",
+      finderId: isAuthedRoute ? user?.id ?? form.finderId ?? "" : form.finderId ?? "",
       status,
 
       date: form.date,
@@ -437,6 +425,15 @@ export default function FoundWizard() {
       createdAt: form.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+  }
+
+  function goSuccess(type, status) {
+    if (isAuthedRoute) {
+      navigate(`${base}/declarations/success`, { state: { type, status } });
+      return;
+    }
+    // Αν δεν έχεις public success route, άλλαξέ το σε "/"
+    navigate(`/declarations/success`, { state: { type, status } });
   }
 
   async function saveDraft() {
@@ -462,13 +459,7 @@ export default function FoundWizard() {
         setEditingId(String(created?.id));
       }
 
-      // ✅ success route: owner -> owner page, public -> public page
-      if (isOwnerRoute) {
-        navigate("/owner/declarations/success", { state: { type: "found", status: "Πρόχειρη" } });
-      } else {
-        // Βάλε ό,τι route έχεις για public success (ή φτιάξε το)
-        navigate("/declarations/success", { state: { type: "found", status: "Πρόχειρη" } });
-      }
+      goSuccess("found", "Πρόχειρη");
     } catch (e) {
       console.error(e);
       alert("Κάτι πήγε στραβά στην αποθήκευση.");
@@ -503,24 +494,20 @@ export default function FoundWizard() {
         setEditingId(String(createdOrUpdated?.id));
       }
 
-      // ✅ 1) Φέρε τις ΟΡΙΣΤΙΚΕΣ δηλώσεις απώλειας
-      // άλλαξε το endpoint αν το έχεις αλλιώς (π.χ. /api/lostDeclarations)
-      const lostList = await fetchJSON(`/api/lostDeclarations?status=Οριστική`);
+      // matching + notify owners (optional)
+      try {
+        const lostList = await fetchJSON(`/api/lostDeclarations?status=Οριστική`);
+        const lostArr = Array.isArray(lostList) ? lostList : [];
+        const matches = lostArr.filter((lost) => looksLikeMatch(createdOrUpdated, lost));
 
-      // ✅ 2) Βρες matches
-      const lostArr = Array.isArray(lostList) ? lostList : [];
-      const matches = lostArr.filter((lost) => looksLikeMatch(createdOrUpdated, lost));
-
-      // ✅ 3) Στείλε notification σε κάθε owner match
-      for (const lostDecl of matches) {
-        await notifyOwnerForFoundMatch({ foundDecl: createdOrUpdated, lostDecl });
+        for (const lostDecl of matches) {
+          await notifyOwnerForFoundMatch({ foundDecl: createdOrUpdated, lostDecl });
+        }
+      } catch (e) {
+        console.warn("Matching/notifications failed (ignored):", e);
       }
 
-      if (isOwnerRoute) {
-        navigate("/owner/declarations/success", { state: { type: "found", status: "Οριστική" } });
-      } else {
-        navigate("/declarations/success", { state: { type: "found", status: "Οριστική" } });
-      }
+      goSuccess("found", "Οριστική");
     } catch (e) {
       console.error(e);
       alert("Κάτι πήγε στραβά στην υποβολή.");
@@ -530,7 +517,7 @@ export default function FoundWizard() {
   }
 
   return (
-    <Shell>
+  <Shell {...(isAuthedRoute ? { role, sidebarW } : {})}>
       <Container maxWidth="lg" sx={{ py: 3 }}>
         <Box>
           <AppBreadcrumbs />
@@ -787,7 +774,12 @@ export default function FoundWizard() {
                 <Button
                   onClick={back}
                   variant="outlined"
-                  sx={{ textTransform: "none", borderRadius: 2, borderColor: COLORS.primary, color: COLORS.primary }}
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: 2,
+                    borderColor: COLORS.primary,
+                    color: COLORS.primary,
+                  }}
                 >
                   Πίσω
                 </Button>
@@ -944,7 +936,7 @@ export default function FoundWizard() {
 
             <Stack direction="row" justifyContent="right" spacing={2} sx={{ mt: 2 }}>
               <Button
-                onClick={() => navigate(-1)}
+                onClick={() => (isAuthedRoute ? navigate(`${base}/declarations`) : navigate("/"))}
                 variant="contained"
                 sx={{
                   textTransform: "none",

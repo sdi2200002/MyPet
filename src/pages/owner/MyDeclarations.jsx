@@ -15,14 +15,17 @@ import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
-import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
 
-// ✅ ίδιο pattern με το “MyAppointments”
+// ✅ προσωρινά ίδιο sidebar και για τους 2 ρόλους
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+import VetNavbar, { VET_SIDEBAR_W } from "../../components/VetNavbar";
+
 const PRIMARY = "#0b3d91";
 const PRIMARY_HOVER = "#08316f";
 const MUTED = "#6b7a90";
@@ -34,7 +37,6 @@ async function fetchJSON(path, options) {
   return res.json();
 }
 
-// ✅ Κρατάμε YYYY-MM-DD string, αλλά εδώ στο list το δείχνουμε σωστά
 function fmtDate(isoOrYmd) {
   if (!isoOrYmd) return "—";
   const d = new Date(isoOrYmd);
@@ -64,7 +66,7 @@ function Row({ item, onPreview, onEdit, onDelete }) {
       }}
     >
       <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-        {/* left: image + info */}
+        {/* left */}
         <Stack direction="row" spacing={2} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
           <Box
             sx={{
@@ -98,7 +100,6 @@ function Row({ item, onPreview, onEdit, onDelete }) {
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap" }}>
               <Typography sx={{ fontWeight: 900, color: TITLE }} noWrap>
-                {/* Lost έχει petName, Found δεν έχει — δείξε species */}
                 {item?.type === "lost" ? item?.petName || "Κατοικίδιο" : item?.species || "Κατοικίδιο"}
               </Typography>
 
@@ -117,7 +118,7 @@ function Row({ item, onPreview, onEdit, onDelete }) {
           </Box>
         </Stack>
 
-        {/* right: actions */}
+        {/* right */}
         <Stack direction="column" spacing={1} alignItems="flex-end">
           <Typography sx={{ fontSize: 12, color: TITLE, mr: 1, display: { xs: "none", md: "block" } }}>
             Υποβλήθηκε: {item?.createdAt ? fmtDate(item.createdAt) : "—"}
@@ -180,20 +181,25 @@ function Row({ item, onPreview, onEdit, onDelete }) {
   );
 }
 
-export default function MyDeclarations() {
+/**
+ * ✅ Shared page
+ * role: "owner" | "vet"
+ */
+export default function MyDeclarations({ role = "owner" }) {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // tab: 0=Υποβεβλημένες, 1=Πρόχειρες
-  const [tab, setTab] = useState(0);
+  const base = role === "vet" ? "/vet" : "/owner";
+  
+  const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
 
+  const [tab, setTab] = useState(0); // 0 submitted, 1 drafts
   const [lost, setLost] = useState([]);
   const [found, setFound] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // ✅ Φόρτωση από json-server και από τους 2 πίνακες
   useEffect(() => {
     let alive = true;
 
@@ -211,10 +217,12 @@ export default function MyDeclarations() {
       }
 
       try {
-        // ✅ Προσπάθεια με φίλτρο finderId (αν υπάρχει)
+        // ✅ εδώ κρατάω το ίδιο schema που ήδη έχεις (finderId)
+        const uid = encodeURIComponent(String(user.id));
+
         const [lostData, foundData] = await Promise.all([
-          fetchJSON(`/api/lostDeclarations?finderId=${encodeURIComponent(String(user.id))}`),
-          fetchJSON(`/api/foundDeclarations?finderId=${encodeURIComponent(String(user.id))}`),
+          fetchJSON(`/api/lostDeclarations?finderId=${uid}`),
+          fetchJSON(`/api/foundDeclarations?finderId=${uid}`),
         ]);
 
         if (!alive) return;
@@ -222,7 +230,6 @@ export default function MyDeclarations() {
         const lostArr = Array.isArray(lostData) ? lostData : [];
         const foundArr = Array.isArray(foundData) ? foundData : [];
 
-        // ✅ Προσθέτουμε type για ενιαία λίστα
         setLost(lostArr.map((x) => ({ ...x, type: "lost" })));
         setFound(foundArr.map((x) => ({ ...x, type: "found" })));
 
@@ -256,15 +263,13 @@ export default function MyDeclarations() {
   }, [all, tab]);
 
   const handleCreate = () => {
-    // ⚠️ ΒΑΛΕ ΕΔΩ ΤΟ ΣΩΣΤΟ ROUTE ΓΙΑ “Νέα Δήλωση”
-    // Αν έχεις wizard επιλογής τύπου, βάλ’ το. Αλλιώς κράτα αυτό.
-    navigate("/owner/declarations/new");
+    navigate(`${base}/declarations/new`);
   };
 
   const handlePreview = (item) => {
     const status = item?.status || "Πρόχειρη";
 
-    // Οριστικές
+    // public pages για οριστικές
     if (status === "Οριστική" && item.type === "lost") {
       navigate(`/lost/${encodeURIComponent(String(item.id))}`);
       return;
@@ -274,14 +279,13 @@ export default function MyDeclarations() {
       return;
     }
 
-    // Πρόχειρες -> άνοιξε wizard σε preview mode (ή στο step που θες)
+    // drafts -> στο wizard
     if (status === "Πρόχειρη" && item.type === "lost") {
-      navigate("/owner/declarations/lost/new", { state: { draftId: item.id, step: 2 } });
+      navigate(`${base}/declarations/lost/new`, { state: { draftId: item.id, step: 2 } });
       return;
     }
     if (status === "Πρόχειρη" && item.type === "found") {
-      // ✅ ΔΙΟΡΘΩΣΗ: πριν πήγαινε λάθος σε /lost/new
-      navigate("/owner/declarations/found/new", { state: { draftId: item.id, step: 2 } });
+      navigate(`${base}/declarations/found/new`, { state: { draftId: item.id, step: 2 } });
       return;
     }
 
@@ -293,11 +297,10 @@ export default function MyDeclarations() {
     if (status !== "Πρόχειρη") return;
 
     if (item.type === "lost") {
-      navigate("/owner/declarations/lost/new", { state: { draftId: item.id, step: 2 } });
+      navigate(`${base}/declarations/lost/new`, { state: { draftId: item.id, step: 2 } });
       return;
     }
-
-    navigate("/owner/declarations/found/new", { state: { draftId: item.id, step: 2 } });
+    navigate(`${base}/declarations/found/new`, { state: { draftId: item.id, step: 2 } });
   };
 
   const handleDelete = async (item) => {
@@ -318,36 +321,33 @@ export default function MyDeclarations() {
     }
   };
 
+
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
       <PublicNavbar />
 
-      {/* ✅ Side menu layout */}
       <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
-        {/* spacer */}
         <Box
           sx={{
-            width: OWNER_SIDEBAR_W,
-            flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+            width: sidebarW,
+            flex: `0 0 ${sidebarW}px`,
             display: { xs: "none", lg: "block" },
             alignSelf: "flex-start",
           }}
         />
 
-        <OwnerNavbar mode="navbar" />
 
-        {/* content */}
+        {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
+
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Box>
-              <AppBreadcrumbs />
-            </Box>
+            <AppBreadcrumbs />
 
             <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Box>
                 <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 28 }}>Δηλώσεις</Typography>
                 <Typography sx={{ mt: 0.6, color: MUTED, maxWidth: 820 }}>
-                  Εδώ θα βρείτε όλες τις δηλώσεις που έχετε καταχωρίσει για τα κατοικίδια σας.
+                  Εδώ θα βρείτε όλες τις δηλώσεις που έχετε καταχωρίσει.
                   <br />
                   Παρακολουθήστε την πορεία τους ή ξεκινήστε μια νέα δήλωση εύκολα και γρήγορα.
                 </Typography>
@@ -410,10 +410,7 @@ export default function MyDeclarations() {
 
               <Box sx={{ p: 2 }}>
                 {loading ? (
-                  <Paper
-                    elevation={0}
-                    sx={{ p: 2, borderRadius: 2, border: "1px solid #e6edf7", bgcolor: "#ffffff" }}
-                  >
+                  <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: "1px solid #e6edf7", bgcolor: "#ffffff" }}>
                     <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
                   </Paper>
                 ) : err ? (

@@ -18,6 +18,7 @@ import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import Pager from "../../components/Pager"; 
 import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+import VetNavbar, { VET_SIDEBAR_W } from "../../components/VetNavbar";
 
 
 const BORDER = "#8fb4e8";
@@ -64,7 +65,7 @@ function normalizeReview(r) {
   };
 }
 
-export default function VetReviews() {
+export default function VetReviews({ role = "owner" }) {
   const { vetId } = useParams();
   const navigate = useNavigate();
 
@@ -76,6 +77,10 @@ export default function VetReviews() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
+  const base = role === "vet" ? "/vet" : "/owner";
+  const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
+
+
   // ✅ pagination
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
@@ -83,7 +88,11 @@ export default function VetReviews() {
   // ✅ Προβολή ενός review (φτιάχτηκε)
   const onView = (review) => {
     if (!review?.id) return;
-    navigate(`/owner/vets/${encodeURIComponent(String(vetId))}/reviews/${encodeURIComponent(String(review.id))}`);
+    navigate(
+      role === "vet"
+        ? `/vet/pets/${encodeURIComponent(String(vetId))}/reviews/${encodeURIComponent(String(review.id))}`
+        : `/owner/vets/${encodeURIComponent(String(vetId))}/reviews/${encodeURIComponent(String(review.id))}`
+    );
   };
 
   useEffect(() => {
@@ -125,7 +134,7 @@ export default function VetReviews() {
     return () => {
       alive = false;
     };
-  }, [vetId]);
+  }, [vetId, role]);
 
   // ✅ όταν αλλάζει sort ή reviews, γύρνα σελίδα 1
   useEffect(() => {
@@ -175,7 +184,7 @@ export default function VetReviews() {
 
   const computedCount = useMemo(() => vet?.reviewsCount ?? reviews.length ?? 0, [vet?.reviewsCount, reviews.length]);
 
-  function OwnerPageShell({ children }) {
+  function AppShell({ role, sidebarW, children }) {
     return (
       <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
         <PublicNavbar />
@@ -188,15 +197,8 @@ export default function VetReviews() {
           }}
         >
           {/* spacer */}
-          <Box
-            sx={{
-              width: OWNER_SIDEBAR_W,
-              flex: `0 0 ${OWNER_SIDEBAR_W}px`,
-              display: { xs: "none", lg: "block" },
-            }}
-          />
-
-          <OwnerNavbar mode="navbar" />
+          <Box sx={{ width: sidebarW, flex: `0 0 ${sidebarW}px`, display: { xs: "none", lg: "block" } }} />
+          {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
 
           <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
         </Box>
@@ -210,18 +212,18 @@ export default function VetReviews() {
 
   if (!vetId) {
     return (
-      <OwnerPageShell>
+      <AppShell role={role} sidebarW={sidebarW}>
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Typography sx={{ fontWeight: 900, color: "#b00020" }}>Λείπει το vetId από το URL.</Typography>
         </Container>
-      </OwnerPageShell>
+      </AppShell>
     );
   }
 
 
   if (loading) {
     return (
-      <OwnerPageShell>
+      <AppShell role={role} sidebarW={sidebarW}>
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Box>
             <AppBreadcrumbs />
@@ -238,14 +240,14 @@ export default function VetReviews() {
             <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
           </Paper>
         </Container>
-      </OwnerPageShell>
+      </AppShell>
     );
   }
 
 
   if (err) {
     return (
-      <OwnerPageShell>
+      <AppShell role={role} sidebarW={sidebarW}>
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Box>
             <AppBreadcrumbs />
@@ -263,27 +265,27 @@ export default function VetReviews() {
             <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
           </Paper>
         </Container>
-      </OwnerPageShell>
+      </AppShell>
     );
   }
 
 
   if (!vet) {
     return (
-      <OwnerPageShell>
+      <AppShell role={role} sidebarW={sidebarW}>
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Box>
             <AppBreadcrumbs />
           </Box>
           <Typography sx={{ fontWeight: 900 }}>Δεν βρέθηκε κτηνίατρος.</Typography>
         </Container>
-      </OwnerPageShell>
+      </AppShell>
     );
   }
 
 
   return (
-    <OwnerPageShell>
+    <AppShell role={role} sidebarW={sidebarW}>
       <Container maxWidth="lg" sx={{ py: 2.5 }}>
         <Box>
           <AppBreadcrumbs />
@@ -480,7 +482,7 @@ export default function VetReviews() {
           />
         )}
       </Container>
-    </OwnerPageShell>
+    </AppShell>
   );
 
 }

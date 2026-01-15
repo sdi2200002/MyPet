@@ -5,10 +5,12 @@ import { useNavigate } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
 import CampaignIcon from "@mui/icons-material/Campaign";
 
-import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
+
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+import VetNavbar, { VET_SIDEBAR_W } from "../../components/VetNavbar";
 
 const TITLE = "#0d2c54";
 const PRIMARY = "#0b3d91";
@@ -56,106 +58,90 @@ function QuickAction({ icon, title, text, onClick }) {
   );
 }
 
-function OwnerPageShell({ children }) {
+/**
+ * ✅ Shared page
+ * role: "owner" | "vet"
+ */
+export default function DeclarationsNew({ role = "owner" }) {
+  const navigate = useNavigate();
+
+  const base = role === "vet" ? "/vet" : "/owner";
+  const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
+
+  // προαιρετικό memo
+  useMemo(() => null, []);
+
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
       <PublicNavbar />
 
-      <Box
-        sx={{
-          flex: 1,
-          display: { xs: "block", lg: "flex" },
-          alignItems: "flex-start",
-        }}
-      >
+      <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
         {/* spacer ώστε το content να μη μπαίνει κάτω απ’ το sidebar */}
         <Box
           sx={{
-            width: OWNER_SIDEBAR_W,
-            flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+            width: sidebarW,
+            flex: `0 0 ${sidebarW}px`,
             display: { xs: "none", lg: "block" },
+            alignSelf: "flex-start",
           }}
         />
 
-        <OwnerNavbar mode="navbar" />
+        {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
 
-        <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Container maxWidth="lg" sx={{ py: 2.5 }}>
+            <Box>
+              <AppBreadcrumbs />
+            </Box>
+
+            <Box
+              sx={{
+                minHeight: "calc(100vh - 220px)", // λίγο “air” ώστε να φαίνεται center
+                display: "grid",
+                placeItems: "center",
+                py: { xs: 4, md: 6 },
+              }}
+            >
+              <Box sx={{ width: "100%", maxWidth: 900 }}>
+                <Typography
+                  sx={{
+                    fontWeight: 900,
+                    color: TITLE,
+                    mb: 5,
+                    fontSize: 22,
+                    textAlign: "center",
+                  }}
+                >
+                  Επιλέξτε Νέα Δήλωση
+                </Typography>
+
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={6}
+                  justifyContent="center"
+                  alignItems="center"
+                >
+                  <QuickAction
+                    icon={<CampaignIcon sx={{ fontSize: 100, color: PRIMARY }} />}
+                    title="Δήλωση Απώλειας"
+                    text="Καταχωρίστε την απώλεια του κατοικιδίου σας για άμεση ενημέρωση."
+                    onClick={() => navigate(`${base}/declarations/lost/new`)}
+                  />
+
+                  <QuickAction
+                    icon={<SearchIcon sx={{ fontSize: 100, color: PRIMARY }} />}
+                    title="Δήλωση Εύρεσης"
+                    text="Καταχωρίστε την εύρεση για να εντοπιστεί ο ιδιοκτήτης."
+                    onClick={() => navigate(`${base}/declarations/found/new`)}
+                  />
+                </Stack>
+              </Box>
+            </Box>
+          </Container>
+        </Box>
       </Box>
 
       <Footer />
     </Box>
-  );
-}
-
-export default function DeclarationsHome() {
-  const navigate = useNavigate();
-
-  // (προαιρετικό) αν θες να έχεις κάτι memoized για μελλοντικά
-  useMemo(() => null, []);
-
-  return (
-    <OwnerPageShell>
-        <Container maxWidth="lg" sx={{ py: 2.5 }}>
-            <Box>
-                <AppBreadcrumbs />
-            </Box>
-
-            {/* 2-column layout: sidebar + content */}
-            <Box
-                sx={{
-                display: { xs: "block", lg: "flex" },
-                alignItems: "flex-start",
-                }}
-            >
-
-                <Container maxWidth="lg" sx={{ py: 6 }}>
-                    <Box
-                    sx={{
-                        minHeight: "calc(100vh - 160px)", // λίγο “air” ώστε να φαίνεται center
-                        display: "grid",
-                        placeItems: "center",
-                    }}
-                    >
-                        <Box sx={{ width: "100%", maxWidth: 900 }}>
-                            <Typography
-                                sx={{
-                                    fontWeight: 900,
-                                    color: TITLE,
-                                    mb: 5,
-                                    fontSize: 22,
-                                    textAlign: "center",
-                                }}
-                                >
-                                Επιλέξτε Νέα Δήλωση
-                            </Typography>
-
-                            <Stack
-                                direction={{ xs: "column", sm: "row" }}
-                                spacing={6}
-                                justifyContent="center"
-                                alignItems="center"
-                                >
-                                <QuickAction
-                                    icon={<CampaignIcon sx={{ fontSize: 100, color: PRIMARY }} />}
-                                    title="Δήλωση Απώλειας"
-                                    text="Καταχωρίστε την απώλεια του κατοικιδίου σας για άμεση ενημέρωση."
-                                    onClick={() => navigate("/owner/declarations/lost/new")}
-                                />
-
-                                <QuickAction
-                                    icon={<SearchIcon sx={{ fontSize: 100, color: PRIMARY }} />}
-                                    title="Δήλωση Εύρεσης"
-                                    text="Καταχωρίστε την εύρεση για να εντοπιστεί ο ιδιοκτήτης."
-                                    onClick={() => navigate("/owner/declarations/found/new")}
-                                />
-                            </Stack>
-                        </Box>
-                    </Box>
-                </Container>
-                
-            </Box>
-
-        </Container>
-    </OwnerPageShell>
   );
 }

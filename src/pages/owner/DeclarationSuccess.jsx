@@ -1,9 +1,12 @@
 import { Box, Button, Container, Typography } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
+
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
+
 import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+import VetNavbar, { VET_SIDEBAR_W } from "../../components/VetNavbar";
 
 const COLORS = {
   primary: "#0b3d91",
@@ -11,16 +14,18 @@ const COLORS = {
   title: "#0d2c54",
 };
 
-function OwnerPageShell({ children }) {
+function AppShell({ role, sidebarW, children }) {
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
       <PublicNavbar />
 
       <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
         {/* spacer */}
-        <Box sx={{ width: OWNER_SIDEBAR_W, flex: `0 0 ${OWNER_SIDEBAR_W}px`, display: { xs: "none", lg: "block" } }} />
+        <Box sx={{ width: sidebarW, flex: `0 0 ${sidebarW}px`, display: { xs: "none", lg: "block" } }} />
+
         {/* sidebar */}
-        <OwnerNavbar mode="navbar" />
+        {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
+
         {/* main */}
         <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
       </Box>
@@ -30,16 +35,18 @@ function OwnerPageShell({ children }) {
   );
 }
 
-
-export default function DeclarationSuccess() {
+export default function DeclarationSuccess({ role = "owner" }) {
   const navigate = useNavigate();
   const { state } = useLocation();
+
+  const base = role === "vet" ? "/vet" : "/owner";
+  const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
 
   const type = state?.type === "found" ? "Εύρεσης" : "Απώλειας";
   const status = state?.status || "Οριστική";
 
   return (
-    <OwnerPageShell>
+    <AppShell role={role} sidebarW={sidebarW}>
       <Container maxWidth="md" sx={{ py: 6 }}>
         <Box>
           <AppBreadcrumbs />
@@ -73,7 +80,7 @@ export default function DeclarationSuccess() {
 
           <Button
             variant="contained"
-            onClick={() => navigate("/owner/declarations")}
+            onClick={() => navigate(`${base}/declarations`)}
             sx={{
               mt: 5,
               textTransform: "none",
@@ -87,7 +94,6 @@ export default function DeclarationSuccess() {
           </Button>
         </Box>
       </Container>
-    </OwnerPageShell>
+    </AppShell>
   );
 }
-
