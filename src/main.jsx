@@ -40,7 +40,7 @@ import AppointmentDetails from "./pages/owner/AppointmentDetails.jsx";
 import VetNewReview from "./pages/owner/VetNewReview.jsx";
 import VetReviewDetails from "./pages/owner/VetReviewDetails.jsx";
 import OwnerProfile from "./pages/owner/Profile.jsx";
-
+import OwnerFoundDetails from "./pages/owner/OwnerFoundDetails.jsx";
 
 // ✅ ΠΡΟΣΘΗΚΗ: AuthProvider
 import { AuthProvider } from "./auth/AuthContext.jsx";
@@ -88,6 +88,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route path="/owner/declarations/found/new" element={<FoundWizard role="owner" />} />
           <Route path="/owner/declarations/lost/new" element={<LostWizard role="owner" />} />
           <Route path="/owner/declarations/success" element={<DeclarationSuccess role="owner" />} />
+          <Route path="/owner/found/:id" element={<OwnerFoundDetails />} />
 
           <Route path="/owner/profile" element={<OwnerProfile role="owner" />} />
 

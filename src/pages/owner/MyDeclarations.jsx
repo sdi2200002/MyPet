@@ -15,6 +15,7 @@ import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
@@ -46,13 +47,23 @@ function fmtDate(isoOrYmd) {
 
 function StatusChip({ status }) {
   const label = status || "Πρόχειρη";
-  const color = label === "Οριστική" ? "success" : label === "Ακυρωμένη" ? "default" : "warning";
+  const color =
+    label === "Οριστική"
+      ? "success"
+      : label === "Βρέθηκε"
+      ? "success"
+      : label === "Ακυρωμένη"
+      ? "default"
+      : "warning";
   return <Chip size="small" label={label} color={color} variant="filled" />;
 }
 
-function Row({ item, onPreview, onEdit, onDelete }) {
+function Row({ item, onPreview, onEdit, onDelete, onMarkFound, role }) {
   const status = item?.status || "Πρόχειρη";
   const canEdit = status === "Πρόχειρη";
+
+  // ✅ "Βρέθηκε" μόνο για owner, μόνο για lost, μόνο όταν είναι Οριστική
+  const canMarkFound = role === "owner" && item?.type === "lost" && status === "Οριστική";
 
   return (
     <Paper
@@ -93,14 +104,18 @@ function Row({ item, onPreview, onEdit, onDelete }) {
                 }}
               />
             ) : (
-              <Typography sx={{ fontSize: 11, color: MUTED, fontWeight: 700 }}>Χωρίς φωτο</Typography>
+              <Typography sx={{ fontSize: 11, color: MUTED, fontWeight: 700 }}>
+                Χωρίς φωτο
+              </Typography>
             )}
           </Box>
 
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap" }}>
               <Typography sx={{ fontWeight: 900, color: TITLE }} noWrap>
-                {item?.type === "lost" ? item?.petName || "Κατοικίδιο" : item?.species || "Κατοικίδιο"}
+                {item?.type === "lost"
+                  ? item?.petName || "Κατοικίδιο"
+                  : item?.species || "Κατοικίδιο"}
               </Typography>
 
               <Typography sx={{ fontSize: 12, color: MUTED }}>
@@ -113,18 +128,48 @@ function Row({ item, onPreview, onEdit, onDelete }) {
             <Typography sx={{ fontSize: 12, color: TITLE, mt: 0.4 }}>
               Περιοχή: <b>{item?.area || "—"}</b>
               <br />
-              Ημ. {item?.type === "lost" ? "Απώλειας" : "Εύρεσης"}: <b>{fmtDate(item?.date)}</b>
+              Ημ. {item?.type === "lost" ? "Απώλειας" : "Εύρεσης"}:{" "}
+              <b>{fmtDate(item?.date)}</b>
             </Typography>
           </Box>
         </Stack>
 
         {/* right */}
         <Stack direction="column" spacing={1} alignItems="flex-end">
-          <Typography sx={{ fontSize: 12, color: TITLE, mr: 1, display: { xs: "none", md: "block" } }}>
+          <Typography
+            sx={{
+              fontSize: 12,
+              color: TITLE,
+              mr: 1,
+              display: { xs: "none", md: "block" },
+            }}
+          >
             Υποβλήθηκε: {item?.createdAt ? fmtDate(item.createdAt) : "—"}
           </Typography>
 
           <Stack direction="row" spacing={1} alignItems="center">
+            {canMarkFound && (
+              <Button
+                onClick={() => onMarkFound(item)}
+                variant="outlined"
+                startIcon={<CheckCircleOutlineRoundedIcon />}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                  borderColor: "#2e7d32",
+                  color: "#2e7d32",
+                  fontWeight: 900,
+                  "&:hover": {
+                    borderColor: "#1b5e20",
+                    color: "#1b5e20",
+                    bgcolor: "rgba(46,125,50,0.06)",
+                  },
+                }}
+              >
+                Βρέθηκε
+              </Button>
+            )}
+
             {canEdit && (
               <Button
                 onClick={() => onEdit(item)}
@@ -190,7 +235,7 @@ export default function MyDeclarations({ role = "owner" }) {
   const { user } = useAuth();
 
   const base = role === "vet" ? "/vet" : "/owner";
-  
+
   const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
 
   const [tab, setTab] = useState(0); // 0 submitted, 1 drafts
@@ -257,9 +302,12 @@ export default function MyDeclarations({ role = "owner" }) {
     return merged;
   }, [lost, found]);
 
+  // ✅ Submitted: δείξε Οριστική + Βρέθηκε
+  // ✅ Drafts: όλα τα υπόλοιπα
   const filtered = useMemo(() => {
-    if (tab === 0) return all.filter((x) => (x?.status || "Πρόχειρη") === "Οριστική");
-    return all.filter((x) => (x?.status || "Πρόχειρη") !== "Οριστική");
+    const s = (x) => x?.status || "Πρόχειρη";
+    if (tab === 0) return all.filter((x) => s(x) === "Οριστική" || s(x) === "Βρέθηκε");
+    return all.filter((x) => s(x) !== "Οριστική" && s(x) !== "Βρέθηκε");
   }, [all, tab]);
 
   const handleCreate = () => {
@@ -269,12 +317,12 @@ export default function MyDeclarations({ role = "owner" }) {
   const handlePreview = (item) => {
     const status = item?.status || "Πρόχειρη";
 
-    // public pages για οριστικές
-    if (status === "Οριστική" && item.type === "lost") {
+    // public pages για οριστικές (και "Βρέθηκε" επίσης, αν θες να βλέπεται ακόμα)
+    if ((status === "Οριστική" || status === "Βρέθηκε") && item.type === "lost") {
       navigate(`/lost/${encodeURIComponent(String(item.id))}`);
       return;
     }
-    if (status === "Οριστική" && item.type === "found") {
+    if ((status === "Οριστική" || status === "Βρέθηκε") && item.type === "found") {
       navigate(`/found/${encodeURIComponent(String(item.id))}`);
       return;
     }
@@ -303,16 +351,42 @@ export default function MyDeclarations({ role = "owner" }) {
     navigate(`${base}/declarations/found/new`, { state: { draftId: item.id, step: 2 } });
   };
 
+  // ✅ ΝΕΟ: "Βρέθηκε" = ΔΙΑΓΡΑΦΗ της lost δήλωσης (από DB + από λίστα)
+const handleMarkFound = async (item) => {
+  const ok = confirm(
+    "Με το «Βρέθηκε» θα διαγραφεί η δήλωση απώλειας και δεν θα εμφανίζεται πλέον πουθενά. Συνέχεια;"
+  );
+  if (!ok) return;
+
+  try {
+    // Σβήνουμε από τον json-server
+    await fetchJSON(`/api/lostDeclarations/${encodeURIComponent(String(item.id))}`, {
+      method: "DELETE",
+    });
+
+    // Σβήνουμε από τη λίστα (state)
+    setLost((prev) => prev.filter((x) => String(x.id) !== String(item.id)));
+  } catch (e) {
+    console.error(e);
+    alert("Αποτυχία ολοκλήρωσης. Δοκίμασε ξανά.");
+  }
+};
+
+
   const handleDelete = async (item) => {
     const ok = confirm("Θες σίγουρα να διαγράψεις τη δήλωση;");
     if (!ok) return;
 
     try {
       if (item.type === "found") {
-        await fetchJSON(`/api/foundDeclarations/${encodeURIComponent(String(item.id))}`, { method: "DELETE" });
+        await fetchJSON(`/api/foundDeclarations/${encodeURIComponent(String(item.id))}`, {
+          method: "DELETE",
+        });
         setFound((prev) => prev.filter((x) => String(x.id) !== String(item.id)));
       } else {
-        await fetchJSON(`/api/lostDeclarations/${encodeURIComponent(String(item.id))}`, { method: "DELETE" });
+        await fetchJSON(`/api/lostDeclarations/${encodeURIComponent(String(item.id))}`, {
+          method: "DELETE",
+        });
         setLost((prev) => prev.filter((x) => String(x.id) !== String(item.id)));
       }
     } catch (e) {
@@ -320,7 +394,6 @@ export default function MyDeclarations({ role = "owner" }) {
       alert("Αποτυχία διαγραφής. Δοκίμασε ξανά.");
     }
   };
-
 
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
@@ -336,7 +409,6 @@ export default function MyDeclarations({ role = "owner" }) {
           }}
         />
 
-
         {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
 
         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -345,7 +417,9 @@ export default function MyDeclarations({ role = "owner" }) {
 
             <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Box>
-                <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 28 }}>Δηλώσεις</Typography>
+                <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 28 }}>
+                  Δηλώσεις
+                </Typography>
                 <Typography sx={{ mt: 0.6, color: MUTED, maxWidth: 820 }}>
                   Εδώ θα βρείτε όλες τις δηλώσεις που έχετε καταχωρίσει.
                   <br />
@@ -410,7 +484,10 @@ export default function MyDeclarations({ role = "owner" }) {
 
               <Box sx={{ p: 2 }}>
                 {loading ? (
-                  <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: "1px solid #e6edf7", bgcolor: "#ffffff" }}>
+                  <Paper
+                    elevation={0}
+                    sx={{ p: 2, borderRadius: 2, border: "1px solid #e6edf7", bgcolor: "#ffffff" }}
+                  >
                     <Typography sx={{ color: MUTED, fontWeight: 800 }}>Φόρτωση...</Typography>
                   </Paper>
                 ) : err ? (
@@ -436,7 +513,9 @@ export default function MyDeclarations({ role = "owner" }) {
                       textAlign: "center",
                     }}
                   >
-                    <Typography sx={{ fontWeight: 900, color: TITLE }}>Δεν υπάρχουν δηλώσεις εδώ</Typography>
+                    <Typography sx={{ fontWeight: 900, color: TITLE }}>
+                      Δεν υπάρχουν δηλώσεις εδώ
+                    </Typography>
                     <Typography sx={{ mt: 0.6, color: MUTED }}>
                       Πάτησε “Νέα Δήλωση” για να δημιουργήσεις μία νέα.
                     </Typography>
@@ -447,9 +526,11 @@ export default function MyDeclarations({ role = "owner" }) {
                       <Row
                         key={`${item.type}-${item.id}`}
                         item={item}
+                        role={role}
                         onPreview={handlePreview}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        onMarkFound={handleMarkFound}
                       />
                     ))}
                   </Stack>

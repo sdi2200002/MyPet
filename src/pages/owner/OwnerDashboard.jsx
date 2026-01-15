@@ -712,13 +712,24 @@ function fmtShort(iso) {
 }
 
 function routeForNotification(n) {
+  // ✅ αν υπάρχει foundDeclarationId -> πάντα στο owner found details
+  if (n?.foundDeclarationId) return `/owner/found/${n.foundDeclarationId}`;
+
   if (n?.refType === "appointment" && n?.refId) return `/owner/appointments/${n.refId}`;
   if (n?.refType === "pet" && n?.refId) return `/owner/pets/${n.refId}`;
-  if (n?.refType === "lostDeclaration" && n?.refId) return `/owner/lost/${n.refId}`; // ✅ ταιριάζει με το refType που έχεις ήδη
-  if (n?.refType === "lost" && n?.refId) return `/owner/lost/${n.refId}`;
+
+  // ✅ LOST: πήγαινε στο PUBLIC route που υπάρχει
+  if ((n?.refType === "lostDeclaration" || n?.refType === "lost") && n?.refId)
+    return `/lost/${n.refId}`;
+
+  // ✅ FOUND: owner route (υπάρχει)
   if (n?.refType === "found" && n?.refId) return `/owner/found/${n.refId}`;
+
+  if (n?.link) return n.link;
+
   return "";
 }
+
 
 // ✅ συμβατό με isRead + readAt
 function isUnread(n) {
@@ -914,162 +925,162 @@ function LatestUpdates({ limit = 5 }) {
 
 
 
-export default function OwnerDashboard() {
-  const navigate = useNavigate();
+    export default function OwnerDashboard() {
+      const navigate = useNavigate();
 
-  // ✅ ΠΗΓΗ ΑΛΗΘΕΙΑΣ: AuthContext
-  const auth = useAuth();
-  const authUser = auth?.user?.user ?? auth?.user ?? null;
+      // ✅ ΠΗΓΗ ΑΛΗΘΕΙΑΣ: AuthContext
+      const auth = useAuth();
+      const authUser = auth?.user?.user ?? auth?.user ?? null;
 
-  // ✅ fallback σε localStorage μόνο αν είναι null
-  const fallbackUser = useMemo(() => readUserFromLocalStorageFallback(), []);
-  const user = authUser || fallbackUser;
+      // ✅ fallback σε localStorage μόνο αν είναι null
+      const fallbackUser = useMemo(() => readUserFromLocalStorageFallback(), []);
+      const user = authUser || fallbackUser;
 
-  const ownerId = useMemo(() => (user?.id != null ? String(user.id) : ""), [user]);
+      const ownerId = useMemo(() => (user?.id != null ? String(user.id) : ""), [user]);
 
-  const [pets, setPets] = useState([]);
-  const [petIndex, setPetIndex] = useState(0);
-  const [loadingPets, setLoadingPets] = useState(true);
+      const [pets, setPets] = useState([]);
+      const [petIndex, setPetIndex] = useState(0);
+      const [loadingPets, setLoadingPets] = useState(true);
 
-  useEffect(() => {
-    let alive = true;
+      useEffect(() => {
+        let alive = true;
 
-    (async () => {
-      try {
-        setLoadingPets(true);
-        const res = await fetch("/api/pets");
-        const all = await res.json();
-        if (!alive) return;
+        (async () => {
+          try {
+            setLoadingPets(true);
+            const res = await fetch("/api/pets");
+            const all = await res.json();
+            if (!alive) return;
 
-        const mine = Array.isArray(all) ? all.filter((p) => String(p?.ownerId) === ownerId) : [];
-        setPets(mine);
-        setPetIndex(0);
-      } catch (e) {
-        console.error(e);
-        if (!alive) return;
-        setPets([]);
-      } finally {
-        if (alive) setLoadingPets(false);
-      }
-    })();
+            const mine = Array.isArray(all) ? all.filter((p) => String(p?.ownerId) === ownerId) : [];
+            setPets(mine);
+            setPetIndex(0);
+          } catch (e) {
+            console.error(e);
+            if (!alive) return;
+            setPets([]);
+          } finally {
+            if (alive) setLoadingPets(false);
+          }
+        })();
 
-    return () => {
-      alive = false;
-    };
-  }, [ownerId]);
+        return () => {
+          alive = false;
+        };
+      }, [ownerId]);
 
-  const canUp = petIndex > 0;
-  const canDown = petIndex < Math.max(0, pets.length - 2);
-  const visiblePets = pets.slice(petIndex, petIndex + 2);
+      const canUp = petIndex > 0;
+      const canDown = petIndex < Math.max(0, pets.length - 2);
+      const visiblePets = pets.slice(petIndex, petIndex + 2);
 
-  return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "white" }}>
-      <PublicNavbar />
+      return (
+        <Box sx={{ minHeight: "100vh", bgcolor: "white" }}>
+          <PublicNavbar />
 
-      <Box sx={{ bgcolor: "#eaf2fb", height: { xs: 230, md: 240 }, position: "relative", overflow: "visible", display: "flex", alignItems: "flex-start" }}>
-        <Container maxWidth="lg" sx={{ height: "100%", position: "relative" }}>
-          <Box>
-            <AppBreadcrumbs />
-          </Box>
-          <Box sx={{ pt: { xs: 7, md: 3 } }}>
-            <Typography sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 900, color: "#1c2b39", lineHeight: 1.1 }}>
-              Όλες οι ανάγκες του κατοικιδίου σας,
-              <br />
-              συγκεντρωμένες εδώ.
-            </Typography>
-            <Typography sx={{ mt: 1, mb: 2 }} color="text.secondary">
-              Ραντεβού, κτηνίατροι, βιβλιάρια και δηλώσεις με ένα κλικ.
-            </Typography>
-          </Box>
-        </Container>
-
-        <Box component="img" src="/images/owner.png" alt="Owner" sx={{ position: "absolute", right: 200, bottom: 0, width: { xs: 200, md: 180 }, height: "auto", display: { xs: "none", md: "block" } }} />
-      </Box>
-
-      <Box sx={{ display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
-        <Box sx={{ width: OWNER_SIDEBAR_W, flex: `0 0 ${OWNER_SIDEBAR_W}px`, display: { xs: "none", lg: "block" }, alignSelf: "flex-start" }}>
-          <Box sx={{ position: "sticky", top: 16, maxHeight: "calc(100vh - 16px)" }}>
-            <OwnerNavbar mode="hero" />
-          </Box>
-        </Box>
-
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Container maxWidth="lg" sx={{ py: 2.5 }}>
-            {/* ✅ 3 στήλες για να μην χαλάει το layout */}
-            <Box sx={{ mt: 3, display: "grid", gridTemplateColumns: { xs: "1fr", md: "260px 1fr 360px" },gap: 4,  alignItems: "start", justifyContent: "center", justifyItems: "center", }}>
-              <Box sx={{ pt: 0.2 }}>
-                <Typography sx={{ fontWeight: 900, color: TITLE, mb: 1.2, fontSize: 20, textAlign: "center" }}>
-                  Τα Κατοικίδια μου
-                </Typography>
-
-                <Stack alignItems="center" spacing={1.2}>
-                  <IconButton
-                    disabled={!canUp}
-                    onClick={() => setPetIndex((p) => Math.max(0, p - 1))}
-                    sx={{ width: 44, height: 32, borderRadius: 2, bgcolor: "rgba(11,61,145,0.08)", "&:hover": { bgcolor: "rgba(11,61,145,0.14)" } }}
-                  >
-                    <KeyboardArrowUpIcon sx={{ color: PRIMARY }} />
-                  </IconButton>
-
-                  <Stack spacing={2}>
-                    {loadingPets ? (
-                      <Typography sx={{ color: MUTED, fontWeight: 700 }}>Φόρτωση κατοικιδίων...</Typography>
-                    ) : !ownerId ? (
-                      <Typography sx={{ color: MUTED, fontWeight: 700, textAlign: "center" }}>
-                        Δεν βρέθηκε logged χρήστης.
-                      </Typography>
-                    ) : pets.length === 0 ? (
-                      <Typography sx={{ color: MUTED, fontWeight: 700, textAlign: "center" }}>
-                        Δεν βρέθηκαν κατοικίδια για αυτόν τον χρήστη.
-                      </Typography>
-                    ) : (
-                      visiblePets.map((p) => (
-                        <PetTile key={p.id} pet={p} onOpenBook={(id) => navigate(`/owner/pets/${id}/booklet`)} />
-                      ))
-                    )}
-                  </Stack>
-
-                  <IconButton
-                    disabled={!canDown}
-                    onClick={() => setPetIndex((p) => Math.min(Math.max(0, pets.length - 2), p + 1))}
-                    sx={{ width: 44, height: 32, borderRadius: 2, bgcolor: "rgba(11,61,145,0.08)", "&:hover": { bgcolor: "rgba(11,61,145,0.14)" } }}
-                  >
-                    <KeyboardArrowDownIcon sx={{ color: PRIMARY }} />
-                  </IconButton>
-                </Stack>
+          <Box sx={{ bgcolor: "#eaf2fb", height: { xs: 230, md: 240 }, position: "relative", overflow: "visible", display: "flex", alignItems: "flex-start" }}>
+            <Container maxWidth="lg" sx={{ height: "100%", position: "relative" }}>
+              <Box>
+                <AppBreadcrumbs />
               </Box>
-
-              <Box sx={{ pt: 0.2 }}>
-                <Typography sx={{ fontWeight: 900, color: TITLE, mb: 6.5, fontSize: 20, textAlign: "center" }}>
-                  Γρήγορες Ενέργειες
+              <Box sx={{ pt: { xs: 7, md: 3 } }}>
+                <Typography sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 900, color: "#1c2b39", lineHeight: 1.1 }}>
+                  Όλες οι ανάγκες του κατοικιδίου σας,
+                  <br />
+                  συγκεντρωμένες εδώ.
                 </Typography>
-
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                  <QuickAction
-                    icon={<CampaignIcon sx={{ fontSize: 100, color: PRIMARY }} />}
-                    title="Δήλωση Απώλειας"
-                    text="Καταχωρίστε την απώλεια του κατοικιδίου σας για άμεση ενημέρωση."
-                    onClick={() => navigate("/owner/declarations/lost/new")}
-                  />
-                  <QuickAction
-                    icon={<SearchIcon sx={{ fontSize: 100, color: PRIMARY }} />}
-                    title="Δήλωση Εύρεσης"
-                    text="Καταχωρίστε την εύρεση για να εντοπιστεί ο ιδιοκτήτης."
-                    onClick={() => navigate("/owner/declarations/found/new")}
-                  />
-                </Stack>
+                <Typography sx={{ mt: 1, mb: 2 }} color="text.secondary">
+                  Ραντεβού, κτηνίατροι, βιβλιάρια και δηλώσεις με ένα κλικ.
+                </Typography>
               </Box>
+            </Container>
 
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "flex-start",
-                  pt: 10.0, 
-                }}
-              >
-  <MiniCalendar />
-</Box>
+            <Box component="img" src="/images/owner.png" alt="Owner" sx={{ position: "absolute", right: 200, bottom: 0, width: { xs: 200, md: 180 }, height: "auto", display: { xs: "none", md: "block" } }} />
+          </Box>
+
+          <Box sx={{ display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
+            <Box sx={{ width: OWNER_SIDEBAR_W, flex: `0 0 ${OWNER_SIDEBAR_W}px`, display: { xs: "none", lg: "block" }, alignSelf: "flex-start" }}>
+              <Box sx={{ position: "sticky", top: 16, maxHeight: "calc(100vh - 16px)" }}>
+                <OwnerNavbar mode="hero" />
+              </Box>
+            </Box>
+
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Container maxWidth="lg" sx={{ py: 2.5 }}>
+                {/* ✅ 3 στήλες για να μην χαλάει το layout */}
+                <Box sx={{ mt: 3, display: "grid", gridTemplateColumns: { xs: "1fr", md: "260px 1fr 360px" },gap: 4,  alignItems: "start", justifyContent: "center", justifyItems: "center", }}>
+                  <Box sx={{ pt: 0.2 }}>
+                    <Typography sx={{ fontWeight: 900, color: TITLE, mb: 1.2, fontSize: 20, textAlign: "center" }}>
+                      Τα Κατοικίδια μου
+                    </Typography>
+
+                    <Stack alignItems="center" spacing={1.2}>
+                      <IconButton
+                        disabled={!canUp}
+                        onClick={() => setPetIndex((p) => Math.max(0, p - 1))}
+                        sx={{ width: 44, height: 32, borderRadius: 2, bgcolor: "rgba(11,61,145,0.08)", "&:hover": { bgcolor: "rgba(11,61,145,0.14)" } }}
+                      >
+                        <KeyboardArrowUpIcon sx={{ color: PRIMARY }} />
+                      </IconButton>
+
+                      <Stack spacing={2}>
+                        {loadingPets ? (
+                          <Typography sx={{ color: MUTED, fontWeight: 700 }}>Φόρτωση κατοικιδίων...</Typography>
+                        ) : !ownerId ? (
+                          <Typography sx={{ color: MUTED, fontWeight: 700, textAlign: "center" }}>
+                            Δεν βρέθηκε logged χρήστης.
+                          </Typography>
+                        ) : pets.length === 0 ? (
+                          <Typography sx={{ color: MUTED, fontWeight: 700, textAlign: "center" }}>
+                            Δεν βρέθηκαν κατοικίδια για αυτόν τον χρήστη.
+                          </Typography>
+                        ) : (
+                          visiblePets.map((p) => (
+                            <PetTile key={p.id} pet={p} onOpenBook={(id) => navigate(`/owner/pets/${id}/booklet`)} />
+                          ))
+                        )}
+                      </Stack>
+
+                      <IconButton
+                        disabled={!canDown}
+                        onClick={() => setPetIndex((p) => Math.min(Math.max(0, pets.length - 2), p + 1))}
+                        sx={{ width: 44, height: 32, borderRadius: 2, bgcolor: "rgba(11,61,145,0.08)", "&:hover": { bgcolor: "rgba(11,61,145,0.14)" } }}
+                      >
+                        <KeyboardArrowDownIcon sx={{ color: PRIMARY }} />
+                      </IconButton>
+                    </Stack>
+                  </Box>
+
+                  <Box sx={{ pt: 0.2 }}>
+                    <Typography sx={{ fontWeight: 900, color: TITLE, mb: 6.5, fontSize: 20, textAlign: "center" }}>
+                      Γρήγορες Ενέργειες
+                    </Typography>
+
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                      <QuickAction
+                        icon={<CampaignIcon sx={{ fontSize: 100, color: PRIMARY }} />}
+                        title="Δήλωση Απώλειας"
+                        text="Καταχωρίστε την απώλεια του κατοικιδίου σας για άμεση ενημέρωση."
+                        onClick={() => navigate("/owner/declarations/lost/new")}
+                      />
+                      <QuickAction
+                        icon={<SearchIcon sx={{ fontSize: 100, color: PRIMARY }} />}
+                        title="Δήλωση Εύρεσης"
+                        text="Καταχωρίστε την εύρεση για να εντοπιστεί ο ιδιοκτήτης."
+                        onClick={() => navigate("/owner/declarations/found/new")}
+                      />
+                    </Stack>
+                  </Box>
+
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "flex-start",
+                      pt: 10.0, 
+                    }}
+                  >
+      <MiniCalendar />
+    </Box>
 
             </Box>
 

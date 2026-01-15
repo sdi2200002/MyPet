@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -25,16 +25,6 @@ import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useNavigate } from "react-router-dom";
 
-const LOST_KEY = "mypet_lost_declarations";
-
-function safeLoad(key) {
-  try {
-    return JSON.parse(localStorage.getItem(key) || "[]");
-  } catch {
-    return [];
-  }
-}
-
 const COLORS = {
   primary: "#0b3d91",
   primaryHover: "#08316f",
@@ -55,36 +45,6 @@ const fieldSx = {
   },
   "& .MuiInputLabel-root.Mui-focused": { color: COLORS.primary },
 };
-
-// fallback demo items (μόνο αν το storage είναι άδειο)
-const demoLost = [
-  {
-    id: "demo1",
-    status: "Οριστική",
-    petName: "Σκύλος",
-    date: "2025-10-12",
-    area: "Αθήνα",
-    sex: "Αρσενικό",
-    species: "Σκύλος",
-    color: "Καφέ",
-    notes: "Φορούσε κόκκινο λουράκι.",
-    photoDataUrl: "",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "demo2",
-    status: "Οριστική",
-    petName: "Γάτα",
-    date: "2025-11-10",
-    area: "Παγκράτι",
-    sex: "Θηλυκό",
-    species: "Γάτα",
-    color: "Λευκό",
-    notes: "Μικρόσωμη, πολύ φιλική.",
-    photoDataUrl: "",
-    createdAt: new Date().toISOString(),
-  },
-];
 
 function PetCard({ item, onOpen }) {
   return (
@@ -119,7 +79,9 @@ function PetCard({ item, onOpen }) {
             sx={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
         ) : (
-          <Typography sx={{ fontWeight: 800, color: COLORS.muted }}>Φωτογραφία ζώου</Typography>
+          <Typography sx={{ fontWeight: 800, color: COLORS.muted }}>
+            Φωτογραφία ζώου
+          </Typography>
         )}
       </Box>
 
@@ -189,33 +151,74 @@ export default function LostPets() {
   const [sex, setSex] = useState("");
   const [color, setColor] = useState("");
 
+  // Data
+  const [allLost, setAllLost] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   // Pagination
   const [page, setPage] = useState(1);
   const pageSize = 8;
 
-  // Πάρε public lost (μόνο Οριστική)
-    const allLost = useMemo(() => {
-    let stored = safeLoad(LOST_KEY);
+  // ✅ Τράβα data από DB/JSON
+  useEffect(() => {
+    let alive = true;
 
-    // ✅ Αν δεν υπάρχει τίποτα στο localStorage, βάλε τα demoLost ΜΙΑ φορά μέσα
-    if (!stored.length) {
-        stored = demoLost.map((x) => ({ ...x }));
-        localStorage.setItem(LOST_KEY, JSON.stringify(stored));
+    async function loadLost() {
+      try {
+        setLoading(true);
+        setError("");
+
+        // 🔁 ΑΛΛΑΞΕ αυτό στο δικό σου endpoint:
+        // - αν επιστρέφει { lostDeclarations: [...] } είσαι κομπλέ
+        // - αν επιστρέφει σκέτο array, δες πιο κάτω
+        const res = await fetch("/db.json");
+
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
+
+        const json = await res.json();
+
+        // ✅ Παίρνουμε lostDeclarations από response
+        const items = Array.isArray(json?.lostDeclarations)
+          ? json.lostDeclarations
+          : Array.isArray(json)
+          ? json
+          : [];
+
+        // ✅ Normalization για να δουλέψει το UI σου:
+        // species <- breedOrSpecies
+        const normalized = items
+          .filter((x) => (x?.status || "") === "Οριστική")
+          .map((x) => ({
+            ...x,
+            species: x?.breedOrSpecies || x?.species || "",
+            type: "lost",
+          }))
+          .sort((a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0));
+
+        if (alive) setAllLost(normalized);
+      } catch (e) {
+        if (alive) setError(e?.message || "Κάτι πήγε στραβά στο φόρτωμα.");
+      } finally {
+        if (alive) setLoading(false);
+      }
     }
 
-    return stored
-        .filter((x) => (x?.status || "Πρόχειρη") === "Οριστική")
-        .map((x) => ({ ...x, type: "lost" }))
-        .sort((a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0));
-    }, []);
+    loadLost();
 
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     return allLost.filter((x) => {
       const okArea = !area || (x.area || "").toLowerCase() === area.toLowerCase();
-      const okSpecies = !species || (x.species || "").toLowerCase() === species.toLowerCase();
+      const okSpecies =
+        !species || (x.species || "").toLowerCase() === species.toLowerCase();
       const okSex = !sex || (x.sex || "").toLowerCase() === sex.toLowerCase();
-      const okColor = !color || (x.color || "").toLowerCase().includes(color.toLowerCase());
+      const okColor =
+        !color || (x.color || "").toLowerCase().includes(color.toLowerCase());
       return okArea && okSpecies && okSex && okColor;
     });
   }, [allLost, area, species, sex, color]);
@@ -230,6 +233,11 @@ export default function LostPets() {
   function doSearch() {
     setPage(1);
   }
+
+  // ✅ αν πέσει το totalPages, κράτα τη σελίδα valid
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
@@ -341,30 +349,66 @@ export default function LostPets() {
             </Stack>
           </Paper>
 
-          {/* Cards grid */}
-          <Box
-            sx={{
-              mt: 3,
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" },
-              gap: 2,
-            }}
-          >
-            {paged.map((item) => (
-              <PetCard key={item.id} item={item} onOpen={() => navigate(`/lost/${item.id}`)} />
-            ))}
-          </Box>
+          {/* ✅ Loading / Error */}
+          {loading && (
+            <Typography sx={{ mt: 2, color: COLORS.muted, fontWeight: 800 }}>
+              Φόρτωση δηλώσεων...
+            </Typography>
+          )}
 
-          {/* Pagination */}
-          <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-            <Pagination
-              count={totalPages}
-              page={page}
-              onChange={(_, p) => setPage(p)}
-              shape="rounded"
-            />
-          </Box>
+          {!!error && (
+            <Paper
+              elevation={0}
+              sx={{
+                mt: 2,
+                p: 2,
+                borderRadius: 2,
+                border: "1px solid rgba(180,35,24,0.35)",
+                bgcolor: "rgba(180,35,24,0.06)",
+              }}
+            >
+              <Typography sx={{ fontWeight: 900, color: "#b42318" }}>
+                Αποτυχία φόρτωσης
+              </Typography>
+              <Typography sx={{ color: "#7a1b14" }}>{error}</Typography>
+            </Paper>
+          )}
+
+          {/* Cards grid */}
+          {!loading && !error && (
+            <>
+              <Box
+                sx={{
+                  mt: 3,
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" },
+                  gap: 2,
+                }}
+              >
+                {paged.map((item) => (
+                  <PetCard key={item.id} item={item} onOpen={() => navigate(`/lost/${item.id}`)} />
+                ))}
+              </Box>
+
+              {filtered.length === 0 && (
+                <Typography sx={{ mt: 2, color: COLORS.muted, fontWeight: 800 }}>
+                  Δεν βρέθηκαν δηλώσεις με τα φίλτρα που επέλεξες.
+                </Typography>
+              )}
+
+              {/* Pagination */}
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+                <Pagination
+                  count={totalPages}
+                  page={page}
+                  onChange={(_, p) => setPage(p)}
+                  shape="rounded"
+                />
+              </Box>
+            </>
+          )}
         </Container>
+
         <Container maxWidth="lg" sx={{ mt: 2 }}>
           <Typography sx={{ mt: 4, fontSize: 26, fontWeight: 900, color: "#0d2c54" }}>
             Εύρεση κατοικιδίου
