@@ -410,10 +410,6 @@ export default function PetSearch() {
                   </IconButton>
                 )}
               </Stack>
-
-              <Typography sx={{ mt: 1.2, color: MUTED, fontWeight: 700, fontSize: 12 }}>
-                Tip: Στο μικροτσίπ μπορείς να γράψεις και μέρος του αριθμού (π.χ. τα τελευταία 5 ψηφία).
-              </Typography>
             </Paper>
 
             {loading && (

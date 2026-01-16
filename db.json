@@ -47,6 +47,7 @@
       "birthDate": "01-01-2020",
       "name": "Μπρούνο",
       "species": "Σκύλος",
+      "breed": "Λαμπραντόρ",
       "sex": "Αρσενικό",
       "color": "Καστανό",
       "microchip": "123456789",
@@ -140,7 +141,7 @@
       "species": "Γάτα",
       "sex": "Θηλυκό",
       "color": "Λευκό",
-      "microchip": "987654321",
+      "microchip": "987384321",
       "photo": "/images/cat1.png"
     }
   ],
