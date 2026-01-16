@@ -41,6 +41,7 @@ import VetNewReview from "./pages/owner/VetNewReview.jsx";
 import VetReviewDetails from "./pages/owner/VetReviewDetails.jsx";
 import OwnerProfile from "./pages/owner/Profile.jsx";
 import OwnerFoundDetails from "./pages/owner/OwnerFoundDetails.jsx";
+import AdoptionWizard from "./pages/vet/AdoptionWizard.jsx";
 
 // ✅ Auth
 import { AuthProvider } from "./auth/AuthContext.jsx";
@@ -126,6 +127,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <Route path="/vet/profile" element={<OwnerProfile role="vet" />} />
             <Route path="/vet/profile/:vetId/reviews" element={<VetReviews role="vet" />} />
             <Route path="/vet/profile/:vetId/reviews/:reviewId" element={<VetReviewDetails role="vet" />} />
+            <Route path="/vet/declarations/adoption/new" element={<AdoptionWizard role="vet" />} />
+
           </Route>
 
           {/* ---------------- 404 ---------------- */}
