@@ -103,7 +103,7 @@ function routeForNotification(n) {
   if (n?.foundDeclarationId) return `/vet/found/${n.foundDeclarationId}`;
 
   if (n?.refType === "appointment" && n?.refId) return `/vet/appointments/${n.refId}`;
-  if (n?.refType === "pet" && n?.refId) return `/vet/pets/${n.refId}`;
+  if (n?.refType === "pet" && n?.refId) return `/vet/pets/${n.refId}/booklet`;
 
   // ✅ LOST: πήγαινε στο PUBLIC route που υπάρχει
   if ((n?.refType === "lostDeclaration" || n?.refType === "lost") && n?.refId)

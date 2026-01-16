@@ -24,6 +24,7 @@ import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext"; 
 import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+import Pager from "../../components/Pager"; 
 
 
 const PRIMARY = "#0b3d91";
@@ -92,7 +93,7 @@ function fmtDate(iso) {
 function fmtTime(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
-  return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 function AppointmentRow({ item, pet, onView, onCancel }) {
@@ -178,6 +179,20 @@ function AppointmentRow({ item, pet, onView, onCancel }) {
           </Typography>
 
           <Stack direction="row" spacing={1} alignItems="center">
+            <Button
+              onClick={() => onView(item)}
+              variant="contained"
+              startIcon={<VisibilityOutlinedIcon />}
+              sx={{
+                textTransform: "none",
+                borderRadius: 2,
+                bgcolor: PRIMARY,
+                "&:hover": { bgcolor: PRIMARY_HOVER },
+              }}
+            >
+              Προβολή
+            </Button>
+
             {canCancel && (
               <Button
                 onClick={() => onCancel(item)}
@@ -192,20 +207,6 @@ function AppointmentRow({ item, pet, onView, onCancel }) {
                 Ακύρωση
               </Button>
             )}
-
-            <Button
-              onClick={() => onView(item)}
-              variant="contained"
-              startIcon={<VisibilityOutlinedIcon />}
-              sx={{
-                textTransform: "none",
-                borderRadius: 2,
-                bgcolor: PRIMARY,
-                "&:hover": { bgcolor: PRIMARY_HOVER },
-              }}
-            >
-              Προβολή
-            </Button>
           </Stack>
         </Stack>
       </Stack>
@@ -230,6 +231,10 @@ export default function MyAppointments() {
   const [cancelItem, setCancelItem] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelSaving, setCancelSaving] = useState(false);
+
+  // ✅ Pagination
+  const rowsPerPage = 5;          // άλλαξε το αν θες (π.χ. 3/5/6)
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let alive = true;
@@ -294,21 +299,41 @@ export default function MyAppointments() {
           return t < now || x?.status === "Ακυρωμένο";
         });
 
-  // 2) Sorting ανά tab
-  base.sort((a, b) => {
-    const ta = getTime(a);
-    const tb = getTime(b);
+    // 2) Sorting ανά tab
+    base.sort((a, b) => {
+      const ta = getTime(a);
+      const tb = getTime(b);
 
-    // Επερχόμενα: πιο σύντομο -> πιο μακρινό
-    if (tab === 0) return ta - tb;
+      // Επερχόμενα: πιο σύντομο -> πιο μακρινό
+      if (tab === 0) return ta - tb;
 
-    // Ιστορικό: πιο πρόσφατο -> πιο παλιό
-    return tb - ta;
-  });
+      // Ιστορικό: πιο πρόσφατο -> πιο παλιό
+      return tb - ta;
+    });
 
-  return base;
-}, [all, tab]);
+    return base;
+  }, [all, tab]);
 
+  // ✅ Page count + rows της τρέχουσας σελίδας
+  const pageCount = useMemo(
+    () => Math.max(1, Math.ceil(filtered.length / rowsPerPage)),
+    [filtered.length, rowsPerPage]
+  );
+
+  // όταν αλλάζει tab, γύρνα στη σελίδα 1
+  useEffect(() => {
+    setPage(1);
+  }, [tab]);
+
+  // αν μειωθεί ο αριθμός σελίδων (π.χ. ακύρωση), διόρθωσε page
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
+
+  const pageRows = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, page, rowsPerPage]);
 
   const handleCreate = () => navigate("/owner/vets");
   const handleView = (item) => navigate(`/owner/appointments/${item.id}`);
@@ -547,17 +572,22 @@ export default function MyAppointments() {
                 </Typography>
               </Paper>
             ) : (
-              <Stack spacing={1.3}>
-                {filtered.map((item) => (
-                  <AppointmentRow
-                    key={item.id}
-                    item={item}
-                    pet={petMap.get(String(item?.petId))}
-                    onView={handleView}
-                    onCancel={handleCancel}
-                  />
-                ))}
-              </Stack>
+              <>
+                <Stack spacing={1.3}>
+                  {pageRows.map((item) => (
+                    <AppointmentRow
+                      key={item.id}
+                      item={item}
+                      pet={petMap.get(String(item?.petId))}
+                      onView={handleView}
+                      onCancel={handleCancel}
+                    />
+                  ))}
+                </Stack>
+
+                {/* ✅ PAGER κάτω δεξιά */}
+                <Pager page={page} pageCount={pageCount} onChange={setPage} color={PRIMARY} maxButtons={4} />
+              </>
             )}
           </Box>
         </Paper>

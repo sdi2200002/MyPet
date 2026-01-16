@@ -8,8 +8,9 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useAuth } from "../../auth/AuthContext";
-import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
 
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+import VetNavbar, { VET_SIDEBAR_W } from "../../components/VetNavbar";
 
 const PRIMARY = "#0b3d91";
 const PRIMARY_HOVER = "#08316f";
@@ -70,9 +71,12 @@ export default function AppointmentDetails() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  const isVet = String(user?.role || "").toLowerCase() === "vet";
+  const isOwner = !isVet; // αν έχεις και άλλα roles, άλλαξέ το σε explicit owner check
+
   const { appId } = useParams();
   const [sp] = useSearchParams();
-  const apptId = (appId || sp.get("apptId") || "").trim(); // ✅ string id like "3f36"
+  const apptId = (appId || sp.get("apptId") || "").trim();
 
   const [appt, setAppt] = useState(null);
   const [vet, setVet] = useState(null);
@@ -81,7 +85,7 @@ export default function AppointmentDetails() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // ✅ NEW: review existence (robust)
+  // reviews (μόνο για owner)
   const [hasReview, setHasReview] = useState(false);
   const [checkingReview, setCheckingReview] = useState(true);
 
@@ -96,35 +100,47 @@ export default function AppointmentDetails() {
 
       if (!apptId) throw new Error("missing id");
 
-      // 1) appointment (id is string)
+      // 1) appointment
       const a = await fetchJSON(`/api/appointments/${encodeURIComponent(apptId)}`);
 
-      // ✅ security: πρέπει να ανήκει στον χρήστη
-      if (user?.id != null && a?.ownerId != null && String(a.ownerId) !== String(user.id)) {
-        throw new Error("forbidden");
+      // 2) security
+      if (!user?.id) throw new Error("forbidden");
+
+      if (isOwner) {
+        if (a?.ownerId == null || String(a.ownerId) !== String(user.id)) {
+          throw new Error("forbidden");
+        }
       }
 
-      // 2) vet (vetId is number)
+      if (isVet) {
+        const vetKey = String(user?.vetProfileId ?? user.id);
+        if (a?.vetId == null || String(a.vetId) !== vetKey) {
+          throw new Error("forbidden");
+        }
+      }
+
+      // 3) vet profile (από /api/vets/:id)
       let v = null;
       if (a?.vetId != null) {
-        v = await fetchJSON(`/api/vets/${encodeURIComponent(String(a.vetId))}`);
+        v = await fetchJSON(`/api/vets/${encodeURIComponent(String(a.vetId))}`).catch(() => null);
       }
 
-      // 3) pet (petId is string στο appointment)
+      // 4) pet
       let p = null;
       if (a?.petId != null) {
-        // Αν το pets resource έχει numeric ids, κάνε Number(a.petId) εδώ.
-        p = await fetchJSON(`/api/pets/${encodeURIComponent(String(a.petId))}`);
+        p = await fetchJSON(`/api/pets/${encodeURIComponent(String(a.petId))}`).catch(() => null);
       }
 
-      // 4) ✅ robust check: φέρνουμε ΟΛΑ τα reviews και φιλτράρουμε client-side
+      // 5) review existence (μόνο owner)
       let exists = false;
-      try {
-        const all = await fetchJSON(`/api/reviews`);
-        const arr = Array.isArray(all) ? all : [];
-        exists = arr.some((r) => String(r?.appointmentId || "") === String(apptId));
-      } catch {
-        exists = false;
+      if (isOwner) {
+        try {
+          const all = await fetchJSON(`/api/reviews`);
+          const arr = Array.isArray(all) ? all : [];
+          exists = arr.some((r) => String(r?.appointmentId || "") === String(apptId));
+        } catch {
+          exists = false;
+        }
       }
 
       if (!alive) return;
@@ -155,16 +171,17 @@ export default function AppointmentDetails() {
     return () => {
       alive = false;
     };
-  }, [apptId, user?.id]);
+  }, [apptId, user?.id, user?.vetProfileId, isVet, isOwner]);
 
   const status = useMemo(() => computeStatus(appt), [appt]);
 
-  // ✅ show button only if completed AND no review exists
+  // ✅ review button: μόνο owner, completed, και δεν έχει review
   const canReview = useMemo(() => {
+    if (!isOwner) return false;
     if (status !== "Ολοκληρωμένο") return false;
     if (checkingReview) return false;
     return !hasReview;
-  }, [status, checkingReview, hasReview]);
+  }, [isOwner, status, checkingReview, hasReview]);
 
   const goToReview = () => {
     const vetId = appt?.vetId;
@@ -203,22 +220,22 @@ export default function AppointmentDetails() {
   }, [appt]);
 
   const microchip = pet?.microchip || appt?.petMicrochip || "—";
-  const petPhoto = pet?.photo || appt?.petPhoto || appt?.photoDataUrl || appt?.petImage || appt?.petPhotoUrl || "";
+  const petPhoto =
+    pet?.photo || appt?.petPhoto || appt?.photoDataUrl || appt?.petImage || appt?.petPhotoUrl || appt?.petPhotoUrl || "";
   const vetPhoto = vet?.photo || vet?.image || vet?.photoUrl || "";
   const rating = vet?.rating ?? appt?.rating ?? 4.8;
   const reviewsCount = vet?.reviewsCount ?? appt?.reviewsCount ?? 120;
 
-  function OwnerPageShell({ children }) {
+  function PageShell({ children }) {
+    const SIDEBAR_W = isVet ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
+
     return (
       <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
         <PublicNavbar />
 
         <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
-          {/* spacer */}
-          <Box sx={{ width: OWNER_SIDEBAR_W, flex: `0 0 ${OWNER_SIDEBAR_W}px`, display: { xs: "none", lg: "block" } }} />
-          {/* fixed sidebar */}
-          <OwnerNavbar mode="navbar" />
-          {/* main */}
+          <Box sx={{ width: SIDEBAR_W, flex: `0 0 ${SIDEBAR_W}px`, display: { xs: "none", lg: "block" } }} />
+          {isVet ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
           <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
         </Box>
 
@@ -227,9 +244,10 @@ export default function AppointmentDetails() {
     );
   }
 
+  const backPath = isVet ? "/vet/appointments" : "/owner/appointments";
 
   return (
-    <OwnerPageShell>
+    <PageShell>
       <Container maxWidth="lg" sx={{ py: 2.5 }}>
         <Box>
           <AppBreadcrumbs />
@@ -253,7 +271,7 @@ export default function AppointmentDetails() {
               <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
               <Button
                 variant="contained"
-                onClick={() => navigate("/owner/appointments")}
+                onClick={() => navigate(backPath)}
                 sx={{
                   mt: 2,
                   textTransform: "none",
@@ -265,7 +283,7 @@ export default function AppointmentDetails() {
                   boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
                 }}
               >
-                Τα Ραντεβού μου
+                {isVet ? "Τα Ραντεβού" : "Τα Ραντεβού μου"}
               </Button>
             </>
           ) : (
@@ -397,7 +415,7 @@ export default function AppointmentDetails() {
                   </Button>
                 )}
 
-                {status === "Ολοκληρωμένο" && !checkingReview && hasReview && (
+                {isOwner && status === "Ολοκληρωμένο" && !checkingReview && hasReview && (
                   <Typography sx={{ color: MUTED, fontWeight: 800, alignSelf: "center" }}>
                     Έχεις ήδη υποβάλει αξιολόγηση για αυτό το ραντεβού.
                   </Typography>
@@ -407,7 +425,6 @@ export default function AppointmentDetails() {
           )}
         </Paper>
       </Container>
-    </OwnerPageShell>
+    </PageShell>
   );
-
 }

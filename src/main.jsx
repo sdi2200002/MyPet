@@ -3,28 +3,32 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Home from "./pages/public/Home.jsx";
-import Login from "./pages/public/Login.jsx";
-import Contact from "./pages/public/Contact.jsx";
-
 import OwnerDashboard from "./pages/owner/OwnerDashboard.jsx";
+import VetDashboard from "./pages/vet/VetDashboard.jsx";
+import Contact from "./pages/public/Contact.jsx";
+import NotFound from "./pages/common/NotFound.jsx";
+import Login from "./pages/public/Login.jsx";
+import ForgotPassword from "./pages/public/ForgotPassword.jsx";
+import RegisterOwner from "./pages/public/RegisterOwner.jsx";
+import RegisterVet from "./pages/public/RegisterVet.jsx";
+
 import MyDeclarations from "./pages/owner/MyDeclarations.jsx";
 import DeclarationsNew from "./pages/owner/DeclarationsNew.jsx";
-import MyAppointments from "./pages/owner/MyAppointments.jsx";
-
-import VetDashboard from "./pages/vet/VetDashboard.jsx";
-import NotFound from "./pages/common/NotFound.jsx";
-
 import LostWizard from "./pages/owner/LostWizard.jsx";
 import FoundWizard from "./pages/public/FoundWizard.jsx";
 import DeclarationSuccess from "./pages/owner/DeclarationSuccess.jsx";
+import AdoptionWizard from "./pages/vet/AdoptionWizard.jsx";
+
+import MyAppointments from "./pages/owner/MyAppointments.jsx";
+import VetNewAppointment from "./pages/owner/VetNewAppointment.jsx";
+import AppointmentSuccess from "./pages/owner/AppointmentSuccess.jsx";
+import AppointmentDetails from "./pages/owner/AppointmentDetails.jsx";
+import VetAppointmentsRequests from "./pages/vet/VetAppointmentsRequests.jsx";
+import VetAppointmentsUpdates from "./pages/vet/VetAppointmentsUpdates.jsx";
 
 import LostPets from "./pages/public/LostPets";
 import LostPetDetails from "./pages/public/LostPetDetails";
 import FoundPetDetails from "./pages/public/FoundPetDetails";
-
-import ForgotPassword from "./pages/public/ForgotPassword.jsx";
-import RegisterOwner from "./pages/public/RegisterOwner.jsx";
-import RegisterVet from "./pages/public/RegisterVet.jsx";
 
 import MyPets from "./pages/owner/MyPets.jsx";
 import PetSearch from "./pages/vet/PetSearch.jsx";
@@ -36,15 +40,11 @@ import VetActNew from "./pages/vet/VetActNew.jsx";
 
 import VetSearch from "./pages/owner/VetSearch.jsx";
 import VetProfile from "./pages/owner/VetProfile.jsx";
-import VetNewAppointment from "./pages/owner/VetNewAppointment.jsx";
 import VetReviews from "./pages/owner/VetReviews.jsx";
-import AppointmentSuccess from "./pages/owner/AppointmentSuccess.jsx";
-import AppointmentDetails from "./pages/owner/AppointmentDetails.jsx";
 import VetNewReview from "./pages/owner/VetNewReview.jsx";
 import VetReviewDetails from "./pages/owner/VetReviewDetails.jsx";
 import OwnerProfile from "./pages/owner/Profile.jsx";
 import OwnerFoundDetails from "./pages/owner/OwnerFoundDetails.jsx";
-import AdoptionWizard from "./pages/vet/AdoptionWizard.jsx";
 
 // ✅ Auth
 import { AuthProvider } from "./auth/AuthContext.jsx";
@@ -90,7 +90,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 
             <Route path="/owner/appointments" element={<MyAppointments />} />
             <Route path="/owner/appointments/success" element={<AppointmentSuccess />} />
-            <Route path="/owner/appointments/:appId" element={<AppointmentDetails />} />
+            <Route path="/owner/appointments/:appId" element={<AppointmentDetails role="vet" />} />
             <Route path="/owner/appointments/:appId/review" element={<VetNewReview />} />
 
             <Route path="/owner/declarations" element={<MyDeclarations role="owner" />} />
@@ -121,9 +121,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <Route path="/vet/pets/:id/booklet/acts" element={<PetBookletActs role="vet" />} />
             <Route path="/vet/pets/:id/booklet/acts/new" element={<VetActNew />} />
 
-            <Route path="/vet/appointments" element={<MyAppointments />} />
+            <Route path="/vet/appointments/VetAppointmentsRequests" element={<VetAppointmentsRequests />} />
+            <Route path="/vet/appointments/VetAppointmentsUpdates" element={<VetAppointmentsUpdates />} />
             <Route path="/vet/appointments/success" element={<AppointmentSuccess />} />
-            <Route path="/vet/appointments/:appId" element={<AppointmentDetails />} />
+            <Route path="/vet/appointments/:appId" element={<AppointmentDetails role="vet" />} />
             <Route path="/vet/appointments/:appId/review" element={<VetNewReview />} />
 
             <Route path="/vet/declarations" element={<MyDeclarations role="vet" />} />
