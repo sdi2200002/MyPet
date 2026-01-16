@@ -15,9 +15,10 @@ import { useNavigate } from "react-router-dom";
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
-import { useAuth } from "../../auth/AuthContext"; // ✅ το δικό σου AuthContext
-import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+import { useAuth } from "../../auth/AuthContext";
 
+import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
+import VetNavbar, { VET_SIDEBAR_W } from "../../components/VetNavbar";
 
 const TITLE = "#0d2c54";
 const PRIMARY = "#0b3d91";
@@ -28,8 +29,15 @@ function isValidPhoto(p) {
   return typeof p === "string" && (p.startsWith("/") || p.startsWith("data:") || p.startsWith("http"));
 }
 
+function getFallbackPhoto(pet) {
+  // βάλε ό,τι default θες (πχ public asset)
+  return pet?.species === "cat" ? "/images/cat.png" : "/images/dog.png";
+}
+
 function getPetPhoto(pet) {
   if (isValidPhoto(pet?.photo)) return pet.photo;
+  if (isValidPhoto(pet?.photoDataUrl)) return pet.photoDataUrl;
+  return getFallbackPhoto(pet);
 }
 
 async function fetchJSON(path) {
@@ -111,9 +119,16 @@ function PetRow({ pet, onOpenBooklet }) {
   );
 }
 
-export default function MyPets() {
+/**
+ * ✅ Shared page
+ * role: "owner" | "vet"
+ */
+export default function MyPets({ role = "owner" }) {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  const base = role === "vet" ? "/vet" : "/owner";
+  const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
 
   const [q, setQ] = useState("");
   const [pets, setPets] = useState([]);
@@ -135,8 +150,17 @@ export default function MyPets() {
         return;
       }
 
-      // ✅ μόνο τα pets αυτού του owner
-      const data = await fetchJSON(`/api/pets?ownerId=${encodeURIComponent(String(user.id))}`);
+      // ✅ owner: pets του owner
+      // ✅ vet: pets που παρακολουθεί ο vet
+      //
+      // ΣΗΜΑΝΤΙΚΟ: εδώ βάλε το σωστό query param που έχεις στο backend σου.
+      // Έβαλα vetId σαν default γιατί είναι το πιο λογικό.
+      const url =
+        role === "vet"
+          ? `/api/pets?vetId=${encodeURIComponent(String(user.id))}`
+          : `/api/pets?ownerId=${encodeURIComponent(String(user.id))}`;
+
+      const data = await fetchJSON(url);
 
       if (!alive) return;
       setPets(Array.isArray(data) ? data : []);
@@ -151,7 +175,7 @@ export default function MyPets() {
     return () => {
       alive = false;
     };
-  }, [user?.id]);
+  }, [user?.id, role]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -163,32 +187,33 @@ export default function MyPets() {
     });
   }, [pets, q]);
 
+  const openBookletPath = (petId) => {
+    // owner routes: /owner/pets/:id/booklet
+    // vet routes:   /vet/mypets/:id/booklet  (όπως έχεις στο router σου)
+    if (role === "vet") return `${base}/mypets/${petId}/booklet`;
+    return `${base}/pets/${petId}/booklet`;
+  };
+
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
       <PublicNavbar />
 
       {/* ✅ 2-column layout: sidebar + content */}
-      <Box
-        sx={{
-          flex: 1,
-          display: { xs: "block", lg: "flex" },
-          alignItems: "flex-start",
-        }}
-      >
-        {/* LEFT: spacer column (κρατάει χώρο για το fixed sidebar) */}
+      <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
+        {/* LEFT spacer */}
         <Box
           sx={{
-            width: OWNER_SIDEBAR_W,
-            flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+            width: sidebarW,
+            flex: `0 0 ${sidebarW}px`,
             display: { xs: "none", lg: "block" },
             alignSelf: "flex-start",
           }}
         />
 
         {/* Sidebar κάτω από PublicNavbar */}
-        <OwnerNavbar mode="navbar" />
+        {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
 
-        {/* RIGHT: page content */}
+        {/* RIGHT content */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Container maxWidth="lg" sx={{ py: 3 }}>
             <Box>
@@ -196,10 +221,13 @@ export default function MyPets() {
             </Box>
 
             <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 26 }}>
-              Τα Κατοικίδια μου
+              {role === "vet" ? "Τα Κατοικίδια που Παρακολουθώ" : "Τα Κατοικίδια μου"}
             </Typography>
+
             <Typography sx={{ color: MUTED, fontWeight: 600, mt: 0.5 }}>
-              Εδώ θα βρείτε όλα τα κατοικίδια σας.
+              {role === "vet"
+                ? "Εδώ θα βρείτε όλα τα κατοικίδια που παρακολουθείτε."
+                : "Εδώ θα βρείτε όλα τα κατοικίδια σας."}
             </Typography>
 
             <Box sx={{ mt: 2.2, mb: 2 }}>
@@ -276,7 +304,7 @@ export default function MyPets() {
                     <PetRow
                       key={pet.id}
                       pet={pet}
-                      onOpenBooklet={() => navigate(`/owner/pets/${pet.id}/booklet`)}
+                      onOpenBooklet={() => navigate(openBookletPath(pet.id))}
                     />
                   ))
                 )}
@@ -289,5 +317,4 @@ export default function MyPets() {
       <Footer />
     </Box>
   );
-
 }

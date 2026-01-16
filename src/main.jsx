@@ -27,9 +27,12 @@ import RegisterOwner from "./pages/public/RegisterOwner.jsx";
 import RegisterVet from "./pages/public/RegisterVet.jsx";
 
 import MyPets from "./pages/owner/MyPets.jsx";
+import PetSearch from "./pages/vet/PetSearch.jsx";
 import PetBookletDetails from "./pages/owner/PetBookletDetails.jsx";
 import PetBookletVaccinations from "./pages/owner/PetBookletVaccinations.jsx";
+import VetVaccinationsNew from "./pages/vet/VetVaccinationNew.jsx";
 import PetBookletActs from "./pages/owner/PetBookletActs.jsx";
+import VetActNew from "./pages/vet/VetActNew.jsx";
 
 import VetSearch from "./pages/owner/VetSearch.jsx";
 import VetProfile from "./pages/owner/VetProfile.jsx";
@@ -73,10 +76,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route element={<ProtectedRoute allow={["owner"]} />}>
             <Route path="/owner" element={<OwnerDashboard />} />
 
-            <Route path="/owner/pets" element={<MyPets />} />
-            <Route path="/owner/pets/:id/booklet" element={<PetBookletDetails />} />
-            <Route path="/owner/pets/:id/booklet/vaccinations" element={<PetBookletVaccinations />} />
-            <Route path="/owner/pets/:id/booklet/acts" element={<PetBookletActs />} />
+            <Route path="/owner/pets" element={<MyPets role="owner" />} />
+            <Route path="/owner/pets/:id/booklet" element={<PetBookletDetails role="owner" />} />
+            <Route path="/owner/pets/:id/booklet/vaccinations" element={<PetBookletVaccinations role="owner" />} />
+            <Route path="/owner/pets/:id/booklet/acts" element={<PetBookletActs role="owner" />} />
 
             <Route path="/owner/vets" element={<VetSearch />} />
             <Route path="/owner/vets/:vetId" element={<VetProfile />} />
@@ -103,14 +106,19 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route element={<ProtectedRoute allow={["vet"]} />}>
             <Route path="/vet" element={<VetDashboard />} />
 
-            <Route path="/vet/mypets" element={<MyPets />} />
-            <Route path="/vet/mypets/:id/booklet" element={<PetBookletDetails />} />
-            <Route path="/vet/mypets/:id/booklet/vaccinations" element={<PetBookletVaccinations />} />
-            <Route path="/vet/mypets/:id/booklet/acts" element={<PetBookletActs />} />
+            <Route path="/vet/mypets" element={<MyPets role="vet" />} />
+            <Route path="/vet/mypets/:id/booklet" element={<PetBookletDetails role="vet" />} />
+            <Route path="/vet/mypets/:id/booklet/vaccinations" element={<PetBookletVaccinations role="vet" />} />
+            <Route path="/vet/mypets/:id/booklet/vaccinations/new" element={<VetVaccinationsNew />} />
+            <Route path="/vet/mypets/:id/booklet/acts" element={<PetBookletActs role="vet" />} />
+            <Route path="/vet/mypets/:id/booklet/acts/new" element={<VetActNew />} />
 
-            <Route path="/vet/pets" element={<VetSearch />} />
-            <Route path="/vet/pets/:vetId" element={<VetProfile />} />
-            <Route path="/vet/pets/:vetId/new" element={<VetNewAppointment />} />
+            <Route path="/vet/pets" element={<PetSearch />} />
+            <Route path="/vet/pets/:id/booklet" element={<PetBookletDetails role="vet" />} />
+            <Route path="/vet/pets/:id/booklet/vaccinations" element={<PetBookletVaccinations role="vet" />} />
+            <Route path="/vet/pets/:id/booklet/vaccinations/new" element={<VetVaccinationsNew />} />
+            <Route path="/vet/pets/:id/booklet/acts" element={<PetBookletActs role="vet" />} />
+            <Route path="/vet/pets/:id/booklet/acts/new" element={<VetActNew />} />
 
             <Route path="/vet/appointments" element={<MyAppointments />} />
             <Route path="/vet/appointments/success" element={<AppointmentSuccess />} />
