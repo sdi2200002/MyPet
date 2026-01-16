@@ -6,7 +6,7 @@ import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
-
+import VetNavbar, { VET_SIDEBAR_W } from "../../components/VetNavbar";
 
 const TITLE = "#0d2c54";
 const PRIMARY = "#0b3d91";
@@ -16,11 +16,23 @@ const BORDER = "#8fb4e8";
 const MUTED = "#6b7a90";
 
 function isValidPhoto(p) {
-  return typeof p === "string" && (p.startsWith("/") || p.startsWith("data:") || p.startsWith("http"));
+  return (
+    typeof p === "string" &&
+    (p.startsWith("/") || p.startsWith("data:") || p.startsWith("http"))
+  );
+}
+
+function getFallbackPhoto(pet) {
+  // προσαρμόζεις ό,τι θες
+  const s = String(pet?.species || "").toLowerCase();
+  if (s.includes("γάτα") || s.includes("cat")) return "/images/cat1.png";
+  return "/images/dog1.png";
 }
 
 function getPetPhoto(pet) {
   if (isValidPhoto(pet?.photo)) return pet.photo;
+  if (isValidPhoto(pet?.photoDataUrl)) return pet.photoDataUrl;
+  return getFallbackPhoto(pet);
 }
 
 async function fetchJSON(path) {
@@ -76,9 +88,20 @@ function FieldRow({ label, value }) {
   );
 }
 
-export default function PetBookletDetails() {
+/**
+ * ✅ Shared page
+ * role: "owner" | "vet"
+ */
+export default function PetBookletDetails({ role = "owner" }) {
   const { id } = useParams();
-  const petId = Number(id); // ✅ json-server έχει numeric ids
+  const petId = useMemo(() => String(id || ""), [id]); // ✅ ids είναι strings στο json-server
+
+  const base = role === "vet" ? "/vet" : "/owner";
+  const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
+
+  // routes για tabs (owner vs vet/mypets)
+  const bookletBasePath =
+    role === "vet" ? `${base}/mypets/${petId}/booklet` : `${base}/pets/${petId}/booklet`;
 
   const [pet, setPet] = useState(null);
   const [owner, setOwner] = useState(null);
@@ -93,13 +116,15 @@ export default function PetBookletDetails() {
       setLoading(true);
       setErr("");
 
-      // 1) pet
-      const p = await fetchJSON(`/api/pets/${petId}`);
+      if (!petId) throw new Error("Missing petId");
 
-      // 2) owner (από ownerId)
+      // 1) pet
+      const p = await fetchJSON(`/api/pets/${encodeURIComponent(petId)}`);
+
+      // 2) owner (από ownerId) — ΠΡΟΣΟΧΗ: ownerId είναι string στο json σου
       let o = null;
-      if (p?.ownerId != null) {
-        o = await fetchJSON(`/api/users/${Number(p.ownerId)}`);
+      if (p?.ownerId != null && String(p.ownerId).trim() !== "") {
+        o = await fetchJSON(`/api/users/${encodeURIComponent(String(p.ownerId))}`);
       }
 
       if (!alive) return;
@@ -121,7 +146,6 @@ export default function PetBookletDetails() {
   }, [petId]);
 
   const photo = useMemo(() => getPetPhoto(pet), [pet]);
-
   const speciesOrBreed = pet?.breed || pet?.species || "-";
 
   return (
@@ -129,37 +153,29 @@ export default function PetBookletDetails() {
       <PublicNavbar />
 
       {/* ✅ 2-column layout: sidebar + content */}
-      <Box
-        sx={{
-          flex: 1,
-          display: { xs: "block", lg: "flex" },
-          alignItems: "flex-start",
-        }}
-      >
-        {/* LEFT: spacer column (κρατάει χώρο για το fixed sidebar) */}
+      <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
+        {/* LEFT spacer */}
         <Box
           sx={{
-            width: OWNER_SIDEBAR_W,
-            flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+            width: sidebarW,
+            flex: `0 0 ${sidebarW}px`,
             display: { xs: "none", lg: "block" },
             alignSelf: "flex-start",
           }}
         />
 
-        {/* Sidebar κάτω από PublicNavbar */}
-        <OwnerNavbar mode="navbar" />
+        {/* Sidebar */}
+        {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
 
-        {/* RIGHT: page content */}
+        {/* RIGHT content */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Container maxWidth="lg" sx={{ py: 2.5 }}>
-            <Box>
-              <AppBreadcrumbs />
-            </Box>
+            <AppBreadcrumbs />
 
             <Stack direction="row" spacing={1.2} sx={{ mb: -1, position: "relative", zIndex: 1 }}>
-              <Tab active label="Στοιχεία Κατοικιδίου" to={`/owner/pets/${petId}/booklet`} />
-              <Tab label="Εμβολιασμοί" to={`/owner/pets/${petId}/booklet/vaccinations`} />
-              <Tab label="Ιατρικές Πράξεις" to={`/owner/pets/${petId}/booklet/acts`} />
+              <Tab active label="Στοιχεία Κατοικιδίου" to={bookletBasePath} />
+              <Tab label="Εμβολιασμοί" to={`${bookletBasePath}/vaccinations`} />
+              <Tab label="Ιατρικές Πράξεις" to={`${bookletBasePath}/acts`} />
             </Stack>
 
             <Paper
@@ -178,7 +194,7 @@ export default function PetBookletDetails() {
               ) : err ? (
                 <Typography sx={{ color: "#b00020", fontWeight: 800 }}>{err}</Typography>
               ) : (
-                <Box sx={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 2.5 }}>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "220px 1fr" }, gap: 2.5 }}>
                   <Box sx={{ display: "flex", justifyContent: "center" }}>
                     <Box
                       sx={{
@@ -191,17 +207,17 @@ export default function PetBookletDetails() {
                         alignItems: "center",
                         justifyContent: "center",
                         boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                        overflow: "hidden",
                       }}
                     >
                       <Box
                         component="img"
                         src={photo}
                         alt={pet?.name || "pet"}
-                        sx={{
-                          maxWidth: "100%",
-                          maxHeight: "100%",
-                          objectFit: "cover",
-                          borderRadius: 1.5,
+                        sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = getFallbackPhoto(pet);
                         }}
                       />
                     </Box>
@@ -219,6 +235,8 @@ export default function PetBookletDetails() {
                       <FieldRow label="Χρώμα" value={pet?.color || "-"} />
                       <FieldRow label="Microchip" value={pet?.microchip || "-"} />
                       <FieldRow label="Ομάδα αίματος" value={pet?.blood || "-"} />
+
+                      {/* owner στοιχεία */}
                       <FieldRow label="Ιδιοκτήτης" value={owner?.name || "-"} />
                       <FieldRow label="Τηλ." value={owner?.phone || "-"} />
                       <FieldRow label="Διεύθυνση" value={owner?.address || "-"} />
@@ -251,5 +269,4 @@ export default function PetBookletDetails() {
       <Footer />
     </Box>
   );
-
 }

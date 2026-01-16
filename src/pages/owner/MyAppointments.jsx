@@ -461,6 +461,7 @@ export default function MyAppointments() {
               bgcolor: PRIMARY,
               "&:hover": { bgcolor: PRIMARY_HOVER },
               boxShadow: "0px 6px 16px rgba(0,0,0,0.18)",
+              fontWeight: 900,
             }}
           >
             Νέο Ραντεβού
