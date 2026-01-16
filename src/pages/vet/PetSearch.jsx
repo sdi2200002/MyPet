@@ -367,9 +367,9 @@ export default function PetSearch() {
                     displayEmpty
                     onChange={(e) => setBreed(e.target.value)}
                     startAdornment={<PetsOutlinedIcon sx={{ mr: 1, color: MUTED }} />}
-                    renderValue={(v) => (v ? v : placeholder("Ράτσα"))}
+                    renderValue={(v) => (v ? v : placeholder("Φυλή"))}
                   >
-                    <MenuItem value="">Ράτσα</MenuItem>
+                    <MenuItem value="">Φυλή</MenuItem>
                     {breedOptions.map((b) => (
                       <MenuItem key={b} value={b}>
                         {b}
