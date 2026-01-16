@@ -123,20 +123,18 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 
             <Route path="/vet/appointments/VetAppointmentsRequests" element={<VetAppointmentsRequests />} />
             <Route path="/vet/appointments/VetAppointmentsUpdates" element={<VetAppointmentsUpdates />} />
-            <Route path="/vet/appointments/success" element={<AppointmentSuccess />} />
             <Route path="/vet/appointments/:appId" element={<AppointmentDetails role="vet" />} />
-            <Route path="/vet/appointments/:appId/review" element={<VetNewReview />} />
 
             <Route path="/vet/declarations" element={<MyDeclarations role="vet" />} />
             <Route path="/vet/declarations/new" element={<DeclarationsNew role="vet" />} />
             <Route path="/vet/declarations/found/new" element={<FoundWizard role="vet" />} />
             <Route path="/vet/declarations/lost/new" element={<LostWizard role="vet" />} />
+            <Route path="/vet/declarations/adoption/new" element={<AdoptionWizard role="vet" />} />
             <Route path="/vet/declarations/success" element={<DeclarationSuccess role="vet" />} />
 
             <Route path="/vet/profile" element={<OwnerProfile role="vet" />} />
             <Route path="/vet/profile/:vetId/reviews" element={<VetReviews role="vet" />} />
             <Route path="/vet/profile/:vetId/reviews/:reviewId" element={<VetReviewDetails role="vet" />} />
-            <Route path="/vet/declarations/adoption/new" element={<AdoptionWizard role="vet" />} />
 
           </Route>
 
