@@ -139,7 +139,7 @@ export default function VetNavbar({ mode = "navbar" }) {
           <Item
             icon={<EventAvailableRoundedIcon />}
             label="Τα Ραντεβού μου"
-            to="/vet/appointments/VetAppointmentsRequests"
+            to="/vet/appointments"
             active={isActive("/vet/appointments")}
             onClick={go}
           />

@@ -341,7 +341,7 @@ export default function VetAppointmentsUpdates() {
 
   const TABS = useMemo(
     () => [
-      { label: "Ραντεβού", to: "/vet/appointments/VetAppointments" },
+      { label: "Ραντεβού", to: "/vet/appointments" },
       { label: "Αιτήματα", to: "/vet/appointments/VetAppointmentsRequests" },
       { label: "Ενημερώσεις", to: "/vet/appointments/VetAppointmentsUpdates" },
       { label: "Διαθεσιμότητα", to: "/vet/appointments/VetAppointmentsAvailability" },

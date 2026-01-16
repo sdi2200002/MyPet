@@ -23,8 +23,10 @@ import MyAppointments from "./pages/owner/MyAppointments.jsx";
 import VetNewAppointment from "./pages/owner/VetNewAppointment.jsx";
 import AppointmentSuccess from "./pages/owner/AppointmentSuccess.jsx";
 import AppointmentDetails from "./pages/owner/AppointmentDetails.jsx";
+import VetAppointments from "./pages/vet/VetAppointments.jsx";
 import VetAppointmentsRequests from "./pages/vet/VetAppointmentsRequests.jsx";
 import VetAppointmentsUpdates from "./pages/vet/VetAppointmentsUpdates.jsx";
+import VetAppointmentsAvailability from "./pages/vet/VetAppointmentsAvailability.jsx";
 
 import LostPets from "./pages/public/LostPets";
 import LostPetDetails from "./pages/public/LostPetDetails";
@@ -121,8 +123,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <Route path="/vet/pets/:id/booklet/acts" element={<PetBookletActs role="vet" />} />
             <Route path="/vet/pets/:id/booklet/acts/new" element={<VetActNew />} />
 
+            <Route path="/vet/appointments" element={<VetAppointments />} />
             <Route path="/vet/appointments/VetAppointmentsRequests" element={<VetAppointmentsRequests />} />
             <Route path="/vet/appointments/VetAppointmentsUpdates" element={<VetAppointmentsUpdates />} />
+            <Route path="/vet/appointments/VetAppointmentsAvailability" element={<VetAppointmentsAvailability />} />
             <Route path="/vet/appointments/:appId" element={<AppointmentDetails role="vet" />} />
 
             <Route path="/vet/declarations" element={<MyDeclarations role="vet" />} />
