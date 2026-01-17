@@ -16,6 +16,7 @@ import { useAuth } from "../../auth/AuthContext";
 
 import SearchIcon from "@mui/icons-material/Search";
 import CampaignIcon from "@mui/icons-material/Campaign";
+import NoteAddOutlinedIcon from "@mui/icons-material/NoteAddOutlined";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
@@ -435,7 +436,13 @@ export default function OwnerDashboard() {
                 Γρήγορες Ενέργειες
               </Typography>
 
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={4}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={5}>
+                <QuickAction
+                  icon={<NoteAddOutlinedIcon sx={{ fontSize: 100, color: PRIMARY }} />}
+                  title="Νέα Καταγραφή Κατοικιδίου"
+                  text="Καταγράψτε τα στοιχεία νέου κατοικιδίου που παρακολουθείτε"
+                  onClick={() => navigate("/vet/declarations/adoption/new")}
+                />
                 <QuickAction
                   icon={<CampaignIcon sx={{ fontSize: 100, color: PRIMARY }} />}
                   title="Δήλωση Απώλειας"
@@ -447,18 +454,6 @@ export default function OwnerDashboard() {
                   title="Δήλωση Εύρεσης"
                   text="Καταχωρήστε την εύρεση για να εντοπιστεί ο ιδιοκτήτης."
                   onClick={() => navigate("/vet/declarations/found/new")}
-                />
-                <QuickAction
-                  icon={<SearchIcon sx={{ fontSize: 100, color: PRIMARY }} />}
-                  title="Νέα Καταγραφή Κατοικιδίου"
-                  text="Καταγράψτε τα στοιχεία νέου κατοικιδίου που παρακολουθείτε"
-                  onClick={() => navigate("/vet/declarations")}
-                />
-                <QuickAction
-                  icon={<SearchIcon sx={{ fontSize: 100, color: PRIMARY }} />}
-                  title="Ιατρικές Πράξεις"
-                  text="Καταχωρήστε τα στοιχεία των ιατρικών πράξεων που πραγματοποιούνται στο κατοικίδιο που επιθυμείτε."
-                  onClick={() => navigate("/vet/declarations")}
                 />
               </Stack>
             </Box>

@@ -145,18 +145,9 @@ export default function VetNewAppointment() {
   const dateIso = sp.get("date") || "2025-11-18";
   const time = sp.get("time") || "12:00";
 
-  const services = [
-    "Βασική Κλινική Εξέταση",
-    "Εμβολιασμοί",
-    "Αποπαρασίτωση",
-    "Διαγνωστικές Εξετάσεις",
-    "Μικροεπεμβάσεις",
-    "Μικροτσίπ & Έγγραφα",
-    "Στείρωση",
-    "Γέννηση",
-  ];
+  const [services, setServices] = useState([]);          // ✅ από βάση
+  const [service, setService] = useState("");            // ✅ θα οριστεί μετά το load
 
-  const [service, setService] = useState("Βασική Κλινική Εξέταση");
   const [petId, setPetId] = useState("");
 
   const [vet, setVet] = useState(null);
@@ -182,6 +173,10 @@ export default function VetNewAppointment() {
       }
 
       const v = await fetchJSON(`/api/vets/${id}`);
+      const availList = await fetchJSON(`/api/vetAvailability?vetId=${encodeURIComponent(String(id))}`).catch(() => []);
+      const avail = Array.isArray(availList) && availList.length ? availList[0] : null;
+
+      const dbServices = Array.isArray(avail?.services) ? avail.services : [];
       const p = await fetchJSON(`/api/pets?ownerId=${encodeURIComponent(String(user.id))}`);
 
       if (!alive) return;
@@ -189,6 +184,8 @@ export default function VetNewAppointment() {
       const petsArr = Array.isArray(p) ? p : [];
       setVet(v || null);
       setPets(petsArr);
+      setServices(dbServices);
+      setService((prev) => prev || dbServices[0] || "Βασική Κλινική Εξέταση");
       setPetId((prev) => prev || (petsArr[0]?.id ?? ""));
       setLoading(false);
     })().catch((e) => {
@@ -393,25 +390,36 @@ export default function VetNewAppointment() {
               <Box>
                 <Typography sx={{ fontWeight: 900, color: TITLE, mb: 1.2 }}>Επιλογή Υπηρεσίας</Typography>
                 <Stack spacing={1}>
-                  {services.map((s) => (
-                    <Paper
-                      key={s}
-                      elevation={0}
-                      onClick={() => setService(s)}
-                      sx={{
-                        cursor: "pointer",
-                        borderRadius: 2,
-                        px: 1.4,
-                        py: 1.1,
-                        border: s === service ? `2px solid ${PRIMARY}` : "1px solid rgba(0,0,0,0.10)",
-                        bgcolor: s === service ? "rgba(11,61,145,0.06)" : "#fff",
-                      }}
-                    >
-                      <Typography sx={{ fontWeight: 900, fontSize: 12, color: s === service ? PRIMARY : "#111" }}>
-                        {s}
+                  {services.length === 0 ? (
+                    <Paper elevation={0} sx={{ borderRadius: 2, p: 1.6, bgcolor: "#eef1f4", border: "1px solid rgba(0,0,0,0.08)" }}>
+                      <Typography sx={{ fontWeight: 900, fontSize: 12, color: "#111" }}>
+                        Ο κτηνίατρος δεν έχει δηλώσει υπηρεσίες.
                       </Typography>
                     </Paper>
-                  ))}
+                  ) : (
+                    <Stack spacing={1}>
+                      {services.map((s) => (
+                        <Paper
+                          key={s}
+                          elevation={0}
+                          onClick={() => setService(s)}
+                          sx={{
+                            cursor: "pointer",
+                            borderRadius: 2,
+                            px: 1.4,
+                            py: 1.1,
+                            border: s === service ? `2px solid ${PRIMARY}` : "1px solid rgba(0,0,0,0.10)",
+                            bgcolor: s === service ? "rgba(11,61,145,0.06)" : "#fff",
+                          }}
+                        >
+                          <Typography sx={{ fontWeight: 900, fontSize: 12, color: s === service ? PRIMARY : "#111" }}>
+                            {s}
+                          </Typography>
+                        </Paper>
+                      ))}
+                    </Stack>
+                  )}
+
                 </Stack>
               </Box>
 
