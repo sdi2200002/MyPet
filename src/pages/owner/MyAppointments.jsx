@@ -188,6 +188,7 @@ function AppointmentRow({ item, pet, onView, onCancel }) {
                 borderRadius: 2,
                 bgcolor: PRIMARY,
                 "&:hover": { bgcolor: PRIMARY_HOVER },
+                fontWeight: 900,
               }}
             >
               Προβολή
@@ -202,6 +203,7 @@ function AppointmentRow({ item, pet, onView, onCancel }) {
                   borderRadius: 2,
                   bgcolor: "#d32f2f",
                   "&:hover": { bgcolor: "#b71c1c" },
+                fontWeight: 900,
                 }}
               >
                 Ακύρωση

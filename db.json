@@ -152,6 +152,98 @@
       "color": "Λευκό",
       "microchip": "987654321",
       "photo": "/images/cat1.png"
+    },
+    {
+      "id": "adc4",
+      "ownerId": "1",
+      "vetId": "2",
+      "name": "—",
+      "birthDate": "",
+      "species": "Σκύλος",
+      "breed": "",
+      "sex": "Αρσενικό",
+      "color": "",
+      "microchip": "32453254",
+      "bloodType": "",
+      "photo": "/images/dog1.png",
+      "ownerName": "",
+      "ownerPhone": "",
+      "ownerAddress": "",
+      "updatedAt": "2026-01-17T15:55:08.874Z"
+    },
+    {
+      "id": "f0d3",
+      "ownerId": "1",
+      "vetId": "2",
+      "name": "—",
+      "birthDate": "",
+      "species": "ασψ",
+      "breed": "",
+      "sex": "Θηλυκό",
+      "color": "",
+      "microchip": "54364356",
+      "bloodType": "",
+      "photo": "/images/dog1.png",
+      "updatedAt": "2026-01-17T16:13:08.560Z"
+    },
+    {
+      "id": "e208",
+      "ownerId": "1",
+      "vetId": "2",
+      "name": "—",
+      "birthDate": "",
+      "species": "εαγ",
+      "breed": "",
+      "sex": "Θηλυκό",
+      "color": "",
+      "microchip": "45564",
+      "bloodType": "",
+      "photo": "/images/dog1.png",
+      "updatedAt": "2026-01-17T16:15:47.462Z"
+    }
+  ],
+  "registrationDeclarations": [
+    {
+      "id": "32eb",
+      "status": "Οριστική",
+      "vetId": "2",
+      "ownerId": "1",
+      "petId": "e208",
+      "petName": "—",
+      "sex": "Θηλυκό",
+      "species": "εαγ",
+      "breed": "",
+      "color": "",
+      "microchip": "45564",
+      "ownerName": "",
+      "ownerPhone": "",
+      "ownerAddress": "",
+      "ownerEmail": "owner@test.gr",
+      "photoDataUrl": "",
+      "createdAt": "2026-01-17T16:15:47.489Z",
+      "updatedAt": "2026-01-17T16:15:47.489Z"
+    },
+    {
+      "id": "0542",
+      "status": "Πρόχειρη",
+      "vetId": "2",
+      "ownerId": "1",
+      "petId": "",
+      "petName": "—",
+      "birthDateIso": "",
+      "sex": "Αρσενικό",
+      "species": "Σκύλος",
+      "breed": "",
+      "color": "",
+      "microchip": "45564097",
+      "bloodType": "",
+      "ownerName": "",
+      "ownerPhone": "",
+      "ownerAddress": "",
+      "ownerEmail": "owner@test.gr",
+      "photoDataUrl": "",
+      "createdAt": "2026-01-17T16:37:46.563Z",
+      "updatedAt": "2026-01-17T16:49:24.587Z"
     }
   ],
   "foundDeclarations": [
@@ -608,6 +700,28 @@
       "conditionsNotes": "",
       "createdAt": "2026-01-16T12:56:51.191Z",
       "updatedAt": "2026-01-16T12:56:51.191Z"
+    },
+    {
+      "id": "a47e",
+      "status": "Οριστική",
+      "vetId": "2",
+      "petId": "1",
+      "petName": "Μπρούνο",
+      "sex": "Αρσενικό",
+      "breedOrSpecies": "Λαμπραντόρ",
+      "color": "Καστανό",
+      "microchip": "123456789",
+      "fosterFirstName": "sad",
+      "fosterLastName": "sdav",
+      "fosterAfm": "321325434",
+      "fosterPhone": "231232134213",
+      "fosterEmail": "aQDX@SCAX.gdfs",
+      "hasOtherPet": "no",
+      "experience": "2-5",
+      "availability": "partial",
+      "conditionsNotes": "",
+      "createdAt": "2026-01-17T15:36:51.413Z",
+      "updatedAt": "2026-01-17T15:37:01.236Z"
     }
   ],
   "transferDeclarations": [
@@ -630,7 +744,7 @@
       "experience": "2-5",
       "notes": "",
       "createdAt": "2026-01-16T13:08:06.093Z",
-      "updatedAt": "2026-01-16T13:08:06.093Z"
+      "updatedAt": "2026-01-17T16:46:29.917Z"
     }
   ],
   "appointments": [
@@ -1079,7 +1193,6 @@
       "area": "Αθήνα",
       "rating": 3.9,
       "reviewsCount": 10,
-      "priceRange": "40€ - 50€",
       "address": "Λεωφόρος Κηφισίας 124, Αμπελόκηποι",
       "phone": "6900000000",
       "email": "doc1@test.gr",
@@ -1095,7 +1208,6 @@
       "area": "Αθήνα",
       "rating": 4.6,
       "reviewsCount": 84,
-      "priceRange": "45€ - 70€",
       "address": "Πατησίων 210, Αθήνα",
       "phone": "6900000002",
       "email": "doc2@test.gr",
@@ -1111,7 +1223,6 @@
       "area": "Θεσσαλονίκη",
       "rating": 5,
       "reviewsCount": 1,
-      "priceRange": "35€ - 60€",
       "address": "Τσιμισκή 88, Θεσσαλονίκη",
       "phone": "6900000003",
       "email": "doc3@test.gr",
@@ -1127,7 +1238,6 @@
       "area": "Πειραιάς",
       "rating": 4.4,
       "reviewsCount": 38,
-      "priceRange": "30€ - 45€",
       "address": "Ηρώων Πολυτεχνείου 56, Πειραιάς",
       "phone": "6900000004",
       "email": "doc4@test.gr",
@@ -1143,7 +1253,6 @@
       "area": "Καλλιθέα",
       "rating": 0,
       "reviewsCount": 0,
-      "priceRange": "—",
       "address": "Θησέως 7, Καλλιθέα",
       "phone": "69777777777",
       "email": "mpak.vet@gmail.com",
@@ -1159,7 +1268,6 @@
       "area": "Βασιλίσσης Σοφίας 28",
       "rating": 5,
       "reviewsCount": 1,
-      "priceRange": "—",
       "address": "Βασιλίσσης Σοφίας 28",
       "phone": "2105847653",
       "email": "kalsar@gmail.com",
@@ -1732,6 +1840,21 @@
       "isRead": false,
       "createdAt": "2026-01-16T16:55:03.338Z",
       "readAt": null
+    },
+    {
+      "id": "4c18",
+      "userId": "2",
+      "type": "foster_submitted",
+      "title": "Νέα δήλωση αναδοχής",
+      "message": "Υποβλήθηκε δήλωση αναδοχής για Μπρούνο (sdav).",
+      "refType": "fosterDeclaration",
+      "refId": "a47e",
+      "meta": {
+        "kind": "foster",
+        "status": "Οριστική",
+        "petId": "1",
+        "role": "vet"
+      }
     }
   ]
 }

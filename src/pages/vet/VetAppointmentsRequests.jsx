@@ -206,12 +206,13 @@ function RequestRow({ appt, pet, ownerName, onView, onReject, onAccept, busy }) 
                     variant="contained"
                     startIcon={<VisibilityOutlinedIcon />}
                     sx={{
-                        textTransform: "none",
-                        borderRadius: 2,
-                        bgcolor: PRIMARY,
-                        "&:hover": { bgcolor: PRIMARY_HOVER },
+                      textTransform: "none",
+                      borderRadius: 2,
+                      bgcolor: PRIMARY,
+                      "&:hover": { bgcolor: PRIMARY_HOVER },
+                      fontWeight: 900,
                     }}
-                    >
+                  >
                     Προβολή
                 </Button>
                 <Button

@@ -61,6 +61,7 @@ function StatusChip({ status }) {
 function typeLabel(type) {
   if (type === "lost") return "Δήλωση Απώλειας";
   if (type === "found") return "Δήλωση Εύρεσης";
+  if (type === "registration") return "Εγγραφή Κατοικιδίου";
   if (type === "adoption") return "Υιοθεσία Κατοικιδίου";
   if (type === "foster") return "Αναδοχή Κατοικιδίου";
   if (type === "transfer") return "Μεταβίβαση Κατοικιδίου";
@@ -153,7 +154,7 @@ function Row({ item, onPreview, onEdit, onDelete, onMarkFound, roleUserId })  {
                 <>
                   Microchip: <b>{item?.microchip || "—"}</b>
                   <br />
-                  Υποβλήθηκε: <b>{item?.createdAt ? fmtDate(item.createdAt) : "—"}</b>
+                  
                 </>
               )}
             </Typography>
@@ -196,24 +197,7 @@ function Row({ item, onPreview, onEdit, onDelete, onMarkFound, roleUserId })  {
               </Button>
             )}
 
-            {canEdit && (
               <Button
-                onClick={() => onEdit(item)}
-                variant="outlined"
-                startIcon={<EditOutlinedIcon />}
-                sx={{
-                  textTransform: "none",
-                  borderRadius: 2,
-                  borderColor: PRIMARY,
-                  color: PRIMARY,
-                  fontWeight: 900,
-                }}
-              >
-                Επεξεργασία
-              </Button>
-            )}
-
-            <Button
               onClick={() => onPreview(item)}
               variant="contained"
               startIcon={<VisibilityOutlinedIcon />}
@@ -231,15 +215,14 @@ function Row({ item, onPreview, onEdit, onDelete, onMarkFound, roleUserId })  {
             {canEdit && (
               <Button
                 onClick={() => onDelete(item)}
-                variant="outlined"
+                variant="contained"
                 startIcon={<DeleteOutlineOutlinedIcon />}
                 sx={{
                   textTransform: "none",
                   borderRadius: 2,
-                  borderColor: "#d32f2f",
-                  color: "#d32f2f",
+                  bgcolor: "#d32f2f",
                   fontWeight: 900,
-                  "&:hover": { borderColor: "#b71c1c", color: "#b71c1c" },
+                  "&:hover": { bgcolor: "#b71c1c" },
                 }}
               >
                 Διαγραφή
@@ -267,6 +250,7 @@ export default function MyDeclarations({ role = "owner" }) {
   const [tab, setTab] = useState(0); // 0 submitted, 1 drafts
   const [lost, setLost] = useState([]);
   const [found, setFound] = useState([]);
+  const [registration, setRegistration] = useState([]);
   const [adoption, setAdoption] = useState([]);
   const [foster, setFoster] = useState([]);
   const [transfer, setTransfer] = useState([]);
@@ -308,16 +292,15 @@ export default function MyDeclarations({ role = "owner" }) {
         const vetReqs =
           role === "vet"
             ? [
+                fetchJSON(`/api/registrationDeclarations?vetId=${uid}`),
                 fetchJSON(`/api/adoptionDeclarations?vetId=${uid}`),
                 fetchJSON(`/api/fosterDeclarations?vetId=${uid}`),
                 fetchJSON(`/api/transferDeclarations?vetId=${uid}`),
               ]
             : [];
 
-        const [lostData, foundData, adoptionData, fosterData, transferData] = await Promise.all([
-          ...baseReqs,
-          ...vetReqs,
-        ]);
+        const [lostData, foundData, registrationData, adoptionData, fosterData, transferData] =
+          await Promise.all([...baseReqs, ...vetReqs]);
 
         if (!alive) return;
 
@@ -325,10 +308,12 @@ export default function MyDeclarations({ role = "owner" }) {
         setFound((Array.isArray(foundData) ? foundData : []).map((x) => ({ ...x, type: "found" })));
 
         if (role === "vet") {
+          setRegistration((Array.isArray(registrationData) ? registrationData : []).map((x) => ({ ...x, type: "registration" })));
           setAdoption((Array.isArray(adoptionData) ? adoptionData : []).map((x) => ({ ...x, type: "adoption" })));
           setFoster((Array.isArray(fosterData) ? fosterData : []).map((x) => ({ ...x, type: "foster" })));
           setTransfer((Array.isArray(transferData) ? transferData : []).map((x) => ({ ...x, type: "transfer" })));
         } else {
+          setRegistration([]);
           setAdoption([]);
           setFoster([]);
           setTransfer([]);
@@ -351,7 +336,7 @@ export default function MyDeclarations({ role = "owner" }) {
   const all = useMemo(() => {
     const merged =
       role === "vet"
-        ? [...lost, ...found, ...adoption, ...foster, ...transfer]
+        ? [...lost, ...found, ...registration, ...adoption, ...foster, ...transfer]
         : [...lost, ...found];
 
     merged.sort((a, b) => {
@@ -360,7 +345,7 @@ export default function MyDeclarations({ role = "owner" }) {
       return tb - ta;
     });
     return merged;
-  }, [lost, found, adoption, foster, transfer, role]);
+  }, [lost, found, registration, adoption, foster, transfer, role]);
 
   const filtered = useMemo(() => {
     const s = (x) => x?.status || "Πρόχειρη";
@@ -416,49 +401,30 @@ export default function MyDeclarations({ role = "owner" }) {
       return;
     }
 
+    if (status === "Πρόχειρη" && item.type === "registration") {
+      navigate(`${base}/declarations/newPet/new`, { state: { draftId: item.id } });
+      return;
+    }
+
+    if (item.type === "registration") {
+      navigate(`${base}/declarations/registration/${encodeURIComponent(String(item.id))}`);
+      return;
+    }
     // ✅ adoption/foster/transfer -> wizard preview
     if (item.type === "adoption") {
-      navigate(`${base}/declarations/adoption/new`, { state: { draftId: item.id, step: 3 } });
+      navigate(`${base}/declarations/adoption/${encodeURIComponent(String(item.id))}`);
       return;
     }
     if (item.type === "foster") {
-      navigate(`${base}/declarations/foster/new`, { state: { draftId: item.id, step: 3 } });
+      navigate(`${base}/declarations/foster/${encodeURIComponent(String(item.id))}`);
       return;
     }
     if (item.type === "transfer") {
-      navigate(`${base}/declarations/transfer/new`, { state: { draftId: item.id, step: 3 } });
+      navigate(`${base}/declarations/transfer/${encodeURIComponent(String(item.id))}`);
       return;
     }
 
     alert("Η δήλωση δεν είναι διαθέσιμη για προβολή.");
-  };
-
-  const handleEdit = (item) => {
-    const status = item?.status || "Πρόχειρη";
-    if (status !== "Πρόχειρη") return;
-
-    if (item.type === "lost") {
-      navigate(`${base}/declarations/lost/new`, { state: { draftId: item.id, step: 2 } });
-      return;
-    }
-    if (item.type === "found") {
-      navigate(`${base}/declarations/found/new`, { state: { draftId: item.id, step: 2 } });
-      return;
-    }
-
-    // ✅ adoption/foster/transfer edit
-    if (item.type === "adoption") {
-      navigate(`${base}/declarations/adoption/new`, { state: { draftId: item.id, step: 2 } });
-      return;
-    }
-    if (item.type === "foster") {
-      navigate(`${base}/declarations/foster/new`, { state: { draftId: item.id, step: 2 } });
-      return;
-    }
-    if (item.type === "transfer") {
-      navigate(`${base}/declarations/transfer/new`, { state: { draftId: item.id, step: 2 } });
-      return;
-    }
   };
 
   // ✅ ΝΕΟ: "Βρέθηκε" = ΔΙΑΓΡΑΦΗ της lost δήλωσης (από DB + από λίστα)
@@ -671,7 +637,6 @@ export default function MyDeclarations({ role = "owner" }) {
                           item={item}
                           role={role}
                           onPreview={handlePreview}
-                          onEdit={handleEdit}
                           onDelete={handleDelete}
                           onMarkFound={handleMarkFound}
                         />

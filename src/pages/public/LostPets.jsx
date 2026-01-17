@@ -11,6 +11,7 @@ import {
   Stack,
   TextField,
   Typography,
+  Divider,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import EditNoteIcon from "@mui/icons-material/EditNote";
@@ -153,7 +154,7 @@ export default function LostPets() {
   const [error, setError] = useState("");
 
   const [page, setPage] = useState(1);
-  const pageSize = 8;
+  const pageSize = 4;
 
   // ---------- FOUND FILTERS (ίδια λογική/φίλτρα με LOST) ----------
   const [foundArea, setFoundArea] = useState("");
@@ -166,7 +167,7 @@ export default function LostPets() {
   const [foundErr, setFoundErr] = useState("");
 
   const [foundPage, setFoundPage] = useState(1);
-  const foundPageSize = 8;
+  const foundPageSize = 4;
 
   // ✅ Load LOST
   useEffect(() => {
@@ -489,7 +490,6 @@ export default function LostPets() {
               )}
             </Stack>
           </Paper>
-
           {/* LOST: Loading / Error */}
           {loading && (
             <Typography sx={{ mt: 2, color: COLORS.muted, fontWeight: 800 }}>
@@ -540,7 +540,7 @@ export default function LostPets() {
               </Box>
             </>
           )}
-
+          <Divider sx={{ my: 4 }} />
           {/* SECTION: Εύρεση κατοικιδίου (⬇️ χαμήλωσε όλο το section) */}
           <Box sx={{ mt: 6 }}>
             <Typography sx={{ mt: 0, fontSize: 26, fontWeight: 900, color: "#0d2c54" }}>
@@ -590,7 +590,7 @@ export default function LostPets() {
             </Stack>
 
             {/* ✅ SEARCH BAR (FOUND) — ίδια φίλτρα + ίδιος καθαρισμός με LOST */}
-            <Paper elevation={0} sx={{ bgcolor: "#cfe0f7", borderRadius: 4, p: 2.2, mt: 3 }}>
+            <Paper elevation={0} sx={{ bgcolor: "#cfe0f7", borderRadius: 4, p: 2.2, mt: 5 }}>
               <Typography sx={{ fontWeight: 900, color: "#1c2b39", mb: 1.2 }}>
                 Δηλώσεις Εύρεσης
               </Typography>

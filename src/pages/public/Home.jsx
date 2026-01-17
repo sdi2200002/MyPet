@@ -12,6 +12,7 @@ import {
   Select,
   MenuItem,
   IconButton,
+  Divider,
 } from "@mui/material";
 
 import InputAdornment from "@mui/material/InputAdornment";
@@ -489,7 +490,10 @@ export default function Home() {
             </Grid>
           </Grid>
         </Box>
+        
+        <Divider sx={{ my: 4 }} />
       </Container>
+      
 
       {/* VETS SEARCH + CAROUSEL */}
       <Container maxWidth="lg" sx={{ mt: 2.5, pb: 2 }}>
@@ -791,8 +795,6 @@ export default function Home() {
 
                       <Typography variant="body2" sx={{ color: "#4b5b6b", mt: 1 }}>
                         Περιοχή: <b>{v.area}</b>
-                        <br />
-                        Από: <b>{v.priceRange}</b>
                       </Typography>
 
                       <Stack direction="row" justifyContent="flex-end" alignItems="center" sx={{ mt: "auto", pt: 1.2 }}>

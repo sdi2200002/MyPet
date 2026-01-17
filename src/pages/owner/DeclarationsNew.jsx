@@ -120,7 +120,7 @@ export default function DeclarationsNew({ role = "owner" }) {
     {
       title: "Νέα\nΚαταγραφή",
       icon: <NoteAddOutlinedIcon sx={{ fontSize: 44, color: "#fff" }} />,
-      to: `${base}/records/new`, // 🔧 άλλαξέ το αν έχεις άλλο route
+      to: `${base}/declarations/newPet/new`, // 🔧 άλλαξέ το αν έχεις άλλο route
     },
     {
       title: "Δήλωση\nΑπώλειας",

@@ -1087,7 +1087,7 @@ function LatestUpdates({ limit = 5 }) {
             <Divider sx={{ my: 4 }} />
 
             <Box sx={{ mt: 1 }}>
-              <VetsSearchPanel />
+              {/* <VetsSearchPanel /> */}
               <LatestUpdates />
             </Box>
           </Container>

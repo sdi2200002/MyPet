@@ -11,6 +11,7 @@ import {
   Stack,
   Typography,
   TextField,
+  Divider,
 } from "@mui/material";
 import { useAuth } from "../../auth/AuthContext";
 
@@ -441,7 +442,7 @@ export default function OwnerDashboard() {
                   icon={<NoteAddOutlinedIcon sx={{ fontSize: 100, color: PRIMARY }} />}
                   title="Νέα Καταγραφή Κατοικιδίου"
                   text="Καταγράψτε τα στοιχεία νέου κατοικιδίου που παρακολουθείτε"
-                  onClick={() => navigate("/vet/declarations/adoption/new")}
+                  onClick={() => navigate("/vet/declarations/newPet/new")}
                 />
                 <QuickAction
                   icon={<CampaignIcon sx={{ fontSize: 100, color: PRIMARY }} />}
@@ -458,7 +459,7 @@ export default function OwnerDashboard() {
               </Stack>
             </Box>
           </Box>
-
+          <Divider sx={{ my: 4 }} />
           {/* SCROLL PART */}
           <Box sx={{ mt: 4 }}>
             <LatestUpdates />

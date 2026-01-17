@@ -158,24 +158,15 @@ function VetCard({ vet, onView }) {
         <Typography sx={{ fontWeight: 900, color: "#111" }} noWrap>
           {vet.name || "—"}
         </Typography>
-        <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }} noWrap>
-          {vet.clinic || "—"}
-        </Typography>
 
         <Stack direction="row" spacing={1} sx={{ mt: 0.6, flexWrap: "wrap" }}>
-          <Typography sx={{ fontWeight: 900, fontSize: 12 }}>⭐ {vet.rating ?? "—"}</Typography>
+          <Typography sx={{ fontWeight: 900, fontSize: 12 }}>  ⭐ {vet.rating ?? "—"}</Typography>
           <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
-            ({vet.reviewsCount ?? 0})
-          </Typography>
-          <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>• {vet.area || "—"}</Typography>
-          <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
-            • {vet.specialty || "—"}
+            ({vet.reviewsCount ?? 0}) • {vet.specialty || "—"}
           </Typography>
         </Stack>
+        <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>{vet.clinic || "—"} • {vet.area || "—"}</Typography>
 
-        <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12, mt: 0.4 }}>
-          Ιδιωτικό Ιατρείο: {vet.priceRange || "—"}
-        </Typography>
       </Box>
 
       <Button
