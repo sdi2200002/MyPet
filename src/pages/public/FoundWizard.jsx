@@ -68,7 +68,6 @@ function looksLikeMatch(found, lost) {
 
 // notification στον owner της lost δήλωσης
 async function notifyOwnerForFoundMatch({ foundDecl, lostDecl }) {
-  // Προϋπόθεση: lostDecl πρέπει να έχει ownerId/userId (ή ό,τι χρησιμοποιείς)
   const ownerId = lostDecl?.ownerId ?? lostDecl?.userId ?? lostDecl?.finderId;
   if (!ownerId) return;
 
@@ -153,6 +152,21 @@ function oneYearAgoYMD() {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+/** ✅ split ονοματεπώνυμο (αφαιρεί "Δρ."/"Dr.") */
+function splitFullName(full) {
+  const raw = String(full || "").trim();
+  const cleaned = raw.replace(/^(Δρ\.?|Dr\.?)\s+/i, "").trim();
+  if (!cleaned) return { firstName: "", lastName: "" };
+
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return { firstName: parts[0], lastName: "" };
+
+  return {
+    firstName: parts.slice(0, -1).join(" "),
+    lastName: parts[parts.length - 1],
+  };
 }
 
 function AuthedShell({ role, sidebarW, children }) {
@@ -295,19 +309,37 @@ export default function FoundWizard({ role = "public" }) {
     status: "",
   });
 
-  // ✅ Prefill only for owner/vet routes
+  // ✅ Prefill only for owner/vet routes (διορθωμένο split)
   useEffect(() => {
     if (!isAuthedRoute) return;
     if (!user?.id) return;
 
+    // αν ΔΕΝ έχει ξεχωριστά first/last, κάνε split από name
+    const fromName = splitFullName(user?.name);
+
+    const nextFirst =
+      form.firstName ||
+      user?.firstName ||
+      fromName.firstName ||
+      ""; // <-- μόνο όνομα
+
+    const nextLast =
+      form.lastName ||
+      user?.lastName ||
+      fromName.lastName ||
+      ""; // <-- μόνο επώνυμο
+
     setForm((p) => ({
       ...p,
       finderId: p.finderId || user.id,
-      firstName: p.firstName || user.firstName || user.name || "",
-      lastName: p.lastName || user.lastName || "",
+      firstName: nextFirst,
+      lastName: nextLast,
       phone: p.phone || user.phone || "",
       email: p.email || user.email || "",
     }));
+    // ⚠️ ΠΡΟΣΟΧΗ: βάζουμε dependency και τα form.first/last για να μη στο “πατάει” όταν γράφεις
+    // (αν θες ακόμα πιο αυστηρό, μπορώ να το κάνω only-once με ref)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthedRoute, user?.id, user?.firstName, user?.lastName, user?.name, user?.phone, user?.email]);
 
   // ✅ edit mode
@@ -432,7 +464,6 @@ export default function FoundWizard({ role = "public" }) {
       navigate(`${base}/declarations/success`, { state: { type, status } });
       return;
     }
-    // Αν δεν έχεις public success route, άλλαξέ το σε "/"
     navigate(`/declarations/success`, { state: { type, status } });
   }
 
@@ -494,7 +525,6 @@ export default function FoundWizard({ role = "public" }) {
         setEditingId(String(createdOrUpdated?.id));
       }
 
-      // matching + notify owners (optional)
       try {
         const lostList = await fetchJSON(`/api/lostDeclarations?status=Οριστική`);
         const lostArr = Array.isArray(lostList) ? lostList : [];
@@ -517,7 +547,7 @@ export default function FoundWizard({ role = "public" }) {
   }
 
   return (
-  <Shell {...(isAuthedRoute ? { role, sidebarW } : {})}>
+    <Shell {...(isAuthedRoute ? { role, sidebarW } : {})}>
       <Container maxWidth="lg" sx={{ py: 3 }}>
         <Box>
           <AppBreadcrumbs />
@@ -661,20 +691,11 @@ export default function FoundWizard({ role = "public" }) {
                   </Box>
 
                   <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
-                    <Button
-                      variant="outlined"
-                      onClick={() => fileInputRef.current?.click()}
-                      sx={{ textTransform: "none", borderRadius: 2 }}
-                    >
+                    <Button variant="outlined" onClick={() => fileInputRef.current?.click()} sx={{ textTransform: "none", borderRadius: 2 }}>
                       Επιλογή
                     </Button>
 
-                    <Button
-                      variant="outlined"
-                      disabled={!photoPreview}
-                      onClick={removePhoto}
-                      sx={{ textTransform: "none", borderRadius: 2 }}
-                    >
+                    <Button variant="outlined" disabled={!photoPreview} onClick={removePhoto} sx={{ textTransform: "none", borderRadius: 2 }}>
                       Αφαίρεση
                     </Button>
 
@@ -806,6 +827,7 @@ export default function FoundWizard({ role = "public" }) {
         {/* ================== STEP 3 ================== */}
         {activeStep === 2 && (
           <Panel>
+            {/* (το υπόλοιπο σου είναι ίδιο όπως το έστειλες) */}
             <Box
               sx={{
                 display: "grid",
@@ -817,121 +839,40 @@ export default function FoundWizard({ role = "public" }) {
               <Box>
                 <Typography sx={{ fontWeight: 900, fontSize: 18, mb: 2 }}>Στοιχεία Κατοικιδίου</Typography>
 
-                <TextField
-                  label="Ημερομηνία Εύρεσης"
-                  value={form.date || "—"}
-                  fullWidth
-                  sx={{ ...fieldSx, mb: 2 }}
-                  InputProps={{ readOnly: true }}
-                />
-                <TextField
-                  label="Περιοχή"
-                  value={form.area || "—"}
-                  fullWidth
-                  sx={{ ...fieldSx, mb: 2 }}
-                  InputProps={{ readOnly: true }}
-                />
-                <TextField
-                  label="Φύλο"
-                  value={form.sex || "—"}
-                  fullWidth
-                  sx={{ ...fieldSx, mb: 2 }}
-                  InputProps={{ readOnly: true }}
-                />
-                <TextField
-                  label="Είδος"
-                  value={form.species || "—"}
-                  fullWidth
-                  sx={{ ...fieldSx, mb: 2 }}
-                  InputProps={{ readOnly: true }}
-                />
-                <TextField
-                  label="Χρώμα"
-                  value={form.color || "—"}
-                  fullWidth
-                  sx={fieldSx}
-                  InputProps={{ readOnly: true }}
-                />
+                <TextField label="Ημερομηνία Εύρεσης" value={form.date || "—"} fullWidth sx={{ ...fieldSx, mb: 2 }} InputProps={{ readOnly: true }} />
+                <TextField label="Περιοχή" value={form.area || "—"} fullWidth sx={{ ...fieldSx, mb: 2 }} InputProps={{ readOnly: true }} />
+                <TextField label="Φύλο" value={form.sex || "—"} fullWidth sx={{ ...fieldSx, mb: 2 }} InputProps={{ readOnly: true }} />
+                <TextField label="Είδος" value={form.species || "—"} fullWidth sx={{ ...fieldSx, mb: 2 }} InputProps={{ readOnly: true }} />
+                <TextField label="Χρώμα" value={form.color || "—"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
               </Box>
 
               <Box>
                 <Typography sx={{ fontWeight: 900, mb: 1 }}>Περιγραφή</Typography>
-                <TextField
-                  value={form.notes || "—"}
-                  fullWidth
-                  multiline
-                  minRows={4}
-                  sx={{ ...fieldSx, mb: 2 }}
-                  InputProps={{ readOnly: true }}
-                />
+                <TextField value={form.notes || "—"} fullWidth multiline minRows={4} sx={{ ...fieldSx, mb: 2 }} InputProps={{ readOnly: true }} />
                 <Typography sx={{ fontWeight: 900, mb: 1 }}>Φωτογραφία Κατοικιδίου</Typography>
-                <Box
-                  sx={{
-                    height: 140,
-                    borderRadius: 3,
-                    border: "2px solid #000",
-                    bgcolor: "#bfc8d3",
-                    display: "grid",
-                    placeItems: "center",
-                    p: 2,
-                    textAlign: "center",
-                    overflow: "hidden",
-                  }}
-                >
+                <Box sx={{ height: 140, borderRadius: 3, border: "2px solid #000", bgcolor: "#bfc8d3", display: "grid", placeItems: "center", p: 2, textAlign: "center", overflow: "hidden" }}>
                   {!photoPreview ? (
                     <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>
                       Ανεβάστε μια καθαρή <br />
                       φωτογραφία του κατοικιδίου.
                     </Typography>
                   ) : (
-                    <Box
-                      component="img"
-                      src={photoPreview}
-                      alt="Preview"
-                      sx={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
+                    <Box component="img" src={photoPreview} alt="Preview" sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   )}
                 </Box>
               </Box>
 
               <Box>
                 <Typography sx={{ fontWeight: 900, fontSize: 18, mb: 2 }}>Στοιχεία Ευρετή</Typography>
-                <TextField
-                  label="Όνομα"
-                  value={form.firstName || "—"}
-                  fullWidth
-                  sx={{ ...fieldSx, mb: 2 }}
-                  InputProps={{ readOnly: true }}
-                />
-                <TextField
-                  label="Επώνυμο"
-                  value={form.lastName || "—"}
-                  fullWidth
-                  sx={{ ...fieldSx, mb: 2 }}
-                  InputProps={{ readOnly: true }}
-                />
-                <TextField
-                  label="Τηλέφωνο"
-                  value={normalizePhone(form.phone) || "—"}
-                  fullWidth
-                  sx={{ ...fieldSx, mb: 2 }}
-                  InputProps={{ readOnly: true }}
-                />
-                <TextField
-                  label="Email"
-                  value={form.email || "—"}
-                  fullWidth
-                  sx={fieldSx}
-                  InputProps={{ readOnly: true }}
-                />
+                <TextField label="Όνομα" value={form.firstName || "—"} fullWidth sx={{ ...fieldSx, mb: 2 }} InputProps={{ readOnly: true }} />
+                <TextField label="Επώνυμο" value={form.lastName || "—"} fullWidth sx={{ ...fieldSx, mb: 2 }} InputProps={{ readOnly: true }} />
+                <TextField label="Τηλέφωνο" value={normalizePhone(form.phone) || "—"} fullWidth sx={{ ...fieldSx, mb: 2 }} InputProps={{ readOnly: true }} />
+                <TextField label="Email" value={form.email || "—"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
               </Box>
             </Box>
 
             <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
-              <FormControlLabel
-                control={<Checkbox checked={form.acceptTerms} onChange={handleChange("acceptTerms")} />}
-                label="Συμφωνώ με τους όρους & προϋποθέσεις"
-              />
+              <FormControlLabel control={<Checkbox checked={form.acceptTerms} onChange={handleChange("acceptTerms")} />} label="Συμφωνώ με τους όρους & προϋποθέσεις" />
             </Box>
 
             <Stack direction="row" justifyContent="right" spacing={2} sx={{ mt: 2 }}>

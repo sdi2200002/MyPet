@@ -172,9 +172,10 @@ export default function VetNewReview() {
         }
 
         // 2) vet από το appointment
-        const vetId = a?.vetId;
-        if (vetId == null) throw new Error("missing-vetId");
-        const v = await fetchJSON(`/api/vets/${encodeURIComponent(String(vetId))}`);
+        const vetIdStr = String(a?.vetId ?? "").trim();
+        if (!vetIdStr) throw new Error("missing-vetId");
+        const v = await fetchJSON(`/api/vets/${encodeURIComponent(vetIdStr)}`);
+
 
         if (!alive) return;
         setAppt(a || null);
@@ -199,14 +200,16 @@ export default function VetNewReview() {
       setError("");
 
       if (!rating || rating < 1) return setError("Διάλεξε βαθμολογία (1–5).");
-      if (!appt?.vetId) return setError("Λείπουν στοιχεία κτηνιάτρου.");
+
+      const vetIdStr = String(appt?.vetId ?? "").trim(); // ✅ πάντα string
+      if (!vetIdStr) return setError("Λείπουν στοιχεία κτηνιάτρου.");
 
       setSaving(true);
 
       const displayName = formatOwnerName(user?.name || "");
 
       const payload = {
-        vetId: Number(appt.vetId),
+        vetId: vetIdStr, // ✅ ΟΧΙ Number()
         appointmentId: String(appointmentId),
         rating: Number(rating),
         name: displayName,
@@ -220,16 +223,16 @@ export default function VetNewReview() {
         body: JSON.stringify(payload),
       });
 
-      // ✅ ενημέρωσε rating/reviewsCount στον vet (και στο db.json)
+      // ✅ ενημέρωσε rating/reviewsCount στον vet
       try {
-        await updateVetAggregates(appt.vetId);
+        await updateVetAggregates(vetIdStr); // ✅ string
       } catch (e) {
         console.warn("Failed to update vet aggregates:", e);
       }
 
       // ✅ πάμε στο details του review
       navigate(
-        `/owner/vets/${encodeURIComponent(String(appt.vetId))}/reviews/${encodeURIComponent(String(created?.id))}`,
+        `/owner/vets/${encodeURIComponent(vetIdStr)}/reviews/${encodeURIComponent(String(created?.id))}`,
         { replace: true }
       );
     } catch (e) {

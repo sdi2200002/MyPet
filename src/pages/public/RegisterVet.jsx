@@ -1,5 +1,15 @@
 import { useMemo, useState } from "react";
-import { Box, Button, Container, Paper, Stack, TextField, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Container,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+  MenuItem,
+} from "@mui/material";
+
 import { Link, useNavigate } from "react-router-dom";
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
@@ -22,8 +32,23 @@ function fileToDataUrl(file) {
   });
 }
 
+// ✅ επιτρέπει ελληνικά (με τόνους), αριθμούς (για διεύθυνση), κενό, παύλα, τελεία, κόμμα, /, ’, '
+const GREEK_TEXT_ALLOWED = /^[\u0370-\u03FF\u1F00-\u1FFF0-9\s\-.,/’']+$/;
+
+function hasLatinChars(s) {
+  return /[A-Za-z]/.test(s || "");
+}
+
+function isGreekText(s) {
+  const v = (s || "").trim();
+  if (!v) return false;
+  if (hasLatinChars(v)) return false;
+  return GREEK_TEXT_ALLOWED.test(v);
+}
+
 export default function RegisterVet() {
   const navigate = useNavigate();
+
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -39,23 +64,74 @@ export default function RegisterVet() {
     photoDataUrl: "",
   });
 
+  // ✅ dropdown options
+  const SPECIALTIES = [
+    "Γενικός",
+    "Χειρουργός",
+    "Δερματολόγος",
+    "Οδοντιατρική",
+    "Οφθαλμολογία",
+    "Καρδιολογία",
+    "Εξωτικά Ζώα",
+  ];
+
+  const EDUCATION_LEVELS = [
+    "Πτυχίο Κτηνιατρικής",
+    "MSc (Μεταπτυχιακό)",
+    "PhD (Διδακτορικό)",
+    "Άλλο",
+  ];
+
+  const EXPERIENCE_OPTIONS = [
+    "0-1 χρόνια",
+    "2-4 χρόνια",
+    "5-7 χρόνια",
+    "8-10 χρόνια",
+    "10+ χρόνια",
+  ];
+
+  const SEX_OPTIONS = ["Γυναίκα", "Άνδρας", "Άλλο"];
+
   const [touched, setTouched] = useState({});
   const touch = (k) => setTouched((p) => ({ ...p, [k]: true }));
-  const setField = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const [submitting, setSubmitting] = useState(false);
+
+  const setField = (k) => (e) =>
+    setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  // ✅ κόβει λατινικά άμεσα (για όνομα/επώνυμο/διεύθυνση)
+  const setNoLatinField = (k) => (e) => {
+    const v = e.target.value;
+    const cleaned = v.replace(/[A-Za-z]/g, "");
+    setForm((p) => ({ ...p, [k]: cleaned }));
+  };
+
+  // ✅ digits only (τηλέφωνο/αφμ)
+  const setDigitsField = (k) => (e) => {
+    setForm((p) => ({ ...p, [k]: onlyDigits(e.target.value) }));
+  };
 
   const errors = useMemo(() => {
     const e = {};
+
     if (!form.firstName.trim()) e.firstName = "Υποχρεωτικό.";
+    else if (!isGreekText(form.firstName))
+      e.firstName = "Μόνο ελληνικοί χαρακτήρες.";
+
     if (!form.lastName.trim()) e.lastName = "Υποχρεωτικό.";
+    else if (!isGreekText(form.lastName))
+      e.lastName = "Μόνο ελληνικοί χαρακτήρες.";
 
     if (!form.email.trim()) e.email = "Υποχρεωτικό.";
     else if (!isValidEmail(form.email)) e.email = "Μη έγκυρο email.";
 
     if (!form.password) e.password = "Υποχρεωτικό.";
-    else if (form.password.length < 4) e.password = "Τουλάχιστον 4 χαρακτήρες.";
+    else if (form.password.length < 4)
+      e.password = "Τουλάχιστον 4 χαρακτήρες.";
 
     if (!form.address.trim()) e.address = "Υποχρεωτικό.";
+    else if (!isGreekText(form.address))
+      e.address = "Δεν επιτρέπονται λατινικοί χαρακτήρες.";
 
     const phone = onlyDigits(form.phone);
     if (!phone) e.phone = "Υποχρεωτικό.";
@@ -69,7 +145,8 @@ export default function RegisterVet() {
     if (!form.education.trim()) e.education = "Υποχρεωτικό.";
     if (!form.experience.trim()) e.experience = "Υποχρεωτικό.";
     if (!form.sex.trim()) e.sex = "Υποχρεωτικό.";
-    if (!form.photoDataUrl) e.photoDataUrl = "Ανέβασε φωτογραφία.";
+
+    // ❌ φωτογραφία ΔΕΝ είναι υποχρεωτική
     return e;
   }, [form]);
 
@@ -94,10 +171,10 @@ export default function RegisterVet() {
       setSubmitting(true);
 
       // 1️⃣ check duplicate email στους users
-      const checkRes = await fetch(`http://localhost:3001/users?email=${email}`);
+      const checkRes = await fetch(`${API_BASE}/users?email=${email}`);
       const existing = await checkRes.json();
 
-      if (existing.length > 0) {
+      if (Array.isArray(existing) && existing.length > 0) {
         alert("Υπάρχει ήδη λογαριασμός με αυτό το email.");
         return;
       }
@@ -107,12 +184,12 @@ export default function RegisterVet() {
         role: "vet",
         email,
         password: form.password,
-        name: `Δρ. ${form.firstName} ${form.lastName}`,
+        name: `Δρ. ${form.firstName.trim()} ${form.lastName.trim()}`,
         phone: onlyDigits(form.phone),
         createdAt: new Date().toISOString(),
       };
 
-      const userRes = await fetch("http://localhost:3001/users", {
+      const userRes = await fetch(`${API_BASE}/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(userPayload),
@@ -123,8 +200,8 @@ export default function RegisterVet() {
 
       // 3️⃣ δημιουργία VET (για λίστες / ραντεβού)
       const vetPayload = {
-        id: createdUser.id, // 👈 ίδιο id με user (πολύ σημαντικό)
-        name: `Δρ. ${form.firstName} ${form.lastName}`,
+        id: createdUser.id, // 👈 ίδιο id με user
+        name: `Δρ. ${form.firstName.trim()} ${form.lastName.trim()}`,
         clinic: "Ιδιωτικό Ιατρείο",
         specialty: form.specialty,
         area: form.address,
@@ -136,11 +213,12 @@ export default function RegisterVet() {
         email,
         experience: form.experience,
         studies: form.education,
-        photo: form.photoDataUrl,
+        sex: form.sex,
+        photo: form.photoDataUrl, // (προαιρετικό)
         createdAt: new Date().toISOString(),
       };
 
-      const vetRes = await fetch("http://localhost:3001/vets", {
+      const vetRes = await fetch(`${API_BASE}/vets`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(vetPayload),
@@ -157,8 +235,9 @@ export default function RegisterVet() {
     }
   }
 
-
-  const fieldSx = { "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: 2 } };
+  const fieldSx = {
+    "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: 2 },
+  };
 
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
@@ -193,18 +272,21 @@ export default function RegisterVet() {
                 sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}
               >
                 <TextField
+                  required
                   label="Όνομα"
                   value={form.firstName}
-                  onChange={setField("firstName")}
+                  onChange={setNoLatinField("firstName")}
                   onBlur={() => touch("firstName")}
                   error={!!errors.firstName && !!touched.firstName}
                   helperText={touched.firstName ? errors.firstName || " " : " "}
                   sx={fieldSx}
                 />
+
                 <TextField
+                  required
                   label="Επώνυμο"
                   value={form.lastName}
-                  onChange={setField("lastName")}
+                  onChange={setNoLatinField("lastName")}
                   onBlur={() => touch("lastName")}
                   error={!!errors.lastName && !!touched.lastName}
                   helperText={touched.lastName ? errors.lastName || " " : " "}
@@ -212,6 +294,7 @@ export default function RegisterVet() {
                 />
 
                 <TextField
+                  required
                   label="Email"
                   value={form.email}
                   onChange={setField("email")}
@@ -220,7 +303,9 @@ export default function RegisterVet() {
                   helperText={touched.email ? errors.email || " " : " "}
                   sx={fieldSx}
                 />
+
                 <TextField
+                  required
                   label="Κωδικός Πρόσβασης"
                   type="password"
                   value={form.password}
@@ -232,34 +317,43 @@ export default function RegisterVet() {
                 />
 
                 <TextField
+                  required
                   label="Διεύθυνση Ιατρείου"
                   value={form.address}
-                  onChange={setField("address")}
+                  onChange={setNoLatinField("address")}
                   onBlur={() => touch("address")}
                   error={!!errors.address && !!touched.address}
                   helperText={touched.address ? errors.address || " " : " "}
                   sx={fieldSx}
                 />
+
                 <TextField
+                  required
                   label="Τηλέφωνο"
                   value={form.phone}
-                  onChange={setField("phone")}
+                  onChange={setDigitsField("phone")}
                   onBlur={() => touch("phone")}
                   error={!!errors.phone && !!touched.phone}
                   helperText={touched.phone ? errors.phone || " " : " "}
                   sx={fieldSx}
+                  inputProps={{ inputMode: "numeric" }}
                 />
 
                 <TextField
+                  required
                   label="ΑΦΜ"
                   value={form.afm}
-                  onChange={setField("afm")}
+                  onChange={setDigitsField("afm")}
                   onBlur={() => touch("afm")}
                   error={!!errors.afm && !!touched.afm}
                   helperText={touched.afm ? errors.afm || " " : " "}
                   sx={fieldSx}
+                  inputProps={{ inputMode: "numeric", maxLength: 9 }}
                 />
+
                 <TextField
+                  required
+                  select
                   label="Ειδικότητα"
                   value={form.specialty}
                   onChange={setField("specialty")}
@@ -267,9 +361,17 @@ export default function RegisterVet() {
                   error={!!errors.specialty && !!touched.specialty}
                   helperText={touched.specialty ? errors.specialty || " " : " "}
                   sx={fieldSx}
-                />
+                >
+                  {SPECIALTIES.map((s) => (
+                    <MenuItem key={s} value={s}>
+                      {s}
+                    </MenuItem>
+                  ))}
+                </TextField>
 
                 <TextField
+                  required
+                  select
                   label="Επίπεδο Σπουδών"
                   value={form.education}
                   onChange={setField("education")}
@@ -277,8 +379,17 @@ export default function RegisterVet() {
                   error={!!errors.education && !!touched.education}
                   helperText={touched.education ? errors.education || " " : " "}
                   sx={fieldSx}
-                />
+                >
+                  {EDUCATION_LEVELS.map((s) => (
+                    <MenuItem key={s} value={s}>
+                      {s}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
                 <TextField
+                  required
+                  select
                   label="Εμπειρία"
                   value={form.experience}
                   onChange={setField("experience")}
@@ -286,9 +397,17 @@ export default function RegisterVet() {
                   error={!!errors.experience && !!touched.experience}
                   helperText={touched.experience ? errors.experience || " " : " "}
                   sx={fieldSx}
-                />
+                >
+                  {EXPERIENCE_OPTIONS.map((s) => (
+                    <MenuItem key={s} value={s}>
+                      {s}
+                    </MenuItem>
+                  ))}
+                </TextField>
 
                 <TextField
+                  required
+                  select
                   label="Φύλο"
                   value={form.sex}
                   onChange={setField("sex")}
@@ -296,11 +415,19 @@ export default function RegisterVet() {
                   error={!!errors.sex && !!touched.sex}
                   helperText={touched.sex ? errors.sex || " " : " "}
                   sx={fieldSx}
-                />
+                >
+                  {SEX_OPTIONS.map((s) => (
+                    <MenuItem key={s} value={s}>
+                      {s}
+                    </MenuItem>
+                  ))}
+                </TextField>
 
-                {/* Photo uploader */}
+                {/* Photo uploader (προαιρετικό - χωρίς αστεράκι) */}
                 <Box sx={{ gridColumn: { xs: "1 / -1", md: "1 / 2" } }}>
-                  <Typography sx={{ fontWeight: 900, color: "#0d2c54", mb: 0.8 }}>Φωτογραφία</Typography>
+                  <Typography sx={{ fontWeight: 900, color: "#0d2c54", mb: 0.8 }}>
+                    Φωτογραφία
+                  </Typography>
 
                   <Box
                     sx={{
@@ -342,8 +469,8 @@ export default function RegisterVet() {
                     />
                   </Box>
 
-                  <Typography sx={{ fontSize: 12, color: "#d32f2f", mt: 0.5 }}>
-                    {touched.photoDataUrl ? errors.photoDataUrl || " " : " "}
+                  <Typography sx={{ fontSize: 12, color: "#6b7a90", mt: 0.6 }}>
+                    Προαιρετικό πεδίο.
                   </Typography>
                 </Box>
 

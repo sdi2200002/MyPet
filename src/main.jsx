@@ -72,6 +72,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route path="/found/new" element={<FoundWizard role="public" />} />
           <Route path="/vets" element={<VetSearch role="public" />} />
           <Route path="/vets/:vetId" element={<VetProfile role="public" />} />
+          
+          <Route path="/vets/:vetId/reviews" element={<VetReviews role="public" />} />
+          <Route path="/vets/:vetId/reviews/:reviewId" element={<VetReviewDetails role="public" />} />
+          <Route path="/vets/:vetId/reviews" element={<VetReviews role="public" />} />
+          <Route path="/vets/:vetId/reviews/:reviewId" element={<VetReviewDetails role="public" />} />
 
           <Route path="/contact" element={<Contact />} />
 

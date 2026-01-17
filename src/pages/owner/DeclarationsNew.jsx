@@ -4,6 +4,11 @@ import { useNavigate } from "react-router-dom";
 
 import SearchIcon from "@mui/icons-material/Search";
 import CampaignIcon from "@mui/icons-material/Campaign";
+import NoteAddOutlinedIcon from "@mui/icons-material/NoteAddOutlined";
+import VolunteerActivismOutlinedIcon from "@mui/icons-material/VolunteerActivismOutlined";
+import HomeWorkOutlinedIcon from "@mui/icons-material/HomeWorkOutlined";
+import SwapHorizOutlinedIcon from "@mui/icons-material/SwapHorizOutlined";
+import EditNoteOutlinedIcon from "@mui/icons-material/EditNoteOutlined";
 
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
@@ -12,49 +17,77 @@ import AppBreadcrumbs from "../../components/Breadcrumbs";
 import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
 import VetNavbar, { VET_SIDEBAR_W } from "../../components/VetNavbar";
 
-const TITLE = "#0d2c54";
-const PRIMARY = "#0b3d91";
-const PANEL_BG = "#cfe3ff";
+const COLORS = {
+  title: "#0d2c54",
+  primary: "#0b3d91",
+  primaryHover: "#08316f",
+  panelBg: "#cfe3ff",
+  panelBorder: "#8fb4e8",
+};
 
-/* ίδια κάρτα quick action */
-function QuickAction({ icon, title, text, onClick }) {
+function QuickAction({ icon, title, onClick, size = "md" }) {
+  const isSm = size === "sm";
+
   return (
     <Paper
       elevation={0}
       onClick={onClick}
       sx={{
-        width: 260,
-        height: 410,
-        borderRadius: 2,
-        bgcolor: "#fff",
-        border: "2px solid #3b3b3b",
-        overflow: "hidden",
         cursor: "pointer",
-        "&:hover": { transform: "translateY(-2px)" },
-        transition: "transform 160ms ease",
+        userSelect: "none",
+        borderRadius: 3,
+        px: isSm ? 3.2 : 3.6,
+        py: isSm ? 2.4 : 2.8,
+        minWidth: isSm ? 210 : 230,
+        bgcolor: COLORS.primary,
+        color: "#fff",
+        boxShadow: "0 10px 22px rgba(0,0,0,0.14)",
+        transition: "transform 140ms ease, box-shadow 140ms ease, background 140ms ease",
+        display: "grid",
+        placeItems: "center",
+        gap: 1.2,
+        "&:hover": {
+          transform: "translateY(-2px)",
+          bgcolor: COLORS.primaryHover,
+          boxShadow: "0 14px 28px rgba(0,0,0,0.18)",
+        },
+        "&:active": { transform: "translateY(0px)" },
       }}
     >
-      <Box
+      <Box sx={{ display: "grid", placeItems: "center" }}>{icon}</Box>
+
+      <Typography
         sx={{
-          height: 160,
-          bgcolor: PANEL_BG,
-          borderBottom: "2px solid #3b3b3b",
-          display: "grid",
-          placeItems: "center",
+          fontWeight: 900,
+          textAlign: "center",
+          lineHeight: 1.15,
+          fontSize: isSm ? 15 : 16,
+          whiteSpace: "pre-line",
         }}
       >
-        {icon}
-      </Box>
-
-      <Box sx={{ p: 1.4 }}>
-        <Typography sx={{ mt: 2, fontWeight: 900, color: PRIMARY, textAlign: "center" }}>
-          {title}
-        </Typography>
-        <Typography sx={{ mt: 3, fontSize: 12.5, color: "#4b5b6b", textAlign: "center" }}>
-          {text}
-        </Typography>
-      </Box>
+        {title}
+      </Typography>
     </Paper>
+  );
+}
+
+function HeroIcon() {
+  return (
+    <Box
+      sx={{
+        width: 120,
+        height: 120,
+        borderRadius: 4,
+        bgcolor: "rgba(11,61,145,0.06)",
+        border: `2px solid rgba(11,61,145,0.18)`,
+        display: "grid",
+        placeItems: "center",
+        mx: "auto",
+        mb: 3,
+      }}
+    >
+      <EditNoteOutlinedIcon sx={{ fontSize: 70, color: COLORS.primary }} />
+    </Box>
   );
 }
 
@@ -68,15 +101,61 @@ export default function DeclarationsNew({ role = "owner" }) {
   const base = role === "vet" ? "/vet" : "/owner";
   const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
 
-  // προαιρετικό memo
   useMemo(() => null, []);
+
+  const ownerActions = [
+    {
+      title: "Δήλωση\nΑπώλειας",
+      icon: <CampaignIcon sx={{ fontSize: 44, color: "#fff" }} />,
+      to: `${base}/declarations/lost/new`,
+    },
+    {
+      title: "Δήλωση\nΕύρεσης",
+      icon: <SearchIcon sx={{ fontSize: 44, color: "#fff" }} />,
+      to: `${base}/declarations/found/new`,
+    },
+  ];
+
+  const vetActions = [
+    {
+      title: "Νέα\nΚαταγραφή",
+      icon: <NoteAddOutlinedIcon sx={{ fontSize: 44, color: "#fff" }} />,
+      to: `${base}/records/new`, // 🔧 άλλαξέ το αν έχεις άλλο route
+    },
+    {
+      title: "Δήλωση\nΑπώλειας",
+      icon: <CampaignIcon sx={{ fontSize: 44, color: "#fff" }} />,
+      to: `${base}/declarations/lost/new`,
+    },
+    {
+      title: "Δήλωση\nΕύρεσης",
+      icon: <SearchIcon sx={{ fontSize: 44, color: "#fff" }} />,
+      to: `${base}/declarations/found/new`,
+    },
+    {
+      title: "Υιοθεσία\nΚατοικιδίου",
+      icon: <VolunteerActivismOutlinedIcon sx={{ fontSize: 44, color: "#fff" }} />,
+      to: `${base}/declarations/adoption/new`, // ✅ αυτό που φτιάξαμε πριν
+    },
+    {
+      title: "Αναδοχή\nΚατοικιδίου",
+      icon: <HomeWorkOutlinedIcon sx={{ fontSize: 44, color: "#fff" }} />,
+      to: `${base}/declarations/foster/new`, // 🔧 αν δεν υπάρχει, άλλαξέ το
+    },
+    {
+      title: "Μεταβίβαση\nΚατοικιδίου",
+      icon: <SwapHorizOutlinedIcon sx={{ fontSize: 44, color: "#fff" }} />,
+      to: `${base}/declarations/transfer/new`, // 🔧 αν δεν υπάρχει, άλλαξέ το
+    },
+  ];
+
+  const actions = role === "vet" ? vetActions : ownerActions;
 
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
       <PublicNavbar />
 
       <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
-        {/* spacer ώστε το content να μη μπαίνει κάτω απ’ το sidebar */}
         <Box
           sx={{
             width: sidebarW,
@@ -96,18 +175,20 @@ export default function DeclarationsNew({ role = "owner" }) {
 
             <Box
               sx={{
-                minHeight: "calc(100vh - 220px)", // λίγο “air” ώστε να φαίνεται center
+                minHeight: "calc(100vh - 220px)",
                 display: "grid",
                 placeItems: "center",
                 py: { xs: 4, md: 6 },
               }}
             >
-              <Box sx={{ width: "100%", maxWidth: 900 }}>
+              <Box sx={{ width: "100%", maxWidth: 980 }}>
+                <HeroIcon />
+
                 <Typography
                   sx={{
                     fontWeight: 900,
-                    color: TITLE,
-                    mb: 5,
+                    color: COLORS.title,
+                    mb: 4,
                     fontSize: 22,
                     textAlign: "center",
                   }}
@@ -115,26 +196,37 @@ export default function DeclarationsNew({ role = "owner" }) {
                   Επιλέξτε Νέα Δήλωση
                 </Typography>
 
-                <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  spacing={6}
-                  justifyContent="center"
-                  alignItems="center"
-                >
-                  <QuickAction
-                    icon={<CampaignIcon sx={{ fontSize: 100, color: PRIMARY }} />}
-                    title="Δήλωση Απώλειας"
-                    text="Καταχωρίστε την απώλεια του κατοικιδίου σας για άμεση ενημέρωση."
-                    onClick={() => navigate(`${base}/declarations/lost/new`)}
-                  />
+                {/* OWNER: 2 buttons centered */}
+                {role !== "vet" && (
+                  <Stack direction="row" spacing={4} justifyContent="center" alignItems="center" sx={{ flexWrap: "wrap" }}>
+                    {actions.map((a) => (
+                      <QuickAction key={a.title} icon={a.icon} title={a.title} onClick={() => navigate(a.to)} size="md" />
+                    ))}
+                  </Stack>
+                )}
 
-                  <QuickAction
-                    icon={<SearchIcon sx={{ fontSize: 100, color: PRIMARY }} />}
-                    title="Δήλωση Εύρεσης"
-                    text="Καταχωρίστε την εύρεση για να εντοπιστεί ο ιδιοκτήτης."
-                    onClick={() => navigate(`${base}/declarations/found/new`)}
-                  />
-                </Stack>
+                {/* VET: 2x3 grid */}
+                {role === "vet" && (
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" },
+                      gap: 3,
+                      justifyItems: "center",
+                    }}
+                  >
+                    {actions.map((a) => (
+                      <QuickAction key={a.title} icon={a.icon} title={a.title} onClick={() => navigate(a.to)} size="sm" />
+                    ))}
+                  </Box>
+                )}
+
+                {/* μικρή υποσημείωση */}
+                <Typography sx={{ mt: 4, textAlign: "center", fontSize: 12, color: "#6b7a90", fontWeight: 700 }}>
+                  {role === "vet"
+                    ? "Επιλέξτε τον τύπο δήλωσης που θέλετε να δημιουργήσετε."
+                    : "Επιλέξτε τον τύπο δήλωσης που θέλετε να υποβάλετε."}
+                </Typography>
               </Box>
             </Box>
           </Container>

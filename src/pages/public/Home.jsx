@@ -468,7 +468,7 @@ export default function Home() {
                   <Button
                     variant="contained"
                     size="small"
-                    onClick={() => navigate("/register/owner")}
+                    onClick={() => navigate("/register/vet")}
                     sx={{
                       textTransform: "none",
                       borderRadius: 999,
