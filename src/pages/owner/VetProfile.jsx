@@ -83,7 +83,10 @@ export default function VetProfile() {
       setErr("");
 
       const v = await fetchJSON(`/api/vets/${encodeURIComponent(id)}`);
-      const appts = await fetchJSON(`/api/appointments?vetId=${encodeURIComponent(id)}`);
+      const apptsAll = await fetchJSON(`/api/appointments`);
+      const appts = Array.isArray(apptsAll)
+        ? apptsAll.filter((a) => String(a?.vetId) === String(id))
+        : [];
 
       let availList = [];
       try {
@@ -118,7 +121,10 @@ export default function VetProfile() {
       // reviews
       let rr = [];
       try {
-        rr = await fetchJSON(`/api/reviews?vetId=${encodeURIComponent(id)}`);
+        const reviewsAll = await fetchJSON(`/api/reviews`);
+        rr = Array.isArray(reviewsAll)
+          ? reviewsAll.filter((x) => String(x?.vetId) === String(id))
+          : [];
       } catch {
         const all = await fetchJSON(`/api/reviews`);
         rr = Array.isArray(all) ? all.filter((x) => String(x?.vetId) === String(id)) : [];
@@ -462,6 +468,8 @@ export default function VetProfile() {
                     end: vet?.availability?.end || "20:30",
                     stepMinutes: vet?.availability?.stepMin || 30,
                   }}
+                  workDays={vet?.availability?.workDays || ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]}
+                  closedDates={vet?.availability?.closedDates || []}
                   getBookedTimes={getBookedTimes}
                   onAction={onNextStep}
                   actionText="Επόμενο βήμα"

@@ -36,6 +36,18 @@ function buildTimeSlots({ start = "09:00", end = "20:30", stepMinutes = 30 }) {
   return out;
 }
 
+const DOW = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+
+function isAllowedWorkday(dateDayjs, workDaysArr) {
+  const allowed = new Set((workDaysArr || []).map((d) => DOW[String(d).toLowerCase()]));
+  return allowed.has(dateDayjs.day());
+}
+
+function isClosed(dateDayjs, closedDatesArr) {
+  const key = dateDayjs.format("YYYY-MM-DD");
+  return (closedDatesArr || []).includes(key);
+}
+
 /**
  * CalendarWithTimeSlots
  *
@@ -57,6 +69,9 @@ function buildTimeSlots({ start = "09:00", end = "20:30", stepMinutes = 30 }) {
 export default function CalendarWithTimeSlots({
   value,
   onChange,
+
+  workDays = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+  closedDates = [],
 
   getDayDisabled,
   getAvailableTimes,
@@ -178,8 +193,11 @@ export default function CalendarWithTimeSlots({
                 day: (ownerState) => {
                   const day = ownerState.day;
 
-                  const isDisabledByRules =
-                    day.isBefore(minDate, "day") || (getDayDisabled ? getDayDisabled(day) : false);
+                 const isDisabledByRules =
+                  day.isBefore(minDate, "day") ||
+                  !isAllowedWorkday(day, workDays) ||
+                  isClosed(day, closedDates) ||
+                  (getDayDisabled ? getDayDisabled(day) : false);
 
                   const isSelected = selectedDate?.isSame(day, "day");
 
