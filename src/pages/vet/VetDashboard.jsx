@@ -152,27 +152,6 @@ function routeForNotification(n, role = "vet") {
   return { to: "" };
 }
 
-<<<<<<< HEAD
-=======
-function routeForNotification(n) {
-  // ✅ αν υπάρχει foundDeclarationId -> πάντα στο vet found details
-  if (n?.foundDeclarationId) return `/vet/found/${n.foundDeclarationId}`;
-
-  if (n?.refType === "appointment" && n?.refId) return `/vet/appointments/${n.refId}`;
-  if (n?.refType === "pet" && n?.refId) return `/vet/pets/${n.refId}/booklet`;
-
-  // ✅ LOST: πήγαινε στο PUBLIC route που υπάρχει
-  if ((n?.refType === "lostDeclaration" || n?.refType === "lost") && n?.refId)
-    return `/lost/${n.refId}`;
-
-  // ✅ FOUND: vet route (υπάρχει)
-  if (n?.refType === "found" && n?.refId) return `/vet/found/${n.refId}`;
-
-  if (n?.link) return n.link;
-
-  return "";
-}
->>>>>>> a8b504fdfde4c07bbb67575c69679b81ce644d45
 
 
 // ✅ συμβατό με isRead + readAt
