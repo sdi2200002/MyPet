@@ -68,7 +68,7 @@ export default function PublicNavbar() {
 
   // ✅ αν θες να δείχνει underline στο "Ιδιοκτήτης/Κτηνίατρος" όταν είσαι σε αυτά τα routes
   const ownerActive = location.pathname.startsWith("/owner");
-  const vetActive = location.pathname.startsWith("/vet");
+  const vetActive = location.pathname === "/vet" || location.pathname.startsWith("/vet/");
 
   const goOwner = () => {
     // όχι logged in -> login ως owner

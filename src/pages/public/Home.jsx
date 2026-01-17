@@ -25,7 +25,7 @@ import PetsOutlinedIcon from "@mui/icons-material/PetsOutlined";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import CampaignIcon from "@mui/icons-material/Campaign";
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import Footer from "../../components/Footer";
 import PublicNavbar from "../../components/PublicNavbar";
@@ -45,6 +45,8 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
+
+import { useAuth } from "../../auth/AuthContext";
 
 const LOST_KEY = "mypet_lost_declarations";
 
@@ -77,6 +79,18 @@ function dateToISOFromDayjs(dj) {
 
 export default function Home() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+
+  // ✅ resolve user + role (ίδιο pattern με τα άλλα)
+  const resolvedUser = user?.user ?? user;
+  const isLoggedIn = !!resolvedUser?.id;
+  const role = (resolvedUser?.role ?? "").toString().toLowerCase();
+  const isOwnerLoggedIn = isLoggedIn && (role === "owner" || role === "ιδιοκτήτης");
+
+  // ✅ ΜΟΝΟ αν είσαι σε owner area ΚΑΙ owner -> πήγαινε σε owner route
+  const isOwnerArea = location.pathname === "/owner" || location.pathname.startsWith("/owner/");
+  const goOwnerVetProfile = isOwnerLoggedIn || isOwnerArea;
 
   // ✅ Vet search inputs (ΩΡΑ: ΑΦΑΙΡΕΘΗΚΕ)
   const [vetArea, setVetArea] = useState("");
@@ -249,7 +263,6 @@ export default function Home() {
     navigate(`/vets?${params.toString()}`);
   }
 
-
   function clearVetFilters() {
     setVetArea("");
     setVetSpecialty("");
@@ -259,6 +272,12 @@ export default function Home() {
   }
 
   const isLoadingAny = loadingVets || loadingAppts;
+
+  // ✅ helper για profile path (εδώ είναι όλη η ουσία)
+  const goVetProfile = (vetId) => {
+    const target = goOwnerVetProfile ? `/owner/vets/${vetId}` : `/vets/${vetId}`;
+    navigate(target);
+  };
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "white" }}>
@@ -490,10 +509,9 @@ export default function Home() {
             </Grid>
           </Grid>
         </Box>
-        
+
         <Divider sx={{ my: 4 }} />
       </Container>
-      
 
       {/* VETS SEARCH + CAROUSEL */}
       <Container maxWidth="lg" sx={{ mt: 2.5, pb: 2 }}>
@@ -538,15 +556,15 @@ export default function Home() {
                 </Select>
               </FormControl>
 
-              {/* Ημερομηνία (Calendar) - ✅ όχι παρελθόν */}
+              {/* Ημερομηνία */}
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
                   value={vetDateObj}
-                  minDate={dayjs()} // ✅ δεν επιτρέπει “χτες”
+                  minDate={dayjs()}
                   maxDate={dayjs().add(1, "year")}
                   onChange={(newValue) => {
                     setVetDateObj(newValue);
-                    setVetDate(dateToISOFromDayjs(newValue)); // ✅ ISO
+                    setVetDate(dateToISOFromDayjs(newValue));
                   }}
                   format="DD/MM/YYYY"
                   slotProps={{
@@ -624,7 +642,6 @@ export default function Home() {
                 Αναζήτηση
               </Button>
 
-              {/* ✅ Minimal clear icon only when filters exist */}
               {hasActiveVetFilters && (
                 <IconButton
                   onClick={clearVetFilters}
@@ -736,7 +753,7 @@ export default function Home() {
                   <Paper
                     key={v.id}
                     elevation={0}
-                    onClick={() => navigate(`/vets/${v.id}`)}
+                    onClick={() => goVetProfile(v.id)}   // ✅ ΕΔΩ ΑΛΛΑΞΕ
                     sx={{
                       width: { xs: "100%", md: 300 },
                       borderRadius: 3,

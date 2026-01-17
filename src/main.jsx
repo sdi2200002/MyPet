@@ -79,8 +79,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           
           <Route path="/vets/:vetId/reviews" element={<VetReviews role="public" />} />
           <Route path="/vets/:vetId/reviews/:reviewId" element={<VetReviewDetails role="public" />} />
-          <Route path="/vets/:vetId/reviews" element={<VetReviews role="public" />} />
-          <Route path="/vets/:vetId/reviews/:reviewId" element={<VetReviewDetails role="public" />} />
 
           <Route path="/contact" element={<Contact />} />
 
@@ -94,7 +92,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <Route path="/owner/pets/:id/booklet/acts" element={<PetBookletActs role="owner" />} />
 
             <Route path="/owner/vets" element={<VetSearch />} />
-            <Route path="/owner/vets/:vetId" element={<VetProfile />} />
+            <Route path="/owner/vets/:vetId" element={<VetProfile role="owner" />} />
             <Route path="/owner/vets/:vetId/new" element={<VetNewAppointment />} />
             <Route path="/owner/vets/:vetId/reviews" element={<VetReviews role="owner" />} />
             <Route path="/owner/vets/:vetId/reviews/:reviewId" element={<VetReviewDetails role="owner" />} />

@@ -94,14 +94,22 @@ function blocksSlot(status) {
 
 /* ====== SLOTS ====== */
 const POSSIBLE_SLOTS = [
-  "09:00","09:30",
-  "10:00","10:30",
-  "11:00","11:30",
-  "12:00","12:30",
-  "13:00","13:30",
-  "14:00","14:30",
-  "15:00","15:30",
-  "16:00","16:30",
+  "09:00",
+  "09:30",
+  "10:00",
+  "10:30",
+  "11:00",
+  "11:30",
+  "12:00",
+  "12:30",
+  "13:00",
+  "13:30",
+  "14:00",
+  "14:30",
+  "15:00",
+  "15:30",
+  "16:00",
+  "16:30",
 ];
 
 function getAvailableSlotsForVetOnDate(vet, dateISO, appointments) {
@@ -160,13 +168,15 @@ function VetCard({ vet, onView }) {
         </Typography>
 
         <Stack direction="row" spacing={1} sx={{ mt: 0.6, flexWrap: "wrap" }}>
-          <Typography sx={{ fontWeight: 900, fontSize: 12 }}>  ⭐ {vet.rating ?? "—"}</Typography>
+          <Typography sx={{ fontWeight: 900, fontSize: 12 }}>⭐ {vet.rating ?? "—"}</Typography>
           <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
             ({vet.reviewsCount ?? 0}) • {vet.specialty || "—"}
           </Typography>
         </Stack>
-        <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>{vet.clinic || "—"} • {vet.area || "—"}</Typography>
 
+        <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
+          {vet.clinic || "—"} • {vet.area || "—"}
+        </Typography>
       </Box>
 
       <Button
@@ -204,6 +214,10 @@ export default function VetSearch() {
   // ✅ είσαι owner logged in;
   const role = (user?.role ?? user?.user?.role ?? "").toString().toLowerCase();
   const isOwnerLoggedIn = !!user && role !== "vet" && role !== "κτηνίατρος";
+
+  // ✅ context-aware profile route (αν είσαι σε owner area ή owner logged in)
+  const ownerArea = location.pathname === "/owner" || location.pathname.startsWith("/owner/");
+  const shouldGoOwnerProfile = isOwnerLoggedIn || ownerArea;
 
   // filters
   const [area, setArea] = useState("");
@@ -298,17 +312,16 @@ export default function VetSearch() {
 
   const hasFilters = useMemo(() => !!area.trim() || !!spec.trim() || !!date.trim(), [area, spec, date]);
 
-  // ✅ APPLY SEARCH -> PUBLIC route
+  // ✅ APPLY SEARCH -> PUBLIC route (όπως το είχες)
   function applySearch() {
     const params = new URLSearchParams();
     if (area) params.set("area", area);
     if (spec) params.set("specialty", spec);
     if (date) params.set("date", normalizeDateToISO(date));
-
     navigate(`/vets?${params.toString()}`);
   }
 
-  // ✅ CLEAR -> PUBLIC route
+  // ✅ CLEAR -> PUBLIC route (όπως το είχες)
   function clearFilters() {
     setArea("");
     setSpec("");
@@ -332,7 +345,6 @@ export default function VetSearch() {
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <PublicNavbar />
 
-      {/* ✅ Αν ΔΕΝ είσαι owner logged in -> καμία sidebar διάταξη */}
       <Box
         sx={{
           flex: 1,
@@ -514,14 +526,17 @@ export default function VetSearch() {
                         bgcolor: "#f6f8fb",
                       }}
                     >
-                      <Typography sx={{ color: MUTED, fontWeight: 700 }}>
-                        Δεν βρέθηκαν κτηνίατροι.
-                      </Typography>
+                      <Typography sx={{ color: MUTED, fontWeight: 700 }}>Δεν βρέθηκαν κτηνίατροι.</Typography>
                     </Paper>
                   ) : (
                     view.map((v) => (
-                      // ✅ PUBLIC profile
-                      <VetCard key={v.id} vet={v} onView={() => navigate(`/vets/${v.id}`)} />
+                      <VetCard
+                        key={v.id}
+                        vet={v}
+                        onView={() =>
+                          navigate(shouldGoOwnerProfile ? `/owner/vets/${v.id}` : `/vets/${v.id}`)
+                        }
+                      />
                     ))
                   )}
                 </Stack>
