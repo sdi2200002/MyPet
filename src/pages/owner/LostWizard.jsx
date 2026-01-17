@@ -528,7 +528,8 @@ export default function LostWizard({ role = "owner" }) {
       }
 
       // notification (non-blocking)
-      try {
+      // notification (non-blocking) -> ΜΟΝΟ στον submitter
+       try {
         await createNotification({
           userId: user?.id,
           type: "lost_submitted",
@@ -538,6 +539,7 @@ export default function LostWizard({ role = "owner" }) {
           }.`,
           refType: "lostDeclaration",
           refId: String(savedId || ""),
+          createdAt: new Date().toISOString(), // ✅ ΑΥΤΟ
           meta: {
             kind: "lost",
             status: "Οριστική",
@@ -550,6 +552,7 @@ export default function LostWizard({ role = "owner" }) {
       } catch (e) {
         console.warn("Notification failed (ignored):", e);
       }
+
 
       // ✅ base-aware
       navigate(`${base}/declarations/success`, { state: { type: "lost", status: "Οριστική" } });

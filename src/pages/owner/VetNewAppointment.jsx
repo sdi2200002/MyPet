@@ -137,7 +137,7 @@ function OwnerPageShell({ children }) {
 
 export default function VetNewAppointment() {
   const { vetId } = useParams();
-  const id = Number(vetId);
+  const id = String(vetId);
   const [sp] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();

@@ -23,7 +23,6 @@ import AppBreadcrumbs from "../../components/Breadcrumbs";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 
-// ✅ προσωρινά ίδιο sidebar και για τους 2 ρόλους
 import OwnerNavbar, { OWNER_SIDEBAR_W } from "../../components/OwnerNavbar";
 import VetNavbar, { VET_SIDEBAR_W } from "../../components/VetNavbar";
 
@@ -58,12 +57,30 @@ function StatusChip({ status }) {
   return <Chip size="small" label={label} color={color} variant="filled" />;
 }
 
-function Row({ item, onPreview, onEdit, onDelete, onMarkFound, role }) {
+function typeLabel(type) {
+  if (type === "lost") return "Δήλωση Απώλειας";
+  if (type === "found") return "Δήλωση Εύρεσης";
+  if (type === "adoption") return "Υιοθεσία Κατοικιδίου";
+  if (type === "foster") return "Αναδοχή Κατοικιδίου";
+  if (type === "transfer") return "Μεταβίβαση Κατοικιδίου";
+  return "Δήλωση";
+}
+
+function Row({ item, onPreview, onEdit, onDelete, onMarkFound, roleUserId })  {
   const status = item?.status || "Πρόχειρη";
   const canEdit = status === "Πρόχειρη";
 
   // ✅ "Βρέθηκε" μόνο για owner, μόνο για lost, μόνο όταν είναι Οριστική
-  const canMarkFound = role === "owner" && item?.type === "lost" && status === "Οριστική";
+  const canMarkFound =
+    item?.type === "lost" &&
+    status === "Οριστική" &&
+    String(item?.finderId || "") === String(roleUserId || "");
+
+  
+
+
+  const mainTitle = item?.petName || item?.species || "Κατοικίδιο";
+  const isLostOrFound = item?.type === "lost" || item?.type === "found";
 
   return (
     <Paper
@@ -113,23 +130,31 @@ function Row({ item, onPreview, onEdit, onDelete, onMarkFound, role }) {
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap" }}>
               <Typography sx={{ fontWeight: 900, color: TITLE }} noWrap>
-                {item?.type === "lost"
-                  ? item?.petName || "Κατοικίδιο"
-                  : item?.species || "Κατοικίδιο"}
+                {mainTitle}
               </Typography>
 
               <Typography sx={{ fontSize: 12, color: MUTED }}>
-                {item?.type === "lost" ? "Δήλωση Απώλειας" : "Δήλωση Εύρεσης"}
+                {typeLabel(item?.type)}
               </Typography>
 
               <StatusChip status={status} />
             </Stack>
 
             <Typography sx={{ fontSize: 12, color: TITLE, mt: 0.4 }}>
-              Περιοχή: <b>{item?.area || "—"}</b>
-              <br />
-              Ημ. {item?.type === "lost" ? "Απώλειας" : "Εύρεσης"}:{" "}
-              <b>{fmtDate(item?.date)}</b>
+              {isLostOrFound ? (
+                <>
+                  Περιοχή: <b>{item?.area || "—"}</b>
+                  <br />
+                  Ημ. {item?.type === "lost" ? "Απώλειας" : "Εύρεσης"}:{" "}
+                  <b>{fmtDate(item?.date)}</b>
+                </>
+              ) : (
+                <>
+                  Microchip: <b>{item?.microchip || "—"}</b>
+                  <br />
+                  Υποβλήθηκε: <b>{item?.createdAt ? fmtDate(item.createdAt) : "—"}</b>
+                </>
+              )}
             </Typography>
           </Box>
         </Stack>
@@ -235,12 +260,15 @@ export default function MyDeclarations({ role = "owner" }) {
   const { user } = useAuth();
 
   const base = role === "vet" ? "/vet" : "/owner";
-
+  const roleUserId = useMemo(() => String(user?.id ?? user?.user?.id ?? ""), [user]);
   const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
 
   const [tab, setTab] = useState(0); // 0 submitted, 1 drafts
   const [lost, setLost] = useState([]);
   const [found, setFound] = useState([]);
+  const [adoption, setAdoption] = useState([]);
+  const [foster, setFoster] = useState([]);
+  const [transfer, setTransfer] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -256,27 +284,50 @@ export default function MyDeclarations({ role = "owner" }) {
         if (!alive) return;
         setLost([]);
         setFound([]);
+        setAdoption([]);
+        setFoster([]);
+        setTransfer([]);
         setErr("Δεν υπάρχει συνδεδεμένος χρήστης.");
         setLoading(false);
         return;
       }
 
       try {
-        // ✅ εδώ κρατάω το ίδιο schema που ήδη έχεις (finderId)
         const uid = encodeURIComponent(String(user.id));
 
-        const [lostData, foundData] = await Promise.all([
+        const baseReqs = [
           fetchJSON(`/api/lostDeclarations?finderId=${uid}`),
           fetchJSON(`/api/foundDeclarations?finderId=${uid}`),
+        ];
+
+        const vetReqs =
+          role === "vet"
+            ? [
+                fetchJSON(`/api/adoptionDeclarations?vetId=${uid}`),
+                fetchJSON(`/api/fosterDeclarations?vetId=${uid}`),
+                fetchJSON(`/api/transferDeclarations?vetId=${uid}`),
+              ]
+            : [];
+
+        const [lostData, foundData, adoptionData, fosterData, transferData] = await Promise.all([
+          ...baseReqs,
+          ...vetReqs,
         ]);
 
         if (!alive) return;
 
-        const lostArr = Array.isArray(lostData) ? lostData : [];
-        const foundArr = Array.isArray(foundData) ? foundData : [];
+        setLost((Array.isArray(lostData) ? lostData : []).map((x) => ({ ...x, type: "lost" })));
+        setFound((Array.isArray(foundData) ? foundData : []).map((x) => ({ ...x, type: "found" })));
 
-        setLost(lostArr.map((x) => ({ ...x, type: "lost" })));
-        setFound(foundArr.map((x) => ({ ...x, type: "found" })));
+        if (role === "vet") {
+          setAdoption((Array.isArray(adoptionData) ? adoptionData : []).map((x) => ({ ...x, type: "adoption" })));
+          setFoster((Array.isArray(fosterData) ? fosterData : []).map((x) => ({ ...x, type: "foster" })));
+          setTransfer((Array.isArray(transferData) ? transferData : []).map((x) => ({ ...x, type: "transfer" })));
+        } else {
+          setAdoption([]);
+          setFoster([]);
+          setTransfer([]);
+        }
 
         setLoading(false);
       } catch (e) {
@@ -290,20 +341,22 @@ export default function MyDeclarations({ role = "owner" }) {
     return () => {
       alive = false;
     };
-  }, [user?.id]);
+  }, [user?.id, role]); // ✅ βάλαμε role
 
   const all = useMemo(() => {
-    const merged = [...lost, ...found];
+    const merged =
+      role === "vet"
+        ? [...lost, ...found, ...adoption, ...foster, ...transfer]
+        : [...lost, ...found];
+
     merged.sort((a, b) => {
       const ta = new Date(a?.createdAt || 0).getTime();
       const tb = new Date(b?.createdAt || 0).getTime();
       return tb - ta;
     });
     return merged;
-  }, [lost, found]);
+  }, [lost, found, adoption, foster, transfer, role]);
 
-  // ✅ Submitted: δείξε Οριστική + Βρέθηκε
-  // ✅ Drafts: όλα τα υπόλοιπα
   const filtered = useMemo(() => {
     const s = (x) => x?.status || "Πρόχειρη";
     if (tab === 0) return all.filter((x) => s(x) === "Οριστική" || s(x) === "Βρέθηκε");
@@ -317,7 +370,7 @@ export default function MyDeclarations({ role = "owner" }) {
   const handlePreview = (item) => {
     const status = item?.status || "Πρόχειρη";
 
-    // public pages για οριστικές (και "Βρέθηκε" επίσης, αν θες να βλέπεται ακόμα)
+    // public pages για οριστικές/βρέθηκε (μόνο lost/found)
     if ((status === "Οριστική" || status === "Βρέθηκε") && item.type === "lost") {
       navigate(`/lost/${encodeURIComponent(String(item.id))}`);
       return;
@@ -337,6 +390,20 @@ export default function MyDeclarations({ role = "owner" }) {
       return;
     }
 
+    // ✅ adoption/foster/transfer -> wizard preview
+    if (item.type === "adoption") {
+      navigate(`${base}/declarations/adoption/new`, { state: { draftId: item.id, step: 3 } });
+      return;
+    }
+    if (item.type === "foster") {
+      navigate(`${base}/declarations/foster/new`, { state: { draftId: item.id, step: 3 } });
+      return;
+    }
+    if (item.type === "transfer") {
+      navigate(`${base}/declarations/transfer/new`, { state: { draftId: item.id, step: 3 } });
+      return;
+    }
+
     alert("Η δήλωση δεν είναι διαθέσιμη για προβολή.");
   };
 
@@ -348,30 +415,43 @@ export default function MyDeclarations({ role = "owner" }) {
       navigate(`${base}/declarations/lost/new`, { state: { draftId: item.id, step: 2 } });
       return;
     }
-    navigate(`${base}/declarations/found/new`, { state: { draftId: item.id, step: 2 } });
+    if (item.type === "found") {
+      navigate(`${base}/declarations/found/new`, { state: { draftId: item.id, step: 2 } });
+      return;
+    }
+
+    // ✅ adoption/foster/transfer edit
+    if (item.type === "adoption") {
+      navigate(`${base}/declarations/adoption/new`, { state: { draftId: item.id, step: 2 } });
+      return;
+    }
+    if (item.type === "foster") {
+      navigate(`${base}/declarations/foster/new`, { state: { draftId: item.id, step: 2 } });
+      return;
+    }
+    if (item.type === "transfer") {
+      navigate(`${base}/declarations/transfer/new`, { state: { draftId: item.id, step: 2 } });
+      return;
+    }
   };
 
-  // ✅ ΝΕΟ: "Βρέθηκε" = ΔΙΑΓΡΑΦΗ της lost δήλωσης (από DB + από λίστα)
-const handleMarkFound = async (item) => {
-  const ok = confirm(
-    "Με το «Βρέθηκε» θα διαγραφεί η δήλωση απώλειας και δεν θα εμφανίζεται πλέον πουθενά. Συνέχεια;"
-  );
-  if (!ok) return;
+  // ✅ "Βρέθηκε" = ΔΙΑΓΡΑΦΗ της lost δήλωσης
+  const handleMarkFound = async (item) => {
+    const ok = confirm(
+      "Με το «Βρέθηκε» θα διαγραφεί η δήλωση απώλειας και δεν θα εμφανίζεται πλέον πουθενά. Συνέχεια;"
+    );
+    if (!ok) return;
 
-  try {
-    // Σβήνουμε από τον json-server
-    await fetchJSON(`/api/lostDeclarations/${encodeURIComponent(String(item.id))}`, {
-      method: "DELETE",
-    });
-
-    // Σβήνουμε από τη λίστα (state)
-    setLost((prev) => prev.filter((x) => String(x.id) !== String(item.id)));
-  } catch (e) {
-    console.error(e);
-    alert("Αποτυχία ολοκλήρωσης. Δοκίμασε ξανά.");
-  }
-};
-
+    try {
+      await fetchJSON(`/api/lostDeclarations/${encodeURIComponent(String(item.id))}`, {
+        method: "DELETE",
+      });
+      setLost((prev) => prev.filter((x) => String(x.id) !== String(item.id)));
+    } catch (e) {
+      console.error(e);
+      alert("Αποτυχία ολοκλήρωσης. Δοκίμασε ξανά.");
+    }
+  };
 
   const handleDelete = async (item) => {
     const ok = confirm("Θες σίγουρα να διαγράψεις τη δήλωση;");
@@ -383,12 +463,43 @@ const handleMarkFound = async (item) => {
           method: "DELETE",
         });
         setFound((prev) => prev.filter((x) => String(x.id) !== String(item.id)));
-      } else {
+        return;
+      }
+
+      if (item.type === "lost") {
         await fetchJSON(`/api/lostDeclarations/${encodeURIComponent(String(item.id))}`, {
           method: "DELETE",
         });
         setLost((prev) => prev.filter((x) => String(x.id) !== String(item.id)));
+        return;
       }
+
+      // ✅ adoption/foster/transfer delete
+      if (item.type === "adoption") {
+        await fetchJSON(`/api/adoptionDeclarations/${encodeURIComponent(String(item.id))}`, {
+          method: "DELETE",
+        });
+        setAdoption((prev) => prev.filter((x) => String(x.id) !== String(item.id)));
+        return;
+      }
+
+      if (item.type === "foster") {
+        await fetchJSON(`/api/fosterDeclarations/${encodeURIComponent(String(item.id))}`, {
+          method: "DELETE",
+        });
+        setFoster((prev) => prev.filter((x) => String(x.id) !== String(item.id)));
+        return;
+      }
+
+      if (item.type === "transfer") {
+        await fetchJSON(`/api/transferDeclarations/${encodeURIComponent(String(item.id))}`, {
+          method: "DELETE",
+        });
+        setTransfer((prev) => prev.filter((x) => String(x.id) !== String(item.id)));
+        return;
+      }
+
+      alert("Άγνωστος τύπος δήλωσης.");
     } catch (e) {
       console.error(e);
       alert("Αποτυχία διαγραφής. Δοκίμασε ξανά.");
@@ -526,7 +637,7 @@ const handleMarkFound = async (item) => {
                       <Row
                         key={`${item.type}-${item.id}`}
                         item={item}
-                        role={role}
+                        roleUserId={roleUserId}
                         onPreview={handlePreview}
                         onEdit={handleEdit}
                         onDelete={handleDelete}

@@ -45,6 +45,8 @@ import VetReviewDetails from "./pages/owner/VetReviewDetails.jsx";
 import OwnerProfile from "./pages/owner/Profile.jsx";
 import OwnerFoundDetails from "./pages/owner/OwnerFoundDetails.jsx";
 import AdoptionWizard from "./pages/vet/AdoptionWizard.jsx";
+import FosterWizard from "./pages/vet/FosterWizard.jsx";
+import TransferWizard from "./pages/vet/TransferWizard.jsx";  
 
 // ✅ Auth
 import { AuthProvider } from "./auth/AuthContext.jsx";
@@ -70,6 +72,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route path="/found/new" element={<FoundWizard role="public" />} />
           <Route path="/vets" element={<VetSearch role="public" />} />
           <Route path="/vets/:vetId" element={<VetProfile role="public" />} />
+          
+          <Route path="/vets/:vetId/reviews" element={<VetReviews role="public" />} />
+          <Route path="/vets/:vetId/reviews/:reviewId" element={<VetReviewDetails role="public" />} />
+          <Route path="/vets/:vetId/reviews" element={<VetReviews role="public" />} />
+          <Route path="/vets/:vetId/reviews/:reviewId" element={<VetReviewDetails role="public" />} />
 
           <Route path="/contact" element={<Contact />} />
 
@@ -136,6 +143,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <Route path="/vet/profile/:vetId/reviews" element={<VetReviews role="vet" />} />
             <Route path="/vet/profile/:vetId/reviews/:reviewId" element={<VetReviewDetails role="vet" />} />
             <Route path="/vet/declarations/adoption/new" element={<AdoptionWizard role="vet" />} />
+            <Route path="/vet/declarations/foster/new" element={<FosterWizard role="vet" />} />
+            <Route path="/vet/declarations/transfer/new" element={<TransferWizard role="vet" />} />
 
           </Route>
 

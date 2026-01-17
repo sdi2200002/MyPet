@@ -77,23 +77,27 @@ export default function VetReviews({ role = "owner" }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  const base = role === "vet" ? "/vet" : "/owner";
-  const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
+  const base = role === "vet" ? "/vet" : role === "owner" ? "/owner" : "";
+  const sidebarW = role === "vet" ? VET_SIDEBAR_W : role === "owner" ? OWNER_SIDEBAR_W : 0;
 
 
   // ✅ pagination
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
 
-  // ✅ Προβολή ενός review (φτιάχτηκε)
+  // ✅ Προβολή ενός review (σωστό route)
   const onView = (review) => {
     if (!review?.id) return;
-    navigate(
-      role === "vet"
-        ? `/vet/pets/${encodeURIComponent(String(vetId))}/reviews/${encodeURIComponent(String(review.id))}`
-        : `/owner/vets/${encodeURIComponent(String(vetId))}/reviews/${encodeURIComponent(String(review.id))}`
-    );
+
+    const vid = encodeURIComponent(String(vetId));
+    const rid = encodeURIComponent(String(review.id));
+
+    if (role === "vet") navigate(`/vet/profile/${vid}/reviews/${rid}`);
+    else if (role === "owner") navigate(`/owner/vets/${vid}/reviews/${rid}`);
+    else navigate(`/vets/${vid}/reviews/${rid}`); // ✅ public
   };
+
+
 
   useEffect(() => {
     let alive = true;
@@ -185,6 +189,8 @@ export default function VetReviews({ role = "owner" }) {
   const computedCount = useMemo(() => vet?.reviewsCount ?? reviews.length ?? 0, [vet?.reviewsCount, reviews.length]);
 
   function AppShell({ role, sidebarW, children }) {
+    const isAuth = role === "owner" || role === "vet";
+
     return (
       <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
         <PublicNavbar />
@@ -192,13 +198,18 @@ export default function VetReviews({ role = "owner" }) {
         <Box
           sx={{
             flex: 1,
-            display: { xs: "block", lg: "flex" },
+            display: { xs: "block", lg: isAuth ? "flex" : "block" },
             alignItems: "flex-start",
           }}
         >
-          {/* spacer */}
-          <Box sx={{ width: sidebarW, flex: `0 0 ${sidebarW}px`, display: { xs: "none", lg: "block" } }} />
-          {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
+          {/* Sidebar μόνο για owner/vet */}
+          {isAuth && (
+            <>
+              {/* spacer */}
+              <Box sx={{ width: sidebarW, flex: `0 0 ${sidebarW}px`, display: { xs: "none", lg: "block" } }} />
+              {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
+            </>
+          )}
 
           <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
         </Box>
@@ -207,6 +218,7 @@ export default function VetReviews({ role = "owner" }) {
       </Box>
     );
   }
+
 
 
 

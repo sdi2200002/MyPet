@@ -89,33 +89,69 @@ function QuickAction({ icon, title, text, onClick }) {
 }
 
 
-function fmtShort(iso) {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleDateString("el-GR", { day: "2-digit", month: "2-digit" });
-  } catch {
-    return "";
+function fmtShort(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("el-GR", { day: "2-digit", month: "2-digit" });
+}
+
+function routeForNotification(n, role = "vet") {
+  // 0) αν υπάρχει έτοιμο link από backend, σεβάσου το
+  if (typeof n?.link === "string" && n.link.trim()) {
+    return { to: n.link.trim() };
   }
+
+  // 1) “Κάποιος βρήκε…”: ΠΗΓΑΙΝΕ ΣΤΟ PUBLIC /found/:id (όχι /vet/found)
+  if (n?.foundDeclarationId) {
+    return { to: `/found/${encodeURIComponent(String(n.foundDeclarationId))}` };
+  }
+
+  // 2) Appointments / Pets (μόνο αν έχεις αυτά τα routes)
+  if (n?.refType === "appointment" && n?.refId) {
+    return { to: `/${role}/appointments/${encodeURIComponent(String(n.refId))}` };
+  }
+  if (n?.refType === "pet" && n?.refId) {
+    return { to: `/${role}/pets/${encodeURIComponent(String(n.refId))}` };
+  }
+
+  // 3) Lost / Found δηλώσεις: PUBLIC routes
+  if ((n?.refType === "lostDeclaration" || n?.refType === "lost") && n?.refId) {
+    return { to: `/lost/${encodeURIComponent(String(n.refId))}` };
+  }
+  if ((n?.refType === "foundDeclaration" || n?.refType === "found") && n?.refId) {
+    return { to: `/found/${encodeURIComponent(String(n.refId))}` };
+  }
+
+  // 4) ΝΕΟ: adoption / foster / transfer (wizard routes)
+  // θα χρησιμοποιήσουμε declarationId αν υπάρχει, αλλιώς refId
+  const kind = n?.meta?.kind;
+  const declId = n?.meta?.declarationId ?? n?.refId;
+
+  if (declId && (kind === "adoption" || n?.refType === "adoptionDeclaration" || n?.type === "adoption_submitted")) {
+    return {
+      to: `/${role}/declarations/adoption/new`,
+      state: { draftId: String(declId), step: 3 },
+    };
+  }
+
+  if (declId && (kind === "foster" || n?.refType === "fosterDeclaration" || n?.type === "foster_submitted")) {
+    return {
+      to: `/${role}/declarations/foster/new`,
+      state: { draftId: String(declId), step: 3 },
+    };
+  }
+
+  if (declId && (kind === "transfer" || n?.refType === "transferDeclaration" || n?.type === "transfer_submitted")) {
+    return {
+      to: `/${role}/declarations/transfer/new`,
+      state: { draftId: String(declId), step: 3 },
+    };
+  }
+
+  return { to: "" };
 }
 
-function routeForNotification(n) {
-  // ✅ αν υπάρχει foundDeclarationId -> πάντα στο vet found details
-  if (n?.foundDeclarationId) return `/vet/found/${n.foundDeclarationId}`;
-
-  if (n?.refType === "appointment" && n?.refId) return `/vet/appointments/${n.refId}`;
-  if (n?.refType === "pet" && n?.refId) return `/vet/pets/${n.refId}`;
-
-  // ✅ LOST: πήγαινε στο PUBLIC route που υπάρχει
-  if ((n?.refType === "lostDeclaration" || n?.refType === "lost") && n?.refId)
-    return `/lost/${n.refId}`;
-
-  // ✅ FOUND: vet route (υπάρχει)
-  if (n?.refType === "found" && n?.refId) return `/vet/found/${n.refId}`;
-
-  if (n?.link) return n.link;
-
-  return "";
-}
 
 
 // ✅ συμβατό με isRead + readAt
@@ -199,23 +235,28 @@ function LatestUpdates({ limit = 5 }) {
   }, [uid, limit]);
 
   async function onClickItem(n) {
-    if (isUnread(n)) {
-      if (n?.readAt !== undefined) {
-        const updated = await markNotificationRead(n.id);
-        setAllItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, ...updated } : x)));
-      } else {
-        await fetch(`/api/notifications/${encodeURIComponent(String(n.id))}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isRead: true }),
-        });
-        setAllItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
-      }
+  // 1) mark as read (όπως το έχεις)
+  if (isUnread(n)) {
+    if (n?.readAt !== undefined) {
+      const updated = await markNotificationRead(n.id);
+      setAllItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, ...updated } : x)));
+    } else {
+      await fetch(`/api/notifications/${encodeURIComponent(String(n.id))}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isRead: true }),
+      });
+      setAllItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
     }
-
-    const to = routeForNotification(n);
-    if (to) navigate(to);
   }
+
+  // 2) navigate (ΑΥΤΟ είναι που έλειπε / δεν “έβρισκε” route)
+  const { to, state } = routeForNotification(n, "vet"); // <- role εδώ "vet"
+  if (to) {
+    navigate(to, state ? { state } : undefined);
+  }
+}
+
 
   async function onMarkAll() {
     if (!uid) return;
@@ -356,13 +397,13 @@ export default function OwnerDashboard() {
 
         <Box
           component="img"
-          src="/images/vet1.png"
+          src="/images/vet.png"
           alt="Vet"
           sx={{
             position: "absolute",
             right: 200,
             bottom: 0,
-            width: { xs: 200, md: 180 },
+            width: { xs: 300, md: 220},
             height: "auto",
             display: { xs: "none", md: "block" },
           }}

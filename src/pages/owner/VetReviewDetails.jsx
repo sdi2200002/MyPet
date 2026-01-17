@@ -74,8 +74,10 @@ export default function VetReviewDetails({ role = "owner" }) {
   const [vet, setVet] = useState(null);
   const [review, setReview] = useState(null);
 
-  const base = role === "vet" ? "/vet" : "/owner";
-  const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
+  const isAuth = role === "owner" || role === "vet";
+ const base = role === "vet" ? "/vet" : role === "owner" ? "/owner" : "";
+  const sidebarW = role === "vet" ? VET_SIDEBAR_W : role === "owner" ? OWNER_SIDEBAR_W : 0;
+
 
 
   useEffect(() => {
@@ -157,35 +159,42 @@ export default function VetReviewDetails({ role = "owner" }) {
   const vetName = vet?.name || "Κτηνίατρος";
 
   function AppShell({ children }) {
-    return (
-      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
-        <PublicNavbar />
+  const isAuth = role === "owner" || role === "vet";
 
-        <Box
-          sx={{
-            flex: 1,
-            display: { xs: "block", lg: "flex" },
-            alignItems: "flex-start",
-          }}
-        >
-          {/* spacer */}
-          <Box
-            sx={{
-              width: sidebarW,
-              flex: `0 0 ${sidebarW}px`,
-              display: { xs: "none", lg: "block" },
-            }}
-          />
+  return (
+    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
+      <PublicNavbar />
 
-          {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
+      <Box
+        sx={{
+          flex: 1,
+          display: { xs: "block", lg: isAuth ? "flex" : "block" },
+          alignItems: "flex-start",
+        }}
+      >
+        {isAuth && (
+          <>
+            {/* spacer */}
+            <Box
+              sx={{
+                width: sidebarW,
+                flex: `0 0 ${sidebarW}px`,
+                display: { xs: "none", lg: "block" },
+              }}
+            />
 
-          <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
-        </Box>
+            {role === "vet" ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
+          </>
+        )}
 
-        <Footer />
+        <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
       </Box>
-    );
-  }
+
+      <Footer />
+    </Box>
+  );
+}
+
 
 
   return (

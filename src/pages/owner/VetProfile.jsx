@@ -36,14 +36,16 @@ function parseAnyDateToMs(s) {
   return Number.isFinite(dt.getTime()) ? dt.getTime() : 0;
 }
 
-// ✅ normalize για να αντέχει διαφορετικά keys στο json
+// ✅ normalize review (και vetId πάντα string όταν γίνεται)
 function normalizeReview(r) {
   const ratingRaw = r?.rating ?? r?.stars ?? r?.score ?? 0;
   const rating = Math.max(1, Math.min(5, Number(ratingRaw) || 0)) || 0;
 
+  const rawVetId = r?.vetId ?? r?.vet_id ?? r?.vet?.id ?? null;
+
   return {
     id: r?.id ?? r?._id ?? `${Date.now()}_${Math.random()}`,
-    vetId: r?.vetId ?? r?.vet_id ?? r?.vet?.id ?? null,
+    vetId: rawVetId == null ? null : String(rawVetId),
     rating,
     name: r?.name ?? r?.userName ?? r?.author ?? "Ανώνυμος",
     date: r?.date ?? r?.createdAt ?? r?.when ?? "",
@@ -53,11 +55,12 @@ function normalizeReview(r) {
 
 export default function VetProfile() {
   const { vetId } = useParams();
-  const id = Number(vetId); // ✅ json-server: numeric ids
+  const id = String(vetId ?? "").trim(); // ✅ κρατάμε string id
+
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // ✅ σωστό resolve user + role
+  // ✅ resolve user + role
   const resolvedUser = user?.user ?? user;
   const isLoggedIn = !!resolvedUser?.id;
   const role = (resolvedUser?.role ?? "").toString().toLowerCase();
@@ -71,6 +74,7 @@ export default function VetProfile() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
+  // ✅ Φέρνω vet/appointments/reviews με string vetId
   useEffect(() => {
     let alive = true;
 
@@ -78,12 +82,16 @@ export default function VetProfile() {
       setLoading(true);
       setErr("");
 
-      const v = await fetchJSON(`/api/vets/${id}`);
-      const appts = await fetchJSON(`/api/appointments?vetId=${id}`);
+      // vet
+      const v = await fetchJSON(`/api/vets/${encodeURIComponent(id)}`);
 
+      // appointments (κρατάς query param string)
+      const appts = await fetchJSON(`/api/appointments?vetId=${encodeURIComponent(id)}`);
+
+      // reviews
       let rr = [];
       try {
-        rr = await fetchJSON(`/api/reviews?vetId=${id}`);
+        rr = await fetchJSON(`/api/reviews?vetId=${encodeURIComponent(id)}`);
       } catch {
         const all = await fetchJSON(`/api/reviews`);
         rr = Array.isArray(all) ? all.filter((x) => String(x?.vetId) === String(id)) : [];
@@ -110,14 +118,14 @@ export default function VetProfile() {
     };
   }, [id]);
 
-  // ✅ booked times από appointments (και προαιρετικά από vet.booked αν υπάρχει στο JSON)
+  // ✅ booked times από appointments
   const getBookedTimes = (dateDayjs) => {
     const dayKey = dateDayjs.format("YYYY-MM-DD");
 
     const bookedFromAppointments = (appointments || [])
-      .filter((a) => Number(a.vetId) === id)
-      .filter((a) => dayjs(a.when).format("YYYY-MM-DD") === dayKey)
-      .filter((a) => ["Εκκρεμές", "Επιβεβαιωμένο"].includes(a.status))
+      .filter((a) => String(a?.vetId) === String(id))
+      .filter((a) => dayjs(a?.when).format("YYYY-MM-DD") === dayKey)
+      .filter((a) => ["Εκκρεμές", "Επιβεβαιωμένο"].includes(a?.status))
       .map((a) => dayjs(a.when).format("HH:mm"));
 
     const bookedFromVetDemo = vet?.booked?.[dayKey] || [];
@@ -134,24 +142,33 @@ export default function VetProfile() {
     return arr.slice(0, 3);
   }, [reviews]);
 
-  // ✅ ΠΑΤΑΩ "Επόμενο βήμα" -> μόνο τότε ζητάω login (owner)
+  // ✅ "Επόμενο βήμα" -> login (owner)
   function onNextStep() {
     if (!canProceed) return;
 
     const dateStr = pick.date.format("YYYY-MM-DD");
     const timeStr = pick.time;
 
-    const target = `/owner/vets/${id}/new?date=${encodeURIComponent(dateStr)}&time=${encodeURIComponent(timeStr)}`;
+    const target = `/owner/vets/${encodeURIComponent(id)}/new?date=${encodeURIComponent(
+      dateStr
+    )}&time=${encodeURIComponent(timeStr)}`;
 
-    // αν δεν είναι logged in ή είναι άλλος ρόλος (πχ vet) -> ζήτα login ως owner
     if (!isLoggedIn || role !== "owner") {
       navigate(`/login?from=${encodeURIComponent(target)}&role=owner`);
       return;
     }
 
-    // owner logged in -> πάμε κανονικά στο next step (protected route)
     navigate(target);
   }
+
+  // ✅ ΣΩΣΤΟ route για reviews ανάλογα με ρόλο (να μη βγαίνει 404)
+  const onMoreReviews = () => {
+    const vId = encodeURIComponent(id);
+
+    if (role === "owner") navigate(`/owner/vets/${vId}/reviews`);
+    else if (role === "vet") navigate(`/vet/profile/${vId}/reviews`);
+    else navigate(`/vets/${vId}/reviews`); // public (ΠΡΟΫΠΟΘΕΣΗ: να έχεις τα public routes που σου είπα)
+  };
 
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
@@ -240,9 +257,7 @@ export default function VetProfile() {
                       </Typography>
 
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-                        <Typography sx={{ fontWeight: 900, fontSize: 12 }}>
-                          ⭐ {vet?.rating ?? "—"}
-                        </Typography>
+                        <Typography sx={{ fontWeight: 900, fontSize: 12 }}>⭐ {vet?.rating ?? "—"}</Typography>
                         <Typography sx={{ color: MUTED, fontWeight: 800, fontSize: 12 }}>
                           ({vet?.reviewsCount ?? 0})
                         </Typography>
@@ -256,20 +271,16 @@ export default function VetProfile() {
                           <span style={{ fontWeight: 700, color: MUTED }}>{vet?.address || "—"}</span>
                         </Typography>
                         <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 12 }}>
-                          Τηλέφωνο:{" "}
-                          <span style={{ fontWeight: 700, color: MUTED }}>{vet?.phone || "—"}</span>
+                          Τηλέφωνο: <span style={{ fontWeight: 700, color: MUTED }}>{vet?.phone || "—"}</span>
                         </Typography>
                         <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 12 }}>
-                          Email:{" "}
-                          <span style={{ fontWeight: 700, color: MUTED }}>{vet?.email || "—"}</span>
+                          Email: <span style={{ fontWeight: 700, color: MUTED }}>{vet?.email || "—"}</span>
                         </Typography>
                         <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 12 }}>
-                          Εμπειρία:{" "}
-                          <span style={{ fontWeight: 700, color: MUTED }}>{vet?.experience || "—"}</span>
+                          Εμπειρία: <span style={{ fontWeight: 700, color: MUTED }}>{vet?.experience || "—"}</span>
                         </Typography>
                         <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 12 }}>
-                          Σπουδές:{" "}
-                          <span style={{ fontWeight: 700, color: MUTED }}>{vet?.studies || "—"}</span>
+                          Σπουδές: <span style={{ fontWeight: 700, color: MUTED }}>{vet?.studies || "—"}</span>
                         </Typography>
                       </Stack>
                     </Box>
@@ -290,9 +301,7 @@ export default function VetProfile() {
                   }}
                 >
                   <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                    <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 15 }}>
-                      Αξιολογήσεις
-                    </Typography>
+                    <Typography sx={{ fontWeight: 900, color: TITLE, fontSize: 15 }}>Αξιολογήσεις</Typography>
                   </Stack>
 
                   {last3Reviews.length === 0 ? (
@@ -320,7 +329,7 @@ export default function VetProfile() {
                       >
                         {last3Reviews.map((r) => (
                           <Paper
-                            key={r.id}
+                            key={String(r.id)}
                             elevation={0}
                             sx={{
                               flex: { xs: "1 1 auto", sm: "1 1 0" },
@@ -389,7 +398,7 @@ export default function VetProfile() {
                     <Button
                       variant="outlined"
                       size="small"
-                      onClick={() => navigate(`/vets/${id}/reviews`)}
+                      onClick={onMoreReviews}
                       sx={{
                         textTransform: "none",
                         borderRadius: 2,
