@@ -20,6 +20,7 @@ import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlin
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
+import Pager from "../../components/Pager"; 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 
@@ -273,6 +274,10 @@ export default function MyDeclarations({ role = "owner" }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
+  // ✅ Pagination
+  const rowsPerPage = 5;          // άλλαξε το αν θες (π.χ. 3/5/6)
+  const [page, setPage] = useState(1);
+
   useEffect(() => {
     let alive = true;
 
@@ -363,6 +368,27 @@ export default function MyDeclarations({ role = "owner" }) {
     return all.filter((x) => s(x) !== "Οριστική" && s(x) !== "Βρέθηκε");
   }, [all, tab]);
 
+  // ✅ Page count + rows της τρέχουσας σελίδας
+  const pageCount = useMemo(
+    () => Math.max(1, Math.ceil(filtered.length / rowsPerPage)),
+    [filtered.length, rowsPerPage]
+  );
+
+  // όταν αλλάζει tab, γύρνα στη σελίδα 1
+  useEffect(() => {
+    setPage(1);
+  }, [tab]);
+
+  // αν μειωθεί ο αριθμός σελίδων (π.χ. ακύρωση), διόρθωσε page
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
+
+  const pageRows = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, page, rowsPerPage]);
+
   const handleCreate = () => {
     navigate(`${base}/declarations/new`);
   };
@@ -435,7 +461,7 @@ export default function MyDeclarations({ role = "owner" }) {
     }
   };
 
-  // ✅ "Βρέθηκε" = ΔΙΑΓΡΑΦΗ της lost δήλωσης
+  // ✅ ΝΕΟ: "Βρέθηκε" = ΔΙΑΓΡΑΦΗ της lost δήλωσης (από DB + από λίστα)
   const handleMarkFound = async (item) => {
     const ok = confirm(
       "Με το «Βρέθηκε» θα διαγραφεί η δήλωση απώλειας και δεν θα εμφανίζεται πλέον πουθενά. Συνέχεια;"
@@ -443,15 +469,20 @@ export default function MyDeclarations({ role = "owner" }) {
     if (!ok) return;
 
     try {
+      // Σβήνουμε από τον json-server
       await fetchJSON(`/api/lostDeclarations/${encodeURIComponent(String(item.id))}`, {
         method: "DELETE",
       });
+
+      // Σβήνουμε από τη λίστα (state)
       setLost((prev) => prev.filter((x) => String(x.id) !== String(item.id)));
     } catch (e) {
       console.error(e);
       alert("Αποτυχία ολοκλήρωσης. Δοκίμασε ξανά.");
     }
   };
+
+
 
   const handleDelete = async (item) => {
     const ok = confirm("Θες σίγουρα να διαγράψεις τη δήλωση;");
@@ -632,19 +663,23 @@ export default function MyDeclarations({ role = "owner" }) {
                     </Typography>
                   </Paper>
                 ) : (
-                  <Stack spacing={1.3}>
-                    {filtered.map((item) => (
-                      <Row
-                        key={`${item.type}-${item.id}`}
-                        item={item}
-                        roleUserId={roleUserId}
-                        onPreview={handlePreview}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        onMarkFound={handleMarkFound}
-                      />
-                    ))}
-                  </Stack>
+                  <>
+                    <Stack spacing={1.3}>
+                      {pageRows.map((item) => (
+                        <Row
+                          key={`${item.type}-${item.id}`}
+                          item={item}
+                          role={role}
+                          onPreview={handlePreview}
+                          onEdit={handleEdit}
+                          onDelete={handleDelete}
+                          onMarkFound={handleMarkFound}
+                        />
+                      ))}
+                    </Stack>
+                    {/* ✅ PAGER κάτω δεξιά */}
+                    <Pager page={page} pageCount={pageCount} onChange={setPage} color={PRIMARY} maxButtons={4} />
+                  </>
                 )}
               </Box>
             </Paper>
