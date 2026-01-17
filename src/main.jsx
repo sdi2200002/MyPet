@@ -18,6 +18,8 @@ import LostWizard from "./pages/owner/LostWizard.jsx";
 import FoundWizard from "./pages/public/FoundWizard.jsx";
 import DeclarationSuccess from "./pages/owner/DeclarationSuccess.jsx";
 import AdoptionWizard from "./pages/vet/AdoptionWizard.jsx";
+import TransferWizard from "./pages/vet/TransferWizard.jsx";
+import FosterWizard from "./pages/vet/FosterWizard.jsx";
 
 import MyAppointments from "./pages/owner/MyAppointments.jsx";
 import VetNewAppointment from "./pages/owner/VetNewAppointment.jsx";
@@ -139,6 +141,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <Route path="/vet/declarations/found/new" element={<FoundWizard role="vet" />} />
             <Route path="/vet/declarations/lost/new" element={<LostWizard role="vet" />} />
             <Route path="/vet/declarations/adoption/new" element={<AdoptionWizard role="vet" />} />
+            <Route path="/vet/declarations/transfer/new" element={<TransferWizard role="vet" />} />
+            <Route path="/vet/declarations/foster/new" element={<FosterWizard role="vet" />} />
             <Route path="/vet/declarations/success" element={<DeclarationSuccess role="vet" />} />
 
             <Route path="/vet/profile" element={<OwnerProfile role="vet" />} />
