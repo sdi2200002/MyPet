@@ -270,11 +270,6 @@ export default function VetAppointmentsAvailability() {
   const save = async () => {
     if (!vetId) return;
 
-    if (workDays.size === 0) {
-      alert("Διάλεξε τουλάχιστον μία ημέρα.");
-      return;
-    }
-
     setSaving(true);
     try {
       const payload = {
@@ -287,24 +282,35 @@ export default function VetAppointmentsAvailability() {
         updatedAt: new Date().toISOString(),
       };
 
-      if (rowId) {
-        const updated = await fetchJSON(`/api/vetAvailability/${encodeURIComponent(String(rowId))}`, {
-          method: "PATCH",
+      // ✅ json-server upsert by vetId
+      const list = await fetchJSON(`/api/vetAvailability?vetId=${encodeURIComponent(String(vetId))}`);
+      const existing = Array.isArray(list) && list.length ? list[0] : null;
+
+      if (existing?.id) {
+        // ✅ UPDATE (PUT)
+        const updated = await fetchJSON(`/api/vetAvailability/${encodeURIComponent(String(existing.id))}`, {
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            ...existing,
+            ...payload,
+            createdAt: existing.createdAt || new Date().toISOString(),
+          }),
         });
-        setRowId(updated?.id ?? rowId);
+        setRowId(updated?.id ?? existing.id);
+
       } else {
+        // ✅ CREATE (POST)
         const created = await fetchJSON(`/api/vetAvailability`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            id: `va_${Date.now()}`,
             createdAt: new Date().toISOString(),
             ...payload,
           }),
         });
-        setRowId(created?.id || `va_${Date.now()}`);
+        setRowId(created?.id ?? null);
+
       }
 
       alert("Η διαθεσιμότητα αποθηκεύτηκε ✅");
@@ -445,7 +451,6 @@ export default function VetAppointmentsAvailability() {
                   Προσθήκη
                 </Button>
 
-                <CalendarMonthRoundedIcon sx={{ ml: 0.5, color: MUTED }} />
               </Stack>
 
               {closedDates.length > 0 ? (

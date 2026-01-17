@@ -53,7 +53,7 @@ function normalizeReview(r) {
 
 export default function VetProfile() {
   const { vetId } = useParams();
-  const id = Number(vetId); // ✅ json-server: numeric ids
+  const id = String(vetId);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -78,12 +78,41 @@ export default function VetProfile() {
       setLoading(true);
       setErr("");
 
-      const v = await fetchJSON(`/api/vets/${id}`);
-      const appts = await fetchJSON(`/api/appointments?vetId=${id}`);
+      const v = await fetchJSON(`/api/vets/${encodeURIComponent(id)}`);
+      const appts = await fetchJSON(`/api/appointments?vetId=${encodeURIComponent(id)}`);
+
+      let availList = [];
+      try {
+        availList = await fetchJSON(`/api/vetAvailability?vetId=${encodeURIComponent(id)}`);
+      } catch {
+        availList = [];
+      }
+      const avail = Array.isArray(availList) && availList.length ? availList[0] : null;
+
+      const mergedVet = {
+        ...(v || {}),
+        availability: avail
+          ? {
+              start: avail.fromTime || "09:00",
+              end: avail.toTime || "20:30",
+              stepMin: 30,
+              workDays: Array.isArray(avail.workDays) ? avail.workDays : ["mon", "tue", "wed", "thu", "fri"],
+              closedDates: Array.isArray(avail.closedDates) ? avail.closedDates : [],
+              services: Array.isArray(avail.services) ? avail.services : [],
+            }
+          : {
+              start: "09:00",
+              end: "20:30",
+              stepMin: 30,
+              workDays: ["mon", "tue", "wed", "thu", "fri"],
+              closedDates: [],
+              services: [],
+            },
+      };
 
       let rr = [];
       try {
-        rr = await fetchJSON(`/api/reviews?vetId=${id}`);
+        rr = await fetchJSON(`/api/reviews?vetId=${encodeURIComponent(id)}`);
       } catch {
         const all = await fetchJSON(`/api/reviews`);
         rr = Array.isArray(all) ? all.filter((x) => String(x?.vetId) === String(id)) : [];
@@ -91,7 +120,7 @@ export default function VetProfile() {
 
       if (!alive) return;
 
-      setVet(v || null);
+      setVet(mergedVet);
       setAppointments(Array.isArray(appts) ? appts : []);
       setReviews((Array.isArray(rr) ? rr : []).map(normalizeReview));
       setLoading(false);
@@ -115,7 +144,7 @@ export default function VetProfile() {
     const dayKey = dateDayjs.format("YYYY-MM-DD");
 
     const bookedFromAppointments = (appointments || [])
-      .filter((a) => Number(a.vetId) === id)
+      .filter((a) => String(a.vetId) === String(id))
       .filter((a) => dayjs(a.when).format("YYYY-MM-DD") === dayKey)
       .filter((a) => ["Εκκρεμές", "Επιβεβαιωμένο"].includes(a.status))
       .map((a) => dayjs(a.when).format("HH:mm"));
