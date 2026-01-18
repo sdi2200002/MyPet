@@ -1,18 +1,33 @@
 import { useMemo, useState } from "react";
-import { Box, Button, Container, Paper, Stack, TextField, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Container,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+  MenuItem,
+} from "@mui/material";
 import { Link, useNavigate } from "react-router-dom";
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 
 const API_BASE = "http://localhost:3001"; // <-- json-server
-// αν έχεις proxy "/api" μπορείς να το κάνεις: const API_BASE = "/api";
+
+const SEX_OPTIONS = ["Άνδρας", "Γυναίκα", "Άλλο"];
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((email || "").trim());
 }
 function onlyDigits(s) {
   return (s || "").replace(/\D/g, "");
+}
+
+// ✅ Strong password: 8+ chars, 1 lowercase, 1 uppercase, 1 number, 1 symbol
+function isStrongPassword(pw) {
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(pw || "");
 }
 
 export default function RegisterOwner() {
@@ -24,7 +39,7 @@ export default function RegisterOwner() {
     confirmPassword: "",
     email: "",
     address: "",
-    afm: "",
+    sex: "", // ✅ αντικατάσταση ΑΦΜ
     phone: "",
   });
 
@@ -40,7 +55,10 @@ export default function RegisterOwner() {
     if (!form.lastName.trim()) e.lastName = "Υποχρεωτικό.";
 
     if (!form.password) e.password = "Υποχρεωτικό.";
-    else if (form.password.length < 4) e.password = "Τουλάχιστον 4 χαρακτήρες.";
+    else if (!isStrongPassword(form.password)) {
+      e.password =
+        "Τουλάχιστον 8 χαρακτήρες, 1 πεζό, 1 κεφαλαίο, 1 αριθμό και 1 σύμβολο.";
+    }
 
     if (!form.confirmPassword) e.confirmPassword = "Υποχρεωτικό.";
     else if (form.confirmPassword !== form.password) e.confirmPassword = "Οι κωδικοί δεν ταιριάζουν.";
@@ -50,9 +68,7 @@ export default function RegisterOwner() {
 
     if (!form.address.trim()) e.address = "Υποχρεωτικό.";
 
-    const afm = onlyDigits(form.afm);
-    if (!afm) e.afm = "Υποχρεωτικό.";
-    else if (afm.length !== 9) e.afm = "Το ΑΦΜ πρέπει να είναι 9 ψηφία.";
+    if (!form.sex) e.sex = "Υποχρεωτικό.";
 
     const phone = onlyDigits(form.phone);
     if (!phone) e.phone = "Υποχρεωτικό.";
@@ -94,10 +110,10 @@ export default function RegisterOwner() {
         address: form.address.trim(),
         phone: onlyDigits(form.phone),
 
-        // extra πεδία (json-server τα κρατάει κανονικά)
+        // extra πεδία
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
-        afm: onlyDigits(form.afm),
+        sex: form.sex, // ✅ αποθήκευση φύλου
 
         createdAt: new Date().toISOString(),
       };
@@ -155,6 +171,7 @@ export default function RegisterOwner() {
                 sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}
               >
                 <TextField
+                  required
                   label="Όνομα"
                   value={form.firstName}
                   onChange={setField("firstName")}
@@ -164,6 +181,7 @@ export default function RegisterOwner() {
                   sx={fieldSx}
                 />
                 <TextField
+                  required
                   label="Επώνυμο"
                   value={form.lastName}
                   onChange={setField("lastName")}
@@ -174,6 +192,7 @@ export default function RegisterOwner() {
                 />
 
                 <TextField
+                  required
                   label="Κωδικός Πρόσβασης"
                   type="password"
                   value={form.password}
@@ -184,6 +203,7 @@ export default function RegisterOwner() {
                   sx={fieldSx}
                 />
                 <TextField
+                  required
                   label="Επιβεβαίωση Κωδικού Πρόσβασης"
                   type="password"
                   value={form.confirmPassword}
@@ -195,6 +215,7 @@ export default function RegisterOwner() {
                 />
 
                 <TextField
+                  required
                   label="Email"
                   value={form.email}
                   onChange={setField("email")}
@@ -204,6 +225,7 @@ export default function RegisterOwner() {
                   sx={fieldSx}
                 />
                 <TextField
+                  required
                   label="Διεύθυνση"
                   value={form.address}
                   onChange={setField("address")}
@@ -213,16 +235,27 @@ export default function RegisterOwner() {
                   sx={fieldSx}
                 />
 
+                {/* ✅ ΑΦΜ -> Φύλο dropdown */}
                 <TextField
-                  label="ΑΦΜ"
-                  value={form.afm}
-                  onChange={setField("afm")}
-                  onBlur={() => touch("afm")}
-                  error={!!errors.afm && !!touched.afm}
-                  helperText={touched.afm ? errors.afm || " " : " "}
+                  required
+                  select
+                  label="Φύλο"
+                  value={form.sex}
+                  onChange={setField("sex")}
+                  onBlur={() => touch("sex")}
+                  error={!!errors.sex && !!touched.sex}
+                  helperText={touched.sex ? errors.sex || " " : " "}
                   sx={fieldSx}
-                />
+                >
+                  {SEX_OPTIONS.map((s) => (
+                    <MenuItem key={s} value={s}>
+                      {s}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
                 <TextField
+                  required
                   label="Τηλέφωνο"
                   value={form.phone}
                   onChange={setField("phone")}

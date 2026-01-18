@@ -234,7 +234,7 @@ export default function PetBookletDetails({ role = "owner" }) {
                       <FieldRow label="Είδος / Φυλή" value={speciesOrBreed} />
                       <FieldRow label="Χρώμα" value={pet?.color || "-"} />
                       <FieldRow label="Microchip" value={pet?.microchip || "-"} />
-                      <FieldRow label="Ομάδα αίματος" value={pet?.blood || "-"} />
+                      <FieldRow label="Ομάδα αίματος" value={pet?.bloodType || "-"} />
 
                       {/* owner στοιχεία */}
                       <FieldRow label="Ιδιοκτήτης" value={owner?.name || "-"} />

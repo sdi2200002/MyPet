@@ -36,6 +36,17 @@ async function fetchJSON(path, options) {
   return res.json();
 }
 
+// ✅ βάλε αυτό το helper κάπου πάνω 
+function formatIsoToDDMMYYYY(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso); // fallback αν δεν είναι valid
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = String(d.getFullYear());
+  return `${dd}/${mm}/${yyyy}`;
+}
+
 function Panel({ children }) {
   return (
     <Paper
@@ -56,9 +67,6 @@ function Panel({ children }) {
 
 function normalizePhone(raw) {
   return (raw || "").replace(/[^\d+]/g, "").trim();
-}
-function normalizeAfm(raw) {
-  return (raw || "").replace(/[^\d]/g, "").trim();
 }
 
 function AuthedShell({ role, children }) {
@@ -262,7 +270,7 @@ export default function DeclarationDetails({ role = "public" }) {
 
                     {[
                       ["Όνομα", data.petName ?? data.name],
-                      ["Ημ. Γέννησης", data.birthDate],
+                      ["Ημ. Γέννησης", formatIsoToDDMMYYYY(data.birthDateIso)],
                       ["Φύλο", data.sex],
                       ["Είδος", data.species],
                       ["Φυλή", data.breed],
@@ -495,7 +503,6 @@ export default function DeclarationDetails({ role = "public" }) {
                     {[
                       ["Όνομα", data.newOwnerFirstName],
                       ["Επώνυμο", data.newOwnerLastName],
-                      ["ΑΦΜ", normalizeAfm(data.newOwnerAfm)],
                       ["Τηλέφωνο", normalizePhone(data.newOwnerPhone)],
                       ["Email", data.newOwnerEmail],
                     ].map(([label, val]) => (

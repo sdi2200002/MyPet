@@ -58,6 +58,12 @@ function safeLoad(key) {
   }
 }
 
+const EDUCATION_LEVELS = [
+  "Πτυχίο Κτηνιατρικής",
+  "MSc (Μεταπτυχιακό)",
+  "PhD (Διδακτορικό)",
+];
+
 /** ✅ δέχεται "YYYY-MM-DD" ή "DD/MM/YYYY" ή "DD-MM-YYYY" και το κάνει "YYYY-MM-DD" */
 function normalizeGreekDateToISO(s) {
   if (!s) return "";
@@ -95,6 +101,7 @@ export default function Home() {
   // ✅ Vet search inputs (ΩΡΑ: ΑΦΑΙΡΕΘΗΚΕ)
   const [vetArea, setVetArea] = useState("");
   const [vetSpecialty, setVetSpecialty] = useState("");
+  const [education, setEducation] = useState("");
 
   // ✅ date: κρατάμε ISO string + Dayjs object
   const [vetDate, setVetDate] = useState(""); // ISO "YYYY-MM-DD"
@@ -110,7 +117,7 @@ export default function Home() {
   // ✅ “έγινε αναζήτηση;”
   const [didSearch, setDidSearch] = useState(false);
 
-  const hasActiveVetFilters = Boolean(vetArea?.trim() || vetDate?.trim() || vetSpecialty?.trim());
+  const hasActiveVetFilters = Boolean(vetArea?.trim() || vetDate?.trim() || vetSpecialty?.trim() || education?.trim());
 
   // -----------------------------
   // Fetch vets
@@ -195,11 +202,13 @@ export default function Home() {
   const filteredVets = useMemo(() => {
     const areaQ = vetArea.trim();
     const specQ = vetSpecialty.trim();
+    const eduQ = education.trim();
     const dateISO = normalizeGreekDateToISO(vetDate);
 
     return vets.filter((v) => {
       if (areaQ && String(v.area || "").toLowerCase() !== areaQ.toLowerCase()) return false;
       if (specQ && String(v.specialty || "").toLowerCase() !== specQ.toLowerCase()) return false;
+      if (eduQ && String(v.studies || "").toLowerCase() !== eduQ.toLowerCase()) return false;
 
       // ✅ Αν έχει ημερομηνία: κράτα μόνο vets που έχουν appointment εκείνη τη μέρα
       if (dateISO) {
@@ -214,7 +223,7 @@ export default function Home() {
 
       return true;
     });
-  }, [vets, vetArea, vetSpecialty, vetDate, apptsByVetId]);
+  }, [vets, vetArea, vetSpecialty, vetDate, education, apptsByVetId]);
 
   // =============================
   // ✅ VETS CAROUSEL
@@ -256,6 +265,7 @@ export default function Home() {
     const params = new URLSearchParams();
     if (vetArea) params.set("area", vetArea);
     if (vetSpecialty) params.set("specialty", vetSpecialty);
+    if (education) params.set("education", education);    
 
     const dateISO = normalizeGreekDateToISO(vetDate);
     if (dateISO) params.set("date", dateISO);
@@ -266,6 +276,7 @@ export default function Home() {
   function clearVetFilters() {
     setVetArea("");
     setVetSpecialty("");
+    setEducation("");
     setVetDate("");
     setVetDateObj(null);
     setDidSearch(false);
@@ -623,6 +634,35 @@ export default function Home() {
                 </Select>
               </FormControl>
 
+              <FormControl
+                size="small"
+                hiddenLabel
+                sx={{
+                  minWidth: 170,
+                  bgcolor: "white",
+                  borderRadius: 999,
+                  "& .MuiOutlinedInput-root": { borderRadius: 999 },
+                }}
+              >
+                <Select
+                  value={education}
+                  displayEmpty
+                  onChange={(e) => setEducation(e.target.value)}
+                  renderValue={(selected) => (
+                    <span style={{ color: selected ? "#1c2b39" : "#6b7a90" }}>
+                      {selected || "Σπουδές"}
+                    </span>
+                  )}
+                >
+                  <MenuItem value="">Σπουδές</MenuItem>
+                  {EDUCATION_LEVELS.map((s) => (
+                    <MenuItem key={s} value={s}>
+                      {s}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
               <Button
                 variant="contained"
                 startIcon={<SearchIcon />}
@@ -789,7 +829,7 @@ export default function Home() {
                             {v.name}
                           </Typography>
                           <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.2 }}>
-                            {v.specialty} · {v.clinic}
+                            {v.specialty}
                           </Typography>
                         </Box>
 

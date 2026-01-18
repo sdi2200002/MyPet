@@ -72,7 +72,7 @@ export default function AppointmentDetails() {
   const { user } = useAuth();
 
   const isVet = String(user?.role || "").toLowerCase() === "vet";
-  const isOwner = !isVet; // αν έχεις και άλλα roles, άλλαξέ το σε explicit owner check
+  const isOwner = !isVet;
 
   const { appId } = useParams();
   const [sp] = useSearchParams();
@@ -81,11 +81,11 @@ export default function AppointmentDetails() {
   const [appt, setAppt] = useState(null);
   const [vet, setVet] = useState(null);
   const [pet, setPet] = useState(null);
+  const [ownerUser, setOwnerUser] = useState(null); // ✅ owner info (για vet view)
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // reviews (μόνο για owner)
   const [hasReview, setHasReview] = useState(false);
   const [checkingReview, setCheckingReview] = useState(true);
 
@@ -100,38 +100,41 @@ export default function AppointmentDetails() {
 
       if (!apptId) throw new Error("missing id");
 
-      // 1) appointment
       const a = await fetchJSON(`/api/appointments/${encodeURIComponent(apptId)}`);
 
-      // 2) security
       if (!user?.id) throw new Error("forbidden");
 
       if (isOwner) {
-        if (a?.ownerId == null || String(a.ownerId) !== String(user.id)) {
-          throw new Error("forbidden");
-        }
+        if (a?.ownerId == null || String(a.ownerId) !== String(user.id)) throw new Error("forbidden");
       }
 
       if (isVet) {
         const vetKey = String(user?.vetProfileId ?? user.id);
-        if (a?.vetId == null || String(a.vetId) !== vetKey) {
-          throw new Error("forbidden");
-        }
+        if (a?.vetId == null || String(a.vetId) !== vetKey) throw new Error("forbidden");
       }
 
-      // 3) vet profile (από /api/vets/:id)
       let v = null;
       if (a?.vetId != null) {
         v = await fetchJSON(`/api/vets/${encodeURIComponent(String(a.vetId))}`).catch(() => null);
       }
 
-      // 4) pet
       let p = null;
       if (a?.petId != null) {
         p = await fetchJSON(`/api/pets/${encodeURIComponent(String(a.petId))}`).catch(() => null);
       }
 
-      // 5) review existence (μόνο owner)
+      // ✅ owner info για vet
+      let o = null;
+      if (isVet && a?.ownerId != null) {
+        o = await fetchJSON(`/api/users/${encodeURIComponent(String(a.ownerId))}`).catch(() => null);
+        if (!o) {
+          const arr = await fetchJSON(`/api/users?id=${encodeURIComponent(String(a.ownerId))}`).catch(
+            () => []
+          );
+          o = Array.isArray(arr) ? arr[0] : null;
+        }
+      }
+
       let exists = false;
       if (isOwner) {
         try {
@@ -147,6 +150,7 @@ export default function AppointmentDetails() {
       setAppt(a || null);
       setVet(v || null);
       setPet(p || null);
+      setOwnerUser(o || null);
       setHasReview(exists);
       setCheckingReview(false);
       setLoading(false);
@@ -163,6 +167,7 @@ export default function AppointmentDetails() {
       setAppt(null);
       setVet(null);
       setPet(null);
+      setOwnerUser(null);
       setHasReview(false);
       setCheckingReview(false);
       setLoading(false);
@@ -175,7 +180,6 @@ export default function AppointmentDetails() {
 
   const status = useMemo(() => computeStatus(appt), [appt]);
 
-  // ✅ review button: μόνο owner, completed, και δεν έχει review
   const canReview = useMemo(() => {
     if (!isOwner) return false;
     if (status !== "Ολοκληρωμένο") return false;
@@ -221,10 +225,27 @@ export default function AppointmentDetails() {
 
   const microchip = pet?.microchip || appt?.petMicrochip || "—";
   const petPhoto =
-    pet?.photo || appt?.petPhoto || appt?.photoDataUrl || appt?.petImage || appt?.petPhotoUrl || appt?.petPhotoUrl || "";
+    pet?.photo ||
+    appt?.petPhoto ||
+    appt?.photoDataUrl ||
+    appt?.petImage ||
+    appt?.petPhotoUrl ||
+    appt?.petPhotoUrl ||
+    "";
+
   const vetPhoto = vet?.photo || vet?.image || vet?.photoUrl || "";
   const rating = vet?.rating ?? appt?.rating ?? 4.8;
   const reviewsCount = vet?.reviewsCount ?? appt?.reviewsCount ?? 120;
+
+  // ✅ owner info (για vet view κάτω από το divider με labels)
+  const ownerName =
+    ownerUser?.name ||
+    `${ownerUser?.firstName || ""} ${ownerUser?.lastName || ""}`.trim() ||
+    appt?.ownerName ||
+    appt?.ownerFullName ||
+    "—";
+  const ownerEmail = ownerUser?.email || appt?.ownerEmail || "—";
+  const ownerPhone = ownerUser?.phone || appt?.ownerPhone || "—";
 
   function PageShell({ children }) {
     const SIDEBAR_W = isVet ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
@@ -313,6 +334,7 @@ export default function AppointmentDetails() {
                 }}
               >
                 <Stack direction={{ xs: "column", md: "row" }} spacing={2.2} alignItems="stretch">
+                  {/* LEFT: Vet card (όπως πριν) */}
                   <Box sx={{ flex: 1, minWidth: 280 }}>
                     <Stack direction="row" spacing={2} alignItems="center">
                       <Box
@@ -341,7 +363,7 @@ export default function AppointmentDetails() {
                         </Typography>
 
                         <Typography sx={{ color: MUTED, fontWeight: 800, mt: 0.3 }}>
-                          {vet?.clinic || vet?.clinicName || appt?.clinicName || appt?.clinicType || "Κλινική μικρών ζώων"}
+                          {vet?.specialty || appt?.specialty || "Γενικός"}
                         </Typography>
 
                         <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.8 }}>
@@ -354,10 +376,26 @@ export default function AppointmentDetails() {
 
                     <Divider sx={{ my: 2 }} />
                     <LabelValue label="Ιατρείο:" value={vet?.address || appt?.clinicAddress} />
+
+                    {/* ✅ ΝΕΟ: όταν είναι κτηνίατρος, δείξε ιδιοκτήτη ΚΑΤΩ απ' το divider με labels */}
+                    {isVet && (
+                      <>
+                        <Divider sx={{ my: 2 }} />
+
+                        <Typography sx={{ fontWeight: 900, color: "#111", mb: 1 }}>
+                          Στοιχεία Ιδιοκτήτη
+                        </Typography>
+
+                        <LabelValue label="Όνομα:" value={ownerName} />
+                        <LabelValue label="Email:" value={ownerEmail} />
+                        <LabelValue label="Τηλέφωνο:" value={ownerPhone} />
+                      </>
+                    )}
                   </Box>
 
                   <Divider orientation="vertical" flexItem sx={{ display: { xs: "none", md: "block" }, mx: 0.5 }} />
 
+                  {/* RIGHT: Pet + appointment */}
                   <Box sx={{ flex: 1, minWidth: 280 }}>
                     <Stack direction="row" spacing={2} alignItems="center">
                       <Box

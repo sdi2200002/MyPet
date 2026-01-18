@@ -80,9 +80,6 @@ function Panel({ children }) {
 function normalizePhone(raw) {
   return (raw || "").replace(/[^\d+]/g, "").trim();
 }
-function normalizeAfm(raw) {
-  return (raw || "").replace(/[^\d]/g, "").trim();
-}
 function isValidEmail(email) {
   if (!email) return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim());
@@ -202,7 +199,6 @@ export default function FosterWizard({ role = "vet" }) {
     // foster person
     fosterFirstName: "",
     fosterLastName: "",
-    fosterAfm: "",
     fosterPhone: "",
     fosterEmail: "",
 
@@ -324,10 +320,6 @@ export default function FosterWizard({ role = "vet" }) {
     if (!form.fosterFirstName.trim()) e.fosterFirstName = "Υποχρεωτικό πεδίο.";
     if (!form.fosterLastName.trim()) e.fosterLastName = "Υποχρεωτικό πεδίο.";
 
-    const afm = normalizeAfm(form.fosterAfm);
-    if (!afm) e.fosterAfm = "Υποχρεωτικό πεδίο.";
-    else if (afm.length !== 9) e.fosterAfm = "Το ΑΦΜ πρέπει να έχει 9 ψηφία.";
-
     const phone = normalizePhone(form.fosterPhone);
     if (!phone) e.fosterPhone = "Υποχρεωτικό πεδίο.";
     else if (phone.length < 10) e.fosterPhone = "Βάλε έγκυρο τηλέφωνο.";
@@ -345,7 +337,6 @@ export default function FosterWizard({ role = "vet" }) {
     form.petId,
     form.fosterFirstName,
     form.fosterLastName,
-    form.fosterAfm,
     form.fosterPhone,
     form.fosterEmail,
     form.hasOtherPet,
@@ -357,7 +348,6 @@ export default function FosterWizard({ role = "vet" }) {
   const isStep1Valid =
     !errors.fosterFirstName &&
     !errors.fosterLastName &&
-    !errors.fosterAfm &&
     !errors.fosterPhone &&
     !errors.fosterEmail;
   const isStep2Valid = !errors.hasOtherPet && !errors.experience && !errors.availability;
@@ -368,7 +358,7 @@ export default function FosterWizard({ role = "vet" }) {
       if (!isStep0Valid) return;
     }
     if (activeStep === 1) {
-      ["fosterFirstName", "fosterLastName", "fosterAfm", "fosterPhone", "fosterEmail"].forEach(touch);
+      ["fosterFirstName", "fosterLastName", "fosterPhone", "fosterEmail"].forEach(touch);
       if (!isStep1Valid) return;
     }
     if (activeStep === 2) {
@@ -396,7 +386,6 @@ export default function FosterWizard({ role = "vet" }) {
 
       fosterFirstName: form.fosterFirstName.trim(),
       fosterLastName: form.fosterLastName.trim(),
-      fosterAfm: normalizeAfm(form.fosterAfm),
       fosterPhone: normalizePhone(form.fosterPhone),
       fosterEmail: form.fosterEmail.trim(),
 
@@ -411,7 +400,7 @@ export default function FosterWizard({ role = "vet" }) {
   }
 
   async function saveDraft() {
-    ["petId", "fosterFirstName", "fosterLastName", "fosterAfm", "fosterPhone", "fosterEmail", "hasOtherPet", "experience", "availability"].forEach(
+    ["petId", "fosterFirstName", "fosterLastName", "fosterPhone", "fosterEmail", "hasOtherPet", "experience", "availability"].forEach(
       touch
     );
     if (!isStep0Valid || !isStep1Valid || !isStep2Valid) return;
@@ -445,7 +434,7 @@ export default function FosterWizard({ role = "vet" }) {
   }
 
   async function submitFinal() {
-    ["petId", "fosterFirstName", "fosterLastName", "fosterAfm", "fosterPhone", "fosterEmail", "hasOtherPet", "experience", "availability"].forEach(
+    ["petId", "fosterFirstName", "fosterLastName", "fosterPhone", "fosterEmail", "hasOtherPet", "experience", "availability"].forEach(
       touch
     );
     if (!isStep0Valid || !isStep1Valid || !isStep2Valid) return;
@@ -611,18 +600,6 @@ export default function FosterWizard({ role = "vet" }) {
                   sx={fieldSx}
                   error={!!errors.fosterLastName && !!touched.fosterLastName}
                   helperText={touched.fosterLastName ? errors.fosterLastName || " " : " "}
-                />
-
-                <TextField
-                  label="ΑΦΜ *"
-                  value={form.fosterAfm}
-                  onChange={handleChange("fosterAfm")}
-                  onBlur={() => touch("fosterAfm")}
-                  fullWidth
-                  sx={fieldSx}
-                  inputProps={{ inputMode: "numeric" }}
-                  error={!!errors.fosterAfm && !!touched.fosterAfm}
-                  helperText={touched.fosterAfm ? errors.fosterAfm || " " : " "}
                 />
 
                 <TextField
@@ -829,11 +806,6 @@ export default function FosterWizard({ role = "vet" }) {
                 <Box>
                   <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Επώνυμο</Typography>
                   <TextField value={form.fosterLastName || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
-                </Box>
-
-                <Box>
-                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>ΑΦΜ</Typography>
-                  <TextField value={normalizeAfm(form.fosterAfm) || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
                 </Box>
 
                 <Box>

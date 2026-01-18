@@ -32,18 +32,25 @@ function fileToDataUrl(file) {
   });
 }
 
-// ✅ επιτρέπει ελληνικά (με τόνους), αριθμούς (για διεύθυνση), κενό, παύλα, τελεία, κόμμα, /, ’, '
-const GREEK_TEXT_ALLOWED = /^[\u0370-\u03FF\u1F00-\u1FFF0-9\s\-.,/’']+$/;
-
-function hasLatinChars(s) {
-  return /[A-Za-z]/.test(s || "");
+// ✅ Strong password: 8+ chars, 1 lowercase, 1 uppercase, 1 number, 1 symbol
+function isStrongPassword(pw) {
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(pw || "");
 }
 
-function isGreekText(s) {
+// ✅ επιτρέπει ελληνικά + αγγλικά (με τόνους για ελληνικά), αριθμούς (για διεύθυνση), κενό, παύλα, τελεία, κόμμα, /, ’, '
+const NAME_ALLOWED = /^[A-Za-z\u0370-\u03FF\u1F00-\u1FFF\s\-’']+$/;
+const ADDRESS_ALLOWED = /^[A-Za-z\u0370-\u03FF\u1F00-\u1FFF0-9\s\-.,/’']+$/;
+
+function isNameText(s) {
   const v = (s || "").trim();
   if (!v) return false;
-  if (hasLatinChars(v)) return false;
-  return GREEK_TEXT_ALLOWED.test(v);
+  return NAME_ALLOWED.test(v);
+}
+
+function isAddressText(s) {
+  const v = (s || "").trim();
+  if (!v) return false;
+  return ADDRESS_ALLOWED.test(v);
 }
 
 export default function RegisterVet() {
@@ -82,56 +89,53 @@ export default function RegisterVet() {
     "Άλλο",
   ];
 
-  const EXPERIENCE_OPTIONS = [
-    "0-1 χρόνια",
-    "2-4 χρόνια",
-    "5-7 χρόνια",
-    "8-10 χρόνια",
-    "10+ χρόνια",
-  ];
+  const EXPERIENCE_OPTIONS = ["0-1 χρόνια", "2-4 χρόνια", "5-7 χρόνια", "8-10 χρόνια", "10+ χρόνια"];
 
-  const SEX_OPTIONS = ["Γυναίκα", "Άνδρας", "Άλλο"];
+  const SEX_OPTIONS = ["Άνδρας", "Γυναίκα", "Άλλο"];
 
   const [touched, setTouched] = useState({});
   const touch = (k) => setTouched((p) => ({ ...p, [k]: true }));
   const [submitting, setSubmitting] = useState(false);
 
-  const setField = (k) => (e) =>
-    setForm((p) => ({ ...p, [k]: e.target.value }));
+  const setField = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
-  // ✅ κόβει λατινικά άμεσα (για όνομα/επώνυμο/διεύθυνση)
-  const setNoLatinField = (k) => (e) => {
+  // ✅ name fields: επιτρέπουν GR+EN, κόβουν οτιδήποτε άλλο
+  const setNameField = (k) => (e) => {
     const v = e.target.value;
-    const cleaned = v.replace(/[A-Za-z]/g, "");
+    const cleaned = v.replace(/[^A-Za-z\u0370-\u03FF\u1F00-\u1FFF\s\-’']/g, "");
+    setForm((p) => ({ ...p, [k]: cleaned }));
+  };
+
+  // ✅ address: επιτρέπει GR+EN + digits + punctuation
+  const setAddressField = (k) => (e) => {
+    const v = e.target.value;
+    const cleaned = v.replace(/[^A-Za-z\u0370-\u03FF\u1F00-\u1FFF0-9\s\-.,/’']/g, "");
     setForm((p) => ({ ...p, [k]: cleaned }));
   };
 
   // ✅ digits only (τηλέφωνο/αφμ)
-  const setDigitsField = (k) => (e) => {
-    setForm((p) => ({ ...p, [k]: onlyDigits(e.target.value) }));
-  };
+  const setDigitsField = (k) => (e) => setForm((p) => ({ ...p, [k]: onlyDigits(e.target.value) }));
 
   const errors = useMemo(() => {
     const e = {};
 
     if (!form.firstName.trim()) e.firstName = "Υποχρεωτικό.";
-    else if (!isGreekText(form.firstName))
-      e.firstName = "Μόνο ελληνικοί χαρακτήρες.";
+    else if (!isNameText(form.firstName)) e.firstName = "Μόνο ελληνικοί/αγγλικοί χαρακτήρες.";
 
     if (!form.lastName.trim()) e.lastName = "Υποχρεωτικό.";
-    else if (!isGreekText(form.lastName))
-      e.lastName = "Μόνο ελληνικοί χαρακτήρες.";
+    else if (!isNameText(form.lastName)) e.lastName = "Μόνο ελληνικοί/αγγλικοί χαρακτήρες.";
 
     if (!form.email.trim()) e.email = "Υποχρεωτικό.";
     else if (!isValidEmail(form.email)) e.email = "Μη έγκυρο email.";
 
     if (!form.password) e.password = "Υποχρεωτικό.";
-    else if (form.password.length < 4)
-      e.password = "Τουλάχιστον 4 χαρακτήρες.";
+    else if (!isStrongPassword(form.password)) {
+      e.password = "Τουλάχιστον 8 χαρακτήρες, 1 πεζό, 1 κεφαλαίο, 1 αριθμό και 1 σύμβολο.";
+    }
 
     if (!form.address.trim()) e.address = "Υποχρεωτικό.";
-    else if (!isGreekText(form.address))
-      e.address = "Δεν επιτρέπονται λατινικοί χαρακτήρες.";
+    else if (!isAddressText(form.address))
+      e.address = "Επιτρέπονται ελληνικά/αγγλικά, αριθμοί και βασικά σύμβολα (.,-/).";
 
     const phone = onlyDigits(form.phone);
     if (!phone) e.phone = "Υποχρεωτικό.";
@@ -146,7 +150,6 @@ export default function RegisterVet() {
     if (!form.experience.trim()) e.experience = "Υποχρεωτικό.";
     if (!form.sex.trim()) e.sex = "Υποχρεωτικό.";
 
-    // ❌ φωτογραφία ΔΕΝ είναι υποχρεωτική
     return e;
   }, [form]);
 
@@ -171,7 +174,7 @@ export default function RegisterVet() {
       setSubmitting(true);
 
       // 1️⃣ check duplicate email στους users
-      const checkRes = await fetch(`${API_BASE}/users?email=${email}`);
+      const checkRes = await fetch(`${API_BASE}/users?email=${encodeURIComponent(email)}`);
       const existing = await checkRes.json();
 
       if (Array.isArray(existing) && existing.length > 0) {
@@ -275,7 +278,7 @@ export default function RegisterVet() {
                   required
                   label="Όνομα"
                   value={form.firstName}
-                  onChange={setNoLatinField("firstName")}
+                  onChange={setNameField("firstName")}
                   onBlur={() => touch("firstName")}
                   error={!!errors.firstName && !!touched.firstName}
                   helperText={touched.firstName ? errors.firstName || " " : " "}
@@ -286,7 +289,7 @@ export default function RegisterVet() {
                   required
                   label="Επώνυμο"
                   value={form.lastName}
-                  onChange={setNoLatinField("lastName")}
+                  onChange={setNameField("lastName")}
                   onBlur={() => touch("lastName")}
                   error={!!errors.lastName && !!touched.lastName}
                   helperText={touched.lastName ? errors.lastName || " " : " "}
@@ -320,7 +323,7 @@ export default function RegisterVet() {
                   required
                   label="Διεύθυνση Ιατρείου"
                   value={form.address}
-                  onChange={setNoLatinField("address")}
+                  onChange={setAddressField("address")}
                   onBlur={() => touch("address")}
                   error={!!errors.address && !!touched.address}
                   helperText={touched.address ? errors.address || " " : " "}
@@ -423,7 +426,7 @@ export default function RegisterVet() {
                   ))}
                 </TextField>
 
-                {/* Photo uploader (προαιρετικό - χωρίς αστεράκι) */}
+                {/* Photo uploader (προαιρετικό) */}
                 <Box sx={{ gridColumn: { xs: "1 / -1", md: "1 / 2" } }}>
                   <Typography sx={{ fontWeight: 900, color: "#0d2c54", mb: 0.8 }}>
                     Φωτογραφία

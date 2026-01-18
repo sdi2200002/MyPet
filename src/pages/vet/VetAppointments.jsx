@@ -1,3 +1,4 @@
+// src/pages/vet/VetAppointments.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
@@ -173,6 +174,29 @@ function makeNotif({ userId, type, title, message, meta, refType, refId }) {
   };
 }
 
+/* ---------------- owner helpers (resolve name from ownerId) ---------------- */
+async function fetchOwnerNameById(ownerId) {
+  if (!ownerId) return "—";
+  try {
+    // json-server: /users/:id
+    const u = await fetchJSON(`/api/users/${encodeURIComponent(String(ownerId))}`);
+    const full =
+      (u?.name && String(u.name).trim()) || `${u?.firstName || ""} ${u?.lastName || ""}`.trim();
+    return full || "—";
+  } catch (e) {
+    // fallback: /users?id=...
+    try {
+      const arr = await fetchJSON(`/api/users?id=${encodeURIComponent(String(ownerId))}`);
+      const u = Array.isArray(arr) ? arr[0] : null;
+      const full =
+        (u?.name && String(u.name).trim()) || `${u?.firstName || ""} ${u?.lastName || ""}`.trim();
+      return full || "—";
+    } catch {
+      return "—";
+    }
+  }
+}
+
 /* ---------------- Page ---------------- */
 export default function VetAppointments() {
   const { pathname } = useLocation();
@@ -222,6 +246,9 @@ export default function VetAppointments() {
   const scrollRef = useRef(null);
   const nowRowRef = useRef(null);
 
+  // ✅ owner name cache
+  const [ownerNameById, setOwnerNameById] = useState(() => new Map());
+
   // load confirmed for week range
   useEffect(() => {
     let alive = true;
@@ -241,7 +268,9 @@ export default function VetAppointments() {
       const endISO = addDays(weekStart, 7);
 
       const data = await fetchJSON(
-        `/api/appointments?vetId=${encodeURIComponent(vetKey)}&status=${encodeURIComponent("Επιβεβαιωμένο")}`
+        `/api/appointments?vetId=${encodeURIComponent(vetKey)}&status=${encodeURIComponent(
+          "Επιβεβαιωμένο"
+        )}`
       );
       const arr = Array.isArray(data) ? data : [];
 
@@ -267,6 +296,35 @@ export default function VetAppointments() {
       alive = false;
     };
   }, [vetKey, weekStart]);
+
+  // ✅ resolve owner names for the loaded appointments
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      if (!appts?.length) return;
+
+      const missing = Array.from(
+        new Set(appts.map((a) => String(a?.ownerId || "")).filter(Boolean))
+      ).filter((id) => !ownerNameById.has(id));
+
+      if (!missing.length) return;
+
+      const pairs = await Promise.all(missing.map(async (id) => [id, await fetchOwnerNameById(id)]));
+
+      if (!alive) return;
+      setOwnerNameById((prev) => {
+        const next = new Map(prev);
+        for (const [id, name] of pairs) next.set(id, name);
+        return next;
+      });
+    })();
+
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appts]);
 
   // index by exact day+time
   const apptByKey = useMemo(() => {
@@ -304,12 +362,10 @@ export default function VetAppointments() {
     if (!scrollRef.current) return;
 
     if (!inThisWeek) {
-      // αν δεν είναι η τρέχουσα εβδομάδα, πήγαινε στην αρχή
       scrollRef.current.scrollTop = 0;
       return;
     }
 
-    // αν υπάρχει ref στη γραμμή "τώρα", κάνε scroll εκεί
     if (nowRowRef.current?.scrollIntoView) {
       nowRowRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
     }
@@ -321,19 +377,6 @@ export default function VetAppointments() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-  };
-
-  const openCancel = () => {
-    if (!selected?.id) return;
-    if (busyId) return;
-    setRejectReason("");
-    setRejectOpen(true);
-  };
-
-  const closeRejectDialog = () => {
-    if (rejectSaving) return;
-    setRejectOpen(false);
-    setRejectReason("");
   };
 
   const confirmCancel = async () => {
@@ -385,7 +428,8 @@ export default function VetAppointments() {
 
       setAppts((prev) => prev.filter((x) => String(x.id) !== String(selected.id)));
       setSelected(null);
-      closeRejectDialog();
+      setRejectOpen(false);
+      setRejectReason("");
     } catch (e) {
       console.error(e);
       alert("Αποτυχία ακύρωσης. Δοκίμασε ξανά.");
@@ -398,14 +442,21 @@ export default function VetAppointments() {
   const selectedDetails = useMemo(() => {
     if (!selected) return null;
     const whenISO = selected.when;
+
+    const ownerId = selected?.ownerId ? String(selected.ownerId) : "";
+    const ownerResolved =
+      (selected?.ownerName || selected?.ownerFullName || "").trim() ||
+      (ownerId ? ownerNameById.get(ownerId) : "") ||
+      "—";
+
     return {
       petName: selected?.petName || "—",
       service: selected?.service || "—",
-      ownerName: selected?.ownerName || selected?.ownerFullName || "—",
+      ownerName: ownerResolved,
       date: whenISO ? fmtDate(whenISO) : "—",
       time: whenISO ? fmtTime(whenISO) : "—",
     };
-  }, [selected]);
+  }, [selected, ownerNameById]);
 
   const selectedKey = useMemo(() => {
     if (!selected?.when) return "";
@@ -485,7 +536,7 @@ export default function VetAppointments() {
 
           <Divider sx={{ mb: 2 }} />
 
-          {/* ✅ Calendar (ένα scroll container + sticky header = ΔΕΝ χαλάει στοίχιση με scrollbar) */}
+          {/* ✅ Calendar */}
           <Paper
             elevation={0}
             sx={{
@@ -501,7 +552,7 @@ export default function VetAppointments() {
               sx={{
                 maxHeight: 380,
                 overflowY: "auto",
-                scrollbarGutter: "stable", // ✅ κρατάει χώρο για scrollbar ώστε να μην αλλάζει το layout
+                scrollbarGutter: "stable",
                 bgcolor: "#fff",
               }}
             >
@@ -520,6 +571,7 @@ export default function VetAppointments() {
                 <Box sx={{ p: 1.2, bgcolor: "#fff" }} />
                 {days.map((d) => {
                   const todayCol = sameYMD(d, today);
+                  const parts = fmtDayLabel(d).split(" ");
                   return (
                     <Box
                       key={d.toISOString()}
@@ -534,11 +586,9 @@ export default function VetAppointments() {
                         boxShadow: todayCol ? `inset 0 -3px 0 rgba(11,61,145,0.35)` : "none",
                       }}
                     >
+                      <Typography sx={{ fontWeight: 900, lineHeight: 1.1 }}>{parts[0]}</Typography>
                       <Typography sx={{ fontWeight: 900, lineHeight: 1.1 }}>
-                        {fmtDayLabel(d).split(" ")[0]}
-                      </Typography>
-                      <Typography sx={{ fontWeight: 900, lineHeight: 1.1 }}>
-                        {fmtDayLabel(d).split(" ").slice(1).join(" ")}
+                        {parts.slice(1).join(" ")}
                       </Typography>
                     </Box>
                   );
@@ -557,13 +607,12 @@ export default function VetAppointments() {
               ) : (
                 <Box sx={{ display: "grid", gridTemplateColumns: "90px repeat(7, 1fr)" }}>
                   {slots.map((slot) => {
-                    // ✅ μία “γραμμή” θεωρείται nowRow αν είναι η τρέχουσα 30λεπτη ζώνη (σήμερα)
                     const isNowRow = days.some((d) => isNowSlot(d, slot));
                     return (
                       <Box key={`${slot.h}:${slot.m}`} sx={{ display: "contents" }}>
                         {/* time label */}
                         <Box
-                          ref={isNowRow ? nowRowRef : null} // ✅ εδώ θα κάνουμε scroll
+                          ref={isNowRow ? nowRowRef : null}
                           sx={{
                             p: 1,
                             borderRight: "2px solid #c7d4e8",
@@ -573,13 +622,7 @@ export default function VetAppointments() {
                             placeItems: "center",
                           }}
                         >
-                          <Typography
-                            sx={{
-                              fontWeight: 900,
-                              color: "#111",
-                              fontSize: 12,
-                            }}
-                          >
+                          <Typography sx={{ fontWeight: 900, color: "#111", fontSize: 12 }}>
                             {slot.label}
                           </Typography>
                         </Box>
@@ -591,8 +634,6 @@ export default function VetAppointments() {
 
                           const todayCell = sameYMD(dayDate, today);
                           const nowCell = isNowSlot(dayDate, slot);
-
-                          // ✅ ίδιο “μπλε” highlight: (σήμερα + τρέχουσα ώρα)
                           const cellBg = todayCell ? "rgba(11,61,145,0.04)" : "#fff";
 
                           return (
@@ -614,25 +655,18 @@ export default function VetAppointments() {
                                 sx={{
                                   height: 28,
                                   borderRadius: 1.2,
-
-                                  // appointment vs empty
                                   bgcolor: appt ? "#f6c7a8" : "#d6e7ff",
-
-                                  // ✅ τρέχουσα ώρα -> μπλε border (όχι πράσινο)
                                   border: nowCell
                                     ? `2px solid ${PRIMARY}`
                                     : appt
                                     ? `2px solid ${PRIMARY}`
                                     : "2px solid transparent",
-
                                   display: "grid",
                                   placeItems: "center",
                                   fontWeight: 900,
                                   color: "#111",
                                   opacity: appt ? 1 : 0.95,
                                   boxShadow: appt ? "0 2px 6px rgba(0,0,0,0.12)" : "none",
-
-                                  // selected outline
                                   outline: isSelected ? "3px solid rgba(11,61,145,0.25)" : "none",
                                 }}
                               >
@@ -684,11 +718,11 @@ export default function VetAppointments() {
                 justifyContent="space-between"
               >
                 <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 14 }}>
+                  <Typography sx={{ color: MUTED, fontWeight: 800, fontSize: 14 }}>
                     Όνομα Κατοικίδιου: {selectedDetails.petName} &nbsp;&nbsp;&nbsp; Υπηρεσία:{" "}
                     {selectedDetails.service}
                   </Typography>
-                  <Typography sx={{ color: "#111", fontWeight: 800, fontSize: 14, mt: 0.6 }}>
+                  <Typography sx={{ color: MUTED, fontWeight: 800, fontSize: 14, mt: 0.6 }}>
                     Ημερομηνία: {selectedDetails.date} {selectedDetails.time} &nbsp;&nbsp;&nbsp;
                     Ιδιοκτήτης: {selectedDetails.ownerName}
                   </Typography>

@@ -308,7 +308,7 @@ export default function VetProfile() {
                             {vet?.name || "—"}
                           </Typography>
                           <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }} noWrap>
-                            {vet?.clinic || "—"}
+                            {vet?.specialty || "—"}
                           </Typography>
 
                           <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>

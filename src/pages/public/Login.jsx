@@ -9,7 +9,12 @@ import {
   Stack,
   TextField,
   Typography,
+  IconButton,
+  InputAdornment,
 } from "@mui/material";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import PublicNavbar from "../../components/PublicNavbar";
 import Footer from "../../components/Footer";
@@ -42,16 +47,17 @@ export default function Login() {
   const [password, setPassword] = useState("1234");
   const [remember, setRemember] = useState(false);
 
+  const [showPassword, setShowPassword] = useState(false); // ✅ ματάκι
+
   const [touched, setTouched] = useState({});
   const touch = (k) => setTouched((p) => ({ ...p, [k]: true }));
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ✅ query params: from + role (προαιρετικό)
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const fromRaw = params.get("from"); // π.χ. "/owner/vets/3/new?date=...&time=..."
-  const roleWanted = (params.get("role") || "").toLowerCase(); // "owner" | "vet" | ""
+  const fromRaw = params.get("from");
+  const roleWanted = (params.get("role") || "").toLowerCase();
 
   const errors = useMemo(() => {
     const e = {};
@@ -72,7 +78,6 @@ export default function Login() {
     try {
       setLoading(true);
 
-      // ✅ json-server auth (demo): επιστρέφει array
       const query =
         `/api/users?email=${encodeURIComponent(email.trim())}` +
         `&password=${encodeURIComponent(password)}`;
@@ -86,7 +91,6 @@ export default function Login() {
         return;
       }
 
-      // ✅ αν το login άνοιξε για συγκεκριμένο role, μην αφήσεις λάθος ρόλο να μπει
       const loggedRole = (user?.role || "").toString().toLowerCase();
       if (roleWanted && loggedRole !== roleWanted) {
         setError(
@@ -98,15 +102,9 @@ export default function Login() {
         return;
       }
 
-      // ✅ session info (με numeric id)
       saveSession({ userId: user.id, role: user.role, email: user.email }, remember);
-
-      // ✅ AuthContext: σώσε ΟΛΟ τον user (με id)
       login(user);
 
-      // ✅ redirect priority:
-      // 1) from (αν υπάρχει)
-      // 2) fallback ανά ρόλο
       if (fromRaw) {
         navigate(fromRaw, { replace: true });
         return;
@@ -164,13 +162,27 @@ export default function Login() {
 
                 <TextField
                   label="Κωδικός Πρόσβασης"
-                  type="password"
+                  type={showPassword ? "text" : "password"} // ✅ toggle
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onBlur={() => touch("password")}
                   error={!!errors.password && !!touched.password}
                   helperText={touched.password ? errors.password || " " : " "}
                   sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: 2 } }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowPassword((p) => !p)}
+                          edge="end"
+                          size="small"
+                          aria-label={showPassword ? "Απόκρυψη κωδικού" : "Εμφάνιση κωδικού"}
+                        >
+                          {showPassword ? <VisibilityOffOutlinedIcon /> : <VisibilityOutlinedIcon />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
 
                 {error && (

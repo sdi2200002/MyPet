@@ -347,7 +347,7 @@ export default function VetReviews({ role = "owner" }) {
             <Box>
               <Typography sx={{ fontWeight: 900, color: "#111" }}>{vet.name}</Typography>
               <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
-                {vet.clinic || vet.clinicName || "—"}
+                {vet.specialty || "—"}
               </Typography>
             </Box>
           </Paper>

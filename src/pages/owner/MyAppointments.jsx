@@ -216,6 +216,39 @@ function AppointmentRow({ item, pet, onView, onCancel }) {
   );
 }
 
+  function OwnerPageShell({ children }) {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
+        <PublicNavbar />
+
+        <Box
+          sx={{
+            flex: 1,
+            display: { xs: "block", lg: "flex" },
+            alignItems: "flex-start",
+          }}
+        >
+          {/* spacer ώστε το content να μην πάει κάτω από το fixed sidebar */}
+          <Box
+            sx={{
+              width: OWNER_SIDEBAR_W,
+              flex: `0 0 ${OWNER_SIDEBAR_W}px`,
+              display: { xs: "none", lg: "block" },
+            }}
+          />
+
+          {/* fixed sidebar κάτω από PublicNavbar */}
+          <OwnerNavbar mode="navbar" />
+
+          {/* main */}
+          <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+        </Box>
+
+        <Footer />
+      </Box>
+    );
+  }
+
 export default function MyAppointments() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -426,38 +459,6 @@ export default function MyAppointments() {
     }
   };
 
-  function OwnerPageShell({ children }) {
-    return (
-      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", bgcolor: "#fff" }}>
-        <PublicNavbar />
-
-        <Box
-          sx={{
-            flex: 1,
-            display: { xs: "block", lg: "flex" },
-            alignItems: "flex-start",
-          }}
-        >
-          {/* spacer ώστε το content να μην πάει κάτω από το fixed sidebar */}
-          <Box
-            sx={{
-              width: OWNER_SIDEBAR_W,
-              flex: `0 0 ${OWNER_SIDEBAR_W}px`,
-              display: { xs: "none", lg: "block" },
-            }}
-          />
-
-          {/* fixed sidebar κάτω από PublicNavbar */}
-          <OwnerNavbar mode="navbar" />
-
-          {/* main */}
-          <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
-        </Box>
-
-        <Footer />
-      </Box>
-    );
-  }
 
 
   return (

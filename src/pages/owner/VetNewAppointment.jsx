@@ -371,7 +371,7 @@ export default function VetNewAppointment() {
               />
               <Box>
                 <Typography sx={{ fontWeight: 900, color: "#111", fontSize: 16 }}>{vet.name}</Typography>
-                <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>{vet.clinic}</Typography>
+                <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>{vet.specialty}</Typography>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.8 }}>
                   <Typography sx={{ fontWeight: 900, fontSize: 12 }}>⭐ {vet.rating}</Typography>
                   <Typography sx={{ color: MUTED, fontWeight: 800, fontSize: 12 }}>({vet.reviewsCount})</Typography>

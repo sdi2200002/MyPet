@@ -271,11 +271,7 @@ export default function AppointmentSuccess() {
                         </Typography>
 
                         <Typography sx={{ color: MUTED, fontWeight: 800, mt: 0.3 }}>
-                          {vet?.clinic ||
-                            vet?.clinicName ||
-                            appt?.clinicName ||
-                            appt?.clinicType ||
-                            "Κλινική μικρών ζώων"}
+                          {vet?.specialty || appt?.vetSpecialty || "Γενικός"}
                         </Typography>
 
                         <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.8 }}>

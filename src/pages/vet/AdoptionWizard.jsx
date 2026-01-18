@@ -81,9 +81,6 @@ function normalizePhone(raw) {
   return (raw || "").replace(/[^\d+]/g, "").trim();
 }
 
-function normalizeAfm(raw) {
-  return (raw || "").replace(/[^\d]/g, "").trim();
-}
 
 function isValidEmail(email) {
   if (!email) return false;
@@ -206,7 +203,6 @@ export default function AdoptionWizard({ role = "vet" }) {
 
     adopterFirstName: "",
     adopterLastName: "",
-    adopterAfm: "",
     adopterPhone: "",
     adopterEmail: "",
 
@@ -335,9 +331,6 @@ export default function AdoptionWizard({ role = "vet" }) {
     if (!form.adopterFirstName.trim()) e.adopterFirstName = "Υποχρεωτικό πεδίο.";
     if (!form.adopterLastName.trim()) e.adopterLastName = "Υποχρεωτικό πεδίο.";
 
-    const afm = normalizeAfm(form.adopterAfm);
-    if (!afm) e.adopterAfm = "Υποχρεωτικό πεδίο.";
-    else if (afm.length !== 9) e.adopterAfm = "Το ΑΦΜ πρέπει να έχει 9 ψηφία.";
 
     const phone = normalizePhone(form.adopterPhone);
     if (!phone) e.adopterPhone = "Υποχρεωτικό πεδίο.";
@@ -355,7 +348,6 @@ export default function AdoptionWizard({ role = "vet" }) {
     form.petId,
     form.adopterFirstName,
     form.adopterLastName,
-    form.adopterAfm,
     form.adopterPhone,
     form.adopterEmail,
     form.hasOtherPet,
@@ -366,7 +358,6 @@ export default function AdoptionWizard({ role = "vet" }) {
   const isStep1Valid =
     !errors.adopterFirstName &&
     !errors.adopterLastName &&
-    !errors.adopterAfm &&
     !errors.adopterPhone &&
     !errors.adopterEmail;
   const isStep2Valid = !errors.hasOtherPet && !errors.experience;
@@ -377,7 +368,7 @@ export default function AdoptionWizard({ role = "vet" }) {
       if (!isStep0Valid) return;
     }
     if (activeStep === 1) {
-      ["adopterFirstName", "adopterLastName", "adopterAfm", "adopterPhone", "adopterEmail"].forEach(touch);
+      ["adopterFirstName", "adopterLastName", "adopterPhone", "adopterEmail"].forEach(touch);
       if (!isStep1Valid) return;
     }
     if (activeStep === 2) {
@@ -405,7 +396,6 @@ export default function AdoptionWizard({ role = "vet" }) {
 
       adopterFirstName: form.adopterFirstName.trim(),
       adopterLastName: form.adopterLastName.trim(),
-      adopterAfm: normalizeAfm(form.adopterAfm),
       adopterPhone: normalizePhone(form.adopterPhone),
       adopterEmail: form.adopterEmail.trim(),
 
@@ -419,7 +409,7 @@ export default function AdoptionWizard({ role = "vet" }) {
   }
 
   async function saveDraft() {
-    ["petId", "adopterFirstName", "adopterLastName", "adopterAfm", "adopterPhone", "adopterEmail", "hasOtherPet", "experience"].forEach(
+    ["petId", "adopterFirstName", "adopterLastName", "adopterPhone", "adopterEmail", "hasOtherPet", "experience"].forEach(
       touch
     );
     if (!isStep0Valid || !isStep1Valid || !isStep2Valid) return;
@@ -453,7 +443,7 @@ export default function AdoptionWizard({ role = "vet" }) {
   }
 
   async function submitFinal() {
-    ["petId", "adopterFirstName", "adopterLastName", "adopterAfm", "adopterPhone", "adopterEmail", "hasOtherPet", "experience"].forEach(
+    ["petId", "adopterFirstName", "adopterLastName", "adopterPhone", "adopterEmail", "hasOtherPet", "experience"].forEach(
       touch
     );
     if (!isStep0Valid || !isStep1Valid || !isStep2Valid) return;
@@ -633,17 +623,6 @@ export default function AdoptionWizard({ role = "vet" }) {
                   helperText={touched.adopterLastName ? errors.adopterLastName || " " : " "}
                 />
 
-                <TextField
-                  label="ΑΦΜ *"
-                  value={form.adopterAfm}
-                  onChange={handleChange("adopterAfm")}
-                  onBlur={() => touch("adopterAfm")}
-                  fullWidth
-                  sx={fieldSx}
-                  inputProps={{ inputMode: "numeric" }}
-                  error={!!errors.adopterAfm && !!touched.adopterAfm}
-                  helperText={touched.adopterAfm ? errors.adopterAfm || " " : " "}
-                />
 
                 <TextField
                   label="Τηλέφωνο *"
@@ -845,11 +824,6 @@ export default function AdoptionWizard({ role = "vet" }) {
                 <Box>
                   <Typography sx={{ fontWeight: 900, mb: 0.7 }}>Επώνυμο</Typography>
                   <TextField value={form.adopterLastName || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
-                </Box>
-
-                <Box>
-                  <Typography sx={{ fontWeight: 900, mb: 0.7 }}>ΑΦΜ</Typography>
-                  <TextField value={normalizeAfm(form.adopterAfm) || "-"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />
                 </Box>
 
                 <Box>

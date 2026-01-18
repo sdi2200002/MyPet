@@ -1,13 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  Box,
-  Button,
-  Container,
-  Paper,
-  Typography,
-  Divider,
-  Rating,
-} from "@mui/material";
+// src/pages/Profile.jsx
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Box, Button, Container, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
 import PublicNavbar from "../../components/PublicNavbar";
@@ -26,690 +19,608 @@ const COLORS = {
   panelBg: "#dbeaff",
   panelBorder: "#8fb4e8",
   muted: "#6b7a90",
+  error: "#d32f2f",
 };
 
-async function fetchJSON(path) {
-  const res = await fetch(path);
-  if (!res.ok) throw new Error(`HTTP ${res.status} on ${path}`);
-  return res.json();
-}
+const fieldSx = {
+  "& .MuiOutlinedInput-root": {
+    bgcolor: "#fff",
+    borderRadius: 2,
+    "& fieldset": { borderColor: "#a7b8cf" },
+    "&:hover fieldset": { borderColor: COLORS.primary },
+    "&.Mui-focused fieldset": { borderColor: COLORS.primary },
+  },
+  "& .MuiInputLabel-root.Mui-focused": { color: COLORS.primary },
+};
 
-function InfoLine({ label, value }) {
-  return (
-    <Box sx={{ display: "flex", gap: 1, mb: 1.1, alignItems: "baseline" }}>
-      <Typography sx={{ fontWeight: 900, color: COLORS.title, minWidth: 132 }}>
-        {label}
-      </Typography>
-      <Typography sx={{ color: "#1c2b39" }}>{value ?? "-"}</Typography>
-    </Box>
-  );
-}
+// πιο “έντονη” εμφάνιση για preview/read-only
+const readOnlyFieldSx = {
+  ...fieldSx,
+  "& .MuiOutlinedInput-root": {
+    ...fieldSx["& .MuiOutlinedInput-root"],
+    bgcolor: "rgba(255,255,255,0.75)",
+    "& fieldset": { borderColor: COLORS.panelBorder },
+    "& input": {
+      fontWeight: 900,
+      color: COLORS.title,
+    },
+  },
+  "& .MuiInputLabel-root": {
+    fontWeight: 800,
+    color: COLORS.title,
+  },
+  "& .MuiFormHelperText-root": { display: "none" },
+};
 
-function formatDate(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return String(iso);
-  return d.toLocaleDateString("el-GR");
-}
+// primary buttons όπως στις άλλες σελίδες
+const primaryBtnSx = {
+  bgcolor: COLORS.primary,
+  fontWeight: 900,
+  borderRadius: 2,
+  px: 2.2,
+  "&:hover": { bgcolor: COLORS.primaryHover },
+};
 
-function ReviewCard({ item }) {
-  const ratingNum = Number(item?.rating ?? 0);
+const outlineBtnSx = {
+  borderRadius: 2,
+  fontWeight: 900,
+  borderColor: COLORS.primary,
+  color: COLORS.primary,
+  "&:hover": { borderColor: COLORS.primaryHover, color: COLORS.primaryHover },
+};
 
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        width: 180,
-        minWidth: 180,
-        height: 140,
-        borderRadius: 2,
-        bgcolor: "#eef2f6",
-        border: "1px solid rgba(13,44,84,0.12)",
-        p: 1.2,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-      }}
-    >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 0.7 }}>
-        <Typography sx={{ fontWeight: 900, fontSize: 12, color: "#1c2b39" }}>
-          {ratingNum.toFixed(1)}
-        </Typography>
-        <Rating value={ratingNum} precision={0.1} size="small" readOnly />
-      </Box>
-
-      <Typography
-        sx={{
-          fontSize: 12,
-          color: "#1c2b39",
-          mt: 1,
-          display: "-webkit-box",
-          WebkitLineClamp: 3,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-        }}
-      >
-        {item?.text || "—"}
-      </Typography>
-
-      <Typography sx={{ fontSize: 11, color: COLORS.muted, mt: 1 }}>
-        {item?.name ? `${item.name}` : "—"}
-        {item?.date ? ` — ${formatDate(item.date)}` : ""}
-      </Typography>
-    </Paper>
-  );
-}
-
-/**
- * ✅ Shared Profile Page
- * role: "owner" | "vet"
- */
-export default function Profile({ role = "owner" }) {
-  const { user, logout } = useAuth();
+export default function Profile() {
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  const sidebarW = role === "vet" ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
+  const role = String(user?.role || "owner").toLowerCase();
+  const isVet = role === "vet";
+  const sidebarW = isVet ? VET_SIDEBAR_W : OWNER_SIDEBAR_W;
 
-  const [dbUser, setDbUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // ✅ reviews state (για vet)
-  const [reviews, setReviews] = useState([]);
-  const [reviewsLoading, setReviewsLoading] = useState(false);
+  // edit mode
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  
+  // photo
+  const [photoFile, setPhotoFile] = useState(null); // (κρατιέται αν στο μέλλον κάνεις multipart upload)
+  const [photoPreview, setPhotoPreview] = useState("");
+  const fileInputRef = useRef(null);
 
-  // ✅ Load PROFILE (owner από /api/users/:id, vet από /db.json -> vets[])
- useEffect(() => {
-  let alive = true;
+  const emptyForm = {
+    // Owner
+    firstName: "",
+    lastName: "",
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
 
-  (async () => {
-    setErr("");
+    // Vet
+    vetName: "",
+    clinic: "",
+    specialty: "",
+    area: "",
+    experience: "",
+    studies: "",
+    sex: "",
 
-    if (!user?.id) {
-      if (!alive) return;
-      setDbUser(null);
-      setLoading(false);
-      return;
+    photo: "",
+  };
+
+  const [dbUser, setDbUser] = useState(null); // original from DB
+  const [form, setForm] = useState(emptyForm);
+
+  // ---------- helpers ----------
+  const handle = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  const normalizePhone = (raw) => (raw || "").replace(/[^\d+]/g, "").trim();
+  const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+
+  const [touched, setTouched] = useState({});
+  const touch = (k) => setTouched((p) => ({ ...p, [k]: true }));
+
+  const errors = useMemo(() => {
+    const e = {};
+    if (!isVet) {
+      if (!form.firstName.trim()) e.firstName = "Υποχρεωτικό πεδίο.";
+      if (!form.lastName.trim()) e.lastName = "Υποχρεωτικό πεδίο.";
+      if (!form.email.trim()) e.email = "Υποχρεωτικό πεδίο.";
+      else if (!isValidEmail(form.email)) e.email = "Μη έγκυρο email.";
+    } else {
+      if (!form.vetName.trim()) e.vetName = "Υποχρεωτικό πεδίο.";
+      if (!form.email.trim()) e.email = "Υποχρεωτικό πεδίο.";
+      else if (!isValidEmail(form.email)) e.email = "Μη έγκυρο email.";
     }
+    return e;
+  }, [form, isVet]);
 
-    try {
-      setLoading(true);
+  const canSubmit = useMemo(() => Object.keys(errors).length === 0, [errors]);
 
-      if (role === "vet") {
-        // 🔁 αν έχεις api, καλύτερα: /api/vets/:id
-        // const vet = await fetchJSON(`/api/vets/${encodeURIComponent(String(user.id))}`);
+  function applyLoadedDataToForm(data) {
+    if (!isVet) {
+      const firstName = data?.firstName || "";
+      const lastName = data?.lastName || "";
+      const name = data?.name || `${firstName} ${lastName}`.trim();
 
-        const res = await fetch("/db.json");
-        if (!res.ok) throw new Error(`HTTP ${res.status} on /db.json`);
+      setForm({
+        ...emptyForm,
+        firstName,
+        lastName,
+        name,
+        email: data?.email || "",
+        phone: data?.phone || "",
+        address: data?.address || "",
+        photo: data?.photoUrl || data?.photo || "",
+      });
+
+      const p = data?.photoUrl || data?.photo || "";
+      setPhotoPreview(p || "");
+      setPhotoFile(null);
+    } else {
+      setForm({
+        ...emptyForm,
+        vetName: data?.name || data?.vetName || "",
+        clinic: data?.clinic || "",
+        specialty: data?.specialty || "",
+        area: data?.area || "",
+        address: data?.address || "",
+        phone: data?.phone || "",
+        email: data?.email || "",
+        experience: data?.experience || "",
+        studies: data?.studies || "",
+        sex: data?.sex || "",
+        photo: data?.photoUrl || data?.photo || "",
+      });
+
+      const p = data?.photoUrl || data?.photo || "";
+      setPhotoPreview(p || "");
+      setPhotoFile(null);
+    }
+  }
+
+  // ---------- Load profile ----------
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        if (!user?.id) throw new Error("No user id");
+        setLoading(true);
+        setErr("");
+
+        const endpoint = isVet
+          ? `/api/vets/${encodeURIComponent(user.id)}`
+          : `/api/users/${encodeURIComponent(user.id)}`;
+
+        const res = await fetch(endpoint);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
 
-        const vet = (json?.vets || []).find((v) => String(v.id) === String(user.id));
-        if (!vet) throw new Error("Δεν βρέθηκε κτηνίατρος");
-
         if (!alive) return;
-        setDbUser(vet);
-      } else {
-        const data = await fetchJSON(`/api/users/${encodeURIComponent(String(user.id))}`);
-        if (!alive) return;
-        setDbUser(data);
+        setDbUser(json);
+        applyLoadedDataToForm(json);
+        setEditMode(false);
+        setTouched({});
+      } catch (e) {
+        console.error(e);
+        if (alive) setErr("Αποτυχία φόρτωσης προφίλ.");
+      } finally {
+        if (alive) setLoading(false);
       }
-    } catch (e) {
-      console.error(e);
-      if (!alive) return;
+    })();
+    return () => (alive = false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isVet]);
 
-      setErr(
-        role === "vet"
-          ? "Αποτυχία φόρτωσης στοιχείων κτηνιάτρου."
-          : "Αποτυχία φόρτωσης προφίλ από τον server."
-      );
-      setDbUser(null);
-    } finally {
-      if (alive) setLoading(false);
-    }
-  })();
+  // ---------- Photo handlers ----------
+  function setSelectedPhoto(file) {
+    const okTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!okTypes.includes(file.type)) return alert("Επέλεξε εικόνα JPG/PNG/WebP.");
+    if (file.size > 5 * 1024 * 1024) return alert("Μέγιστο μέγεθος 5MB.");
 
-  return () => {
-    alive = false;
-  };
-}, [user?.id, role]);
+    setPhotoFile(file);
+    const url = URL.createObjectURL(file);
+    if (photoPreview && photoPreview.startsWith("blob:")) URL.revokeObjectURL(photoPreview);
+    setPhotoPreview(url);
+  }
 
+  function onPickFile(e) {
+    if (!editMode) return;
+    const file = e.target.files?.[0];
+    if (file) setSelectedPhoto(file);
+  }
 
+  function onDrop(e) {
+    e.preventDefault();
+    if (!editMode) return;
+    const file = e.dataTransfer.files?.[0];
+    if (file) setSelectedPhoto(file);
+  }
 
-  // ✅ Load REVIEWS (μόνο για vet) από /db.json -> reviews[]
- useEffect(() => {
-  let alive = true;
+  function onDragOver(e) {
+    if (!editMode) return;
+    e.preventDefault();
+  }
 
-  (async () => {
-    if (role !== "vet") return;
-    if (!dbUser?.id) return;
+  function removePhoto() {
+    if (!editMode) return;
+    if (photoPreview && photoPreview.startsWith("blob:")) URL.revokeObjectURL(photoPreview);
+    setPhotoPreview("");
+    setPhotoFile(null);
+    setForm((p) => ({ ...p, photo: "" }));
+  }
+
+  function startEdit() {
+    setEditMode(true);
+    setTouched({});
+    setErr("");
+  }
+
+  function cancelEdit() {
+    if (dbUser) applyLoadedDataToForm(dbUser);
+    setEditMode(false);
+    setTouched({});
+    setErr("");
+  }
+
+  async function handleSubmit() {
+    // mark required fields as touched
+    setTouched((p) => ({
+      ...p,
+      ...(isVet ? { vetName: true, email: true } : { firstName: true, lastName: true, email: true }),
+    }));
+
+    if (!canSubmit) return;
+
+    setSaving(true);
+    setErr("");
 
     try {
-      setReviewsLoading(true);
+      let payload;
+      let endpoint;
 
-      const res = await fetch("/db.json");
-      if (!res.ok) throw new Error("Failed to load db.json");
-      const json = await res.json();
+      if (!isVet) {
+        const name = `${form.firstName.trim()} ${form.lastName.trim()}`.trim();
 
-      const vetReviews = (json?.reviews || [])
-        .filter((r) => String(r?.vetId) === String(dbUser.id))
-        .sort((a, b) => new Date(b?.date || 0) - new Date(a?.date || 0));
+        payload = {
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          name,
+          email: form.email.trim(),
+          phone: normalizePhone(form.phone),
+          address: form.address.trim(),
+          photo: photoPreview || "",
+        };
 
-      // ✅ DEBUG (βοηθάει πολύ)
-      console.log("Vet ID:", dbUser.id, "Total reviews:", (json?.reviews || []).length, "Matched:", vetReviews.length);
+        endpoint = `/api/users/${encodeURIComponent(user.id)}`;
+      } else {
+        payload = {
+          name: form.vetName.trim(),
+          clinic: form.clinic.trim(),
+          specialty: form.specialty.trim(),
+          area: form.area.trim(),
+          address: form.address.trim(),
+          phone: normalizePhone(form.phone),
+          email: form.email.trim(),
+          experience: form.experience.trim(),
+          studies: form.studies.trim(),
+          sex: form.sex.trim(),
+          photo: photoPreview || "",
+        };
 
-      if (!alive) return;
-      setReviews(vetReviews);
+        endpoint = `/api/vets/${encodeURIComponent(user.id)}`;
+      }
+
+      const res = await fetch(endpoint, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      let updated = null;
+      try {
+        updated = await res.json();
+      } catch {
+        updated = null;
+      }
+
+      if (updated) {
+        setDbUser(updated);
+        applyLoadedDataToForm(updated);
+      } else {
+        // Αν δεν επιστρέφει object, ξαναφόρτωσε σωστά
+        const r2 = await fetch(endpoint);
+        if (r2.ok) {
+          const j2 = await r2.json();
+          setDbUser(j2);
+          applyLoadedDataToForm(j2);
+        }
+      }
+
+      setEditMode(false);
+      alert("Το προφίλ ενημερώθηκε επιτυχώς!");
     } catch (e) {
       console.error(e);
-      if (!alive) return;
-      setReviews([]);
+      setErr("Αποτυχία αποθήκευσης.");
     } finally {
-      if (alive) setReviewsLoading(false);
+      setSaving(false);
     }
-  })();
+  }
 
-  return () => {
-    alive = false;
-  };
-}, [role, dbUser?.id]);
-
-
-  const profile = useMemo(() => {
-    if (role === "vet") {
-      const v = dbUser || {};
-      const list = Array.isArray(reviews) ? reviews : [];
-
-      const ratingValue = list.length
-        ? list.reduce((s, r) => s + Number(r?.rating || 0), 0) / list.length
-        : Number(v?.rating ?? 0);
-
-      const ratingCount = list.length
-        ? list.length
-        : Number(v?.reviewsCount ?? v?.ratingCount ?? 0);
-
-      return {
-        // base
-        fullName: v?.name ?? "-",
-        phone: v?.phone ?? "-",
-        address: v?.address ?? "-",
-        email: v?.email ?? "-",
-        photoUrl: v?.photo ?? v?.photoUrl ?? "",
-        role: "vet",
-
-        // vet extras
-        clinic: v?.clinic ?? v?.clinicName ?? "Κλινική μικρών ζώων",
-        gender: v?.gender ?? v?.sex ?? "-",
-        experience: v?.experience ?? "-",
-        studies: v?.studies ?? "-",
-        ratingValue: Number.isFinite(ratingValue) ? ratingValue : 0,
-        ratingCount: Number.isFinite(ratingCount) ? ratingCount : 0,
-        reviews: list,
-      };
-    }
-
-    // ✅ owner
-    const u = dbUser || user;
-    return {
-      fullName: u?.name ?? "-",
-      phone: u?.phone ?? "-",
-      address: u?.address ?? "-",
-      email: u?.email ?? "-",
-      photoUrl: u?.photoUrl ?? "",
-      role: u?.role ?? user?.role ?? "owner",
-    };
-  }, [dbUser, user, role, reviews]);
-
-  const handleLogout = () => {
-    logout();
-    navigate("/");
-  };
-
-  // Αν δεν είναι logged in
   if (!user) {
     return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          bgcolor: "#fff",
-        }}
-      >
+      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <PublicNavbar />
-        <Box sx={{ flex: 1 }}>
-          <Container maxWidth="lg" sx={{ mt: 2 }}>
-            <AppBreadcrumbs />
-            <Paper
-              elevation={0}
-              sx={{
-                mt: 2,
-                p: 2,
-                borderRadius: 2,
-                border: `2px solid ${COLORS.panelBorder}`,
-                boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
-              }}
+        <Container sx={{ mt: 3 }}>
+          <AppBreadcrumbs />
+          <Paper sx={{ p: 2, borderRadius: 2 }}>
+            <Typography sx={{ fontWeight: 900 }}>Πρέπει να συνδεθείς για να δεις το προφίλ.</Typography>
+            <Button
+              onClick={() => navigate("/login")}
+              variant="contained"
+              sx={{ ...primaryBtnSx, mt: 2 }}
             >
-              <Typography sx={{ fontWeight: 900, color: COLORS.title }}>
-                Πρέπει να συνδεθείς για να δεις το προφίλ.
-              </Typography>
-              <Button
-                variant="contained"
-                onClick={() => navigate("/login")}
-                sx={{
-                  mt: 2,
-                  textTransform: "none",
-                  borderRadius: 2,
-                  px: 3,
-                  bgcolor: COLORS.primary,
-                  "&:hover": { bgcolor: COLORS.primaryHover },
-                }}
-              >
-                Σύνδεση
-              </Button>
-            </Paper>
-          </Container>
-        </Box>
+              Σύνδεση
+            </Button>
+          </Paper>
+        </Container>
         <Footer />
       </Box>
     );
   }
 
-  const isVet = role === "vet";
-
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        bgcolor: "#fff",
-      }}
-    >
+    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <PublicNavbar />
 
-      <Box
-        sx={{
-          flex: 1,
-          display: { xs: "block", lg: "flex" },
-          alignItems: "flex-start",
-        }}
-      >
-        {/* spacer για fixed sidebar */}
-        <Box
-          sx={{
-            width: sidebarW,
-            flex: `0 0 ${sidebarW}px`,
-            display: { xs: "none", lg: "block" },
-            alignSelf: "flex-start",
-          }}
-        />
-
-        {/* σωστό sidebar */}
+      <Box sx={{ flex: 1, display: { xs: "block", lg: "flex" }, alignItems: "flex-start" }}>
+        <Box sx={{ width: sidebarW, flex: `0 0 ${sidebarW}px`, display: { xs: "none", lg: "block" } }} />
         {isVet ? <VetNavbar mode="navbar" /> : <OwnerNavbar mode="navbar" />}
 
-        {/* content */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Container maxWidth="lg" sx={{ mt: 2 }}>
             <AppBreadcrumbs />
 
-            {/* ✅ VET UI */}
-            {isVet ? (
-              <Box sx={{ mt: 2 }}>
-                {/* MAIN PROFILE CARD */}
-                <Paper
-                  elevation={0}
-                  sx={{
-                    borderRadius: 2,
-                    bgcolor: COLORS.panelBg,
-                    border: `2px solid ${COLORS.panelBorder}`,
-                    boxShadow: "0 10px 22px rgba(0,0,0,0.16)",
-                    p: { xs: 2, sm: 2.4 },
-                  }}
-                >
-                  {loading ? (
-                    <Typography sx={{ fontWeight: 800, color: "#1c2b39" }}>
-                      Φόρτωση προφίλ...
-                    </Typography>
-                  ) : (
-                    <>
-                      {err && (
-                        <Typography
-                          sx={{ fontWeight: 900, color: "#b00020", mb: 2 }}
-                        >
-                          {err}
-                        </Typography>
-                      )}
+            <Paper
+              sx={{
+                p: 3,
+                borderRadius: 2,
+                bgcolor: COLORS.panelBg,
+                border: `2px solid ${COLORS.panelBorder}`,
+              }}
+            >
+              <Stack spacing={2}>
+                {err && <Typography sx={{ color: COLORS.error, fontWeight: 800 }}>{err}</Typography>}
 
+                <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                  <Stack spacing={0.4}>
+                    <Typography sx={{ fontWeight: 900, fontSize: 20, color: COLORS.title }}>
+                      Προφίλ {isVet ? "Κτηνιάτρου" : "Χρήστη"}
+                    </Typography>
+                    {!editMode && !loading && (
+                      <Typography sx={{ color: COLORS.muted, fontWeight: 800, fontSize: 13 }}>
+                        Προβολή στοιχείων (πάτησε «Επεξεργασία» για αλλαγές)
+                      </Typography>
+                    )}
+                  </Stack>
+
+                  {!loading && (
+                    <Stack direction="row" spacing={1}>
+                      {!editMode ? (
+                        <Button variant="contained" sx={primaryBtnSx} onClick={startEdit}>
+                          Επεξεργασία
+                        </Button>
+                      ) : (
+                        <>
+                          <Button variant="outlined" sx={outlineBtnSx} onClick={cancelEdit} disabled={saving}>
+                            Ακύρωση
+                          </Button>
+                          <Button variant="contained" sx={primaryBtnSx} onClick={handleSubmit} disabled={!canSubmit || saving}>
+                            Υποβολή
+                          </Button>
+                        </>
+                      )}
+                    </Stack>
+                  )}
+                </Stack>
+
+                {loading ? (
+                  <Typography sx={{ color: COLORS.muted, fontWeight: 700 }}>Φόρτωση...</Typography>
+                ) : (
+                  <Stack spacing={2}>
+                    {/* Photo */}
+                    <Stack direction="row" spacing={2} alignItems="center">
                       <Box
                         sx={{
-                          display: "grid",
-                          gridTemplateColumns: { xs: "1fr", sm: "140px 1fr" },
-                          gap: 2.2,
-                          alignItems: "start",
+                          width: 140,
+                          height: 140,
+                          borderRadius: 2,
+                          overflow: "hidden",
+                          border: `1px solid ${COLORS.panelBorder}`,
+                          cursor: editMode ? "pointer" : "default",
+                          opacity: editMode ? 1 : 0.98,
+                          userSelect: "none",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          bgcolor: "#fff",
+                          boxShadow: editMode ? "0 6px 16px rgba(0,0,0,0.10)" : "none",
                         }}
+                        onClick={() => (editMode ? fileInputRef.current?.click() : null)}
+                        onDrop={onDrop}
+                        onDragOver={onDragOver}
+                        title={editMode ? "Κλικ για αλλαγή φωτογραφίας" : ""}
                       >
-                        {/* photo */}
-                        <Box
-                          sx={{
-                            width: 120,
-                            height: 120,
-                            borderRadius: 1,
-                            overflow: "hidden",
-                            border: "1.5px solid rgba(13,44,84,0.35)",
-                            bgcolor: "rgba(255,255,255,0.65)",
-                            display: "grid",
-                            placeItems: "center",
-                          }}
-                        >
-                          {profile.photoUrl ? (
-                            <Box
-                              component="img"
-                              src={profile.photoUrl}
-                              alt="Φωτογραφία"
-                              sx={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                              }}
-                            />
-                          ) : (
-                            <Typography
-                              sx={{ fontWeight: 900, color: COLORS.title }}
-                            >
-                              Φωτο
-                            </Typography>
-                          )}
-                        </Box>
-
-                        {/* name + clinic + rating */}
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography
-                            sx={{
-                              fontWeight: 900,
-                              color: "#0b1220",
-                              fontSize: 18,
-                            }}
-                          >
-                            {profile.fullName}
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          style={{ display: "none" }}
+                          onChange={onPickFile}
+                          disabled={!editMode}
+                        />
+                        {!photoPreview ? (
+                          <Typography sx={{ textAlign: "center", px: 1, color: COLORS.muted, fontWeight: 800 }}>
+                            {editMode ? "Κλικ ή σύρε εικόνα εδώ" : "Χωρίς φωτογραφία"}
                           </Typography>
-
-                          <Typography
-                            sx={{
-                              color: "#1c2b39",
-                              fontWeight: 700,
-                              mt: 0.4,
-                            }}
-                          >
-                            {profile.clinic}
-                          </Typography>
-
+                        ) : (
                           <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1,
-                              mt: 1,
-                            }}
-                          >
-                            <Rating
-                              value={profile.ratingValue}
-                              precision={0.1}
-                              readOnly
-                              size="small"
-                            />
-                            <Typography
-                              sx={{ fontWeight: 900, color: "#1c2b39" }}
-                            >
-                              {Number(profile.ratingValue ?? 0).toFixed(1)}
-                            </Typography>
-                            <Typography sx={{ color: COLORS.muted }}>
-                              ({profile.ratingCount})
-                            </Typography>
-                          </Box>
-                        </Box>
+                            component="img"
+                            src={photoPreview}
+                            sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        )}
                       </Box>
 
-                      {/* details 2 columns */}
-                      <Box
-                        sx={{
-                          mt: 2.4,
-                          display: "grid",
-                          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-                          columnGap: 6,
-                          rowGap: 0.5,
-                        }}
-                      >
-                        <Box>
-                          <InfoLine label="Τηλέφωνο:" value={profile.phone} />
-                          <InfoLine
-                            label="Ιδιωτικό Ιατρείο:"
-                            value={profile.address}
-                          />
-                          <InfoLine label="Email:" value={profile.email} />
-                        </Box>
-
-                        <Box>
-                          <InfoLine label="Φύλο:" value={profile.gender} />
-                          <InfoLine
-                            label="Εμπειρία:"
-                            value={profile.experience}
-                          />
-                          <InfoLine label="Σπουδές:" value={profile.studies} />
-                        </Box>
-                      </Box>
-                    </>
-                  )}
-                </Paper>
-
-                {/* REVIEWS CARD */}
-                <Paper
-                  elevation={0}
-                  sx={{
-                    mt: 2,
-                    borderRadius: 2,
-                    bgcolor: "#fff",
-                    border: "2px solid rgba(143,180,232,0.70)",
-                    boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
-                    p: { xs: 2, sm: 2.2 },
-                  }}
-                >
-                  <Typography
-                    sx={{ fontWeight: 900, color: COLORS.title, mb: 1.4 }}
-                  >
-                    Αξιολογήσεις
-                  </Typography>
-
-                  {reviewsLoading ? (
-                    <Typography sx={{ color: COLORS.muted, fontWeight: 800 }}>
-                      Φόρτωση αξιολογήσεων...
-                    </Typography>
-                  ) : (profile.reviews || []).length === 0 ? (
-                    <Typography sx={{ color: COLORS.muted, fontWeight: 800 }}>
-                      Δεν υπάρχουν ακόμα αξιολογήσεις.
-                    </Typography>
-                  ) : (
-                    <Box
-                      sx={{
-                        display: "flex",
-                        gap: 2,
-                        overflowX: "auto",
-                        pb: 0.6,
-                        "&::-webkit-scrollbar": { height: 8 },
-                      }}
-                    >
-                      {(profile.reviews || []).slice(0, 5).map((r) => (
-                        <ReviewCard key={r.id ?? `${r.name}-${r.date}`} item={r} />
-                      ))}
-                    </Box>
-                  )}
-
-
-                  <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1.6 }}>
-                    <Button
-                      variant="outlined"
-                      onClick={() => navigate(`/vet/profile/${dbUser?.id}/reviews`)}
-                      sx={{
-                        textTransform: "none",
-                        borderRadius: 2,
-                        fontWeight: 900,
-                        borderColor: "rgba(13,44,84,0.25)",
-                        color: "#0d2c54",
-                        bgcolor: "#f6f9ff",
-                        "&:hover": {
-                          bgcolor: "#eef5ff",
-                          borderColor: "rgba(13,44,84,0.35)",
-                        },
-                      }}
-                    >
-                      Περισσότερα
-                    </Button>
-                  </Box>
-                </Paper>
-
-                {/* logout */}
-                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2.2 }}>
-                  <Button
-                    variant="contained"
-                    onClick={handleLogout}
-                    sx={{
-                      textTransform: "none",
-                      borderRadius: 2,
-                      px: 3.2,
-                      bgcolor: COLORS.primary,
-                      "&:hover": { bgcolor: COLORS.primaryHover },
-                      boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
-                      fontWeight: 900,
-                    }}
-                  >
-                    Αποσύνδεση
-                  </Button>
-                </Box>
-              </Box>
-            ) : (
-              /* OWNER UI */
-              <Box sx={{ mt: 2, display: "grid", placeItems: "center" }}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    width: { xs: "100%", sm: 650, md: 720 },
-                    bgcolor: COLORS.panelBg,
-                    border: `2px solid ${COLORS.panelBorder}`,
-                    borderRadius: 2,
-                    boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
-                    p: { xs: 2.2, sm: 3 },
-                  }}
-                >
-                  {loading ? (
-                    <Typography sx={{ fontWeight: 800, color: "#1c2b39" }}>
-                      Φόρτωση προφίλ...
-                    </Typography>
-                  ) : (
-                    <>
-                      {err && (
-                        <Typography
-                          sx={{ fontWeight: 900, color: "#b00020", mb: 2 }}
-                        >
-                          {err}
+                      <Stack spacing={1}>
+                        <Typography sx={{ color: COLORS.muted, fontSize: 13, fontWeight: 800 }}>
+                          {editMode ? "Επιτρέπονται JPG/PNG/WebP έως 5MB." : "Προεπισκόπηση φωτογραφίας."}
                         </Typography>
+                        <Button onClick={removePhoto} disabled={!editMode || !photoPreview} sx={{ ...outlineBtnSx, width: "fit-content" }}>
+                          Αφαίρεση φωτογραφίας
+                        </Button>
+                      </Stack>
+                    </Stack>
+
+                    {/* Form */}
+                    <Stack spacing={2}>
+                      {isVet ? (
+                        <>
+                          <TextField
+                            label="Ονοματεπώνυμο"
+                            value={form.vetName}
+                            onChange={handle("vetName")}
+                            onBlur={() => touch("vetName")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                            error={editMode && !!errors.vetName && touched.vetName}
+                            helperText={editMode ? (touched.vetName ? errors.vetName || " " : " ") : " "}
+                          />
+                          <TextField
+                            label="Κλινική"
+                            value={form.clinic}
+                            onChange={handle("clinic")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                          />
+                          <TextField
+                            label="Ειδικότητα"
+                            value={form.specialty}
+                            onChange={handle("specialty")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                          />
+                          <TextField
+                            label="Περιοχή"
+                            value={form.area}
+                            onChange={handle("area")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                          />
+                          <TextField
+                            label="Διεύθυνση"
+                            value={form.address}
+                            onChange={handle("address")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                          />
+                          <TextField
+                            label="Τηλέφωνο"
+                            value={form.phone}
+                            onChange={handle("phone")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                          />
+                          <TextField
+                            label="Email"
+                            value={form.email}
+                            onChange={handle("email")}
+                            onBlur={() => touch("email")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                            error={editMode && !!errors.email && touched.email}
+                            helperText={editMode ? (touched.email ? errors.email || " " : " ") : " "}
+                          />
+                          <TextField
+                            label="Εμπειρία"
+                            value={form.experience}
+                            onChange={handle("experience")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                          />
+                          <TextField
+                            label="Σπουδές"
+                            value={form.studies}
+                            onChange={handle("studies")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                          />
+                          <TextField
+                            label="Φύλο"
+                            value={form.sex}
+                            onChange={handle("sex")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <TextField
+                            label="Όνομα"
+                            value={form.firstName}
+                            onChange={handle("firstName")}
+                            onBlur={() => touch("firstName")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                            error={editMode && !!errors.firstName && touched.firstName}
+                            helperText={editMode ? (touched.firstName ? errors.firstName || " " : " ") : " "}
+                          />
+                          <TextField
+                            label="Επώνυμο"
+                            value={form.lastName}
+                            onChange={handle("lastName")}
+                            onBlur={() => touch("lastName")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                            error={editMode && !!errors.lastName && touched.lastName}
+                            helperText={editMode ? (touched.lastName ? errors.lastName || " " : " ") : " "}
+                          />
+                          <TextField
+                            label="Email"
+                            value={form.email}
+                            onChange={handle("email")}
+                            onBlur={() => touch("email")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                            error={editMode && !!errors.email && touched.email}
+                            helperText={editMode ? (touched.email ? errors.email || " " : " ") : " "}
+                          />
+                          <TextField
+                            label="Τηλέφωνο"
+                            value={form.phone}
+                            onChange={handle("phone")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                          />
+                          <TextField
+                            label="Διεύθυνση"
+                            value={form.address}
+                            onChange={handle("address")}
+                            sx={editMode ? fieldSx : readOnlyFieldSx}
+                            disabled={!editMode}
+                          />
+                        </>
                       )}
+                    </Stack>
 
-                      <Box
-                        sx={{
-                          display: "grid",
-                          gridTemplateColumns: "140px 1fr",
-                          gap: 3,
-                          alignItems: "start",
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            width: 120,
-                            height: 120,
-                            borderRadius: 1,
-                            bgcolor: "rgba(255,255,255,0.45)",
-                            border: "1.5px solid rgba(13,44,84,0.35)",
-                            overflow: "hidden",
-                            display: "grid",
-                            placeItems: "center",
-                            color: COLORS.title,
-                            fontWeight: 800,
-                          }}
-                        >
-                          {profile.photoUrl ? (
-                            <Box
-                              component="img"
-                              src={profile.photoUrl}
-                              alt="Φωτογραφία"
-                              sx={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                              }}
-                            />
-                          ) : (
-                            <Typography sx={{ fontWeight: 800 }}>
-                              Φωτογραφία
-                            </Typography>
-                          )}
-                        </Box>
-
-                        <Box>
-                          <Typography
-                            sx={{
-                              fontWeight: 900,
-                              color: "#000",
-                              fontSize: 18,
-                              mt: 1,
-                            }}
-                          >
-                            {profile.fullName}
-                          </Typography>
-                          <Typography
-                            sx={{ color: "#1c2b39", fontWeight: 700, mt: 0.4 }}
-                          >
-                            Ρόλος: {profile.role}
-                          </Typography>
-                        </Box>
-                      </Box>
-
-                      <Box sx={{ mt: 4 }}>
-                        <Divider sx={{ mb: 2, opacity: 0.5 }} />
-                        <InfoLine label="Τηλέφωνο:" value={profile.phone} />
-                        <InfoLine label="Διεύθυνση:" value={profile.address} />
-                        <InfoLine label="Email:" value={profile.email} />
-                      </Box>
-                    </>
-                  )}
-                </Paper>
-
-                <Box
-                  sx={{
-                    width: { xs: "100%", sm: 650, md: 720 },
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    mt: 2.2,
-                  }}
-                >
-                  <Button
-                    variant="contained"
-                    onClick={handleLogout}
-                    sx={{
-                      textTransform: "none",
-                      borderRadius: 2,
-                      px: 3.2,
-                      bgcolor: COLORS.primary,
-                      "&:hover": { bgcolor: COLORS.primaryHover },
-                      boxShadow: "0px 3px 10px rgba(0,0,0,0.15)",
-                      fontWeight: 900,
-                    }}
-                  >
-                    Αποσύνδεση
-                  </Button>
-                </Box>
-              </Box>
-            )}
+                    {/* ✅ Αφαιρέθηκε το κουμπί "Πίσω" */}
+                  </Stack>
+                )}
+              </Stack>
+            </Paper>
           </Container>
         </Box>
       </Box>

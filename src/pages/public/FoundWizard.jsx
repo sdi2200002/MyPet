@@ -291,6 +291,7 @@ export default function FoundWizard({ role = "public" }) {
     sex: "",
     species: "",
     color: "",
+    microchip: "",
     notes: "",
 
     // Step 2
@@ -445,6 +446,7 @@ export default function FoundWizard({ role = "public" }) {
       sex: form.sex,
       species: String(form.species || "").trim(),
       color: String(form.color || "").trim(),
+      microchip: String(form.microchip || "").trim(),
       notes: String(form.notes || "").trim(),
 
       firstName: String(form.firstName || "").trim(),
@@ -618,6 +620,19 @@ export default function FoundWizard({ role = "public" }) {
                     {touched.area ? errors.area || " " : " "}
                   </Typography>
                 </FormControl>
+
+                <TextField
+                  label="Microchip"
+                  value={form.microchip}
+                  onChange={(e) => {
+                    const onlyNums = e.target.value.replace(/\D/g, "");
+                    setForm((p) => ({ ...p, microchip: onlyNums }));
+                  }}
+                  fullWidth
+                  sx={fieldSx}
+                  placeholder="π.χ. 900123456789012"
+                  inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+                />
 
                 <TextField
                   label="Χρώμα *"
@@ -841,6 +856,7 @@ export default function FoundWizard({ role = "public" }) {
 
                 <TextField label="Ημερομηνία Εύρεσης" value={form.date || "—"} fullWidth sx={{ ...fieldSx, mb: 2 }} InputProps={{ readOnly: true }} />
                 <TextField label="Περιοχή" value={form.area || "—"} fullWidth sx={{ ...fieldSx, mb: 2 }} InputProps={{ readOnly: true }} />
+                <TextField label="Microchip" value={form.microchip || "—"} fullWidth sx={{ ...fieldSx, mb: 2 }} InputProps={{ readOnly: true }} />
                 <TextField label="Φύλο" value={form.sex || "—"} fullWidth sx={{ ...fieldSx, mb: 2 }} InputProps={{ readOnly: true }} />
                 <TextField label="Είδος" value={form.species || "—"} fullWidth sx={{ ...fieldSx, mb: 2 }} InputProps={{ readOnly: true }} />
                 <TextField label="Χρώμα" value={form.color || "—"} fullWidth sx={fieldSx} InputProps={{ readOnly: true }} />

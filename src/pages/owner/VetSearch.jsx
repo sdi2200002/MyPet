@@ -112,6 +112,13 @@ const POSSIBLE_SLOTS = [
   "16:30",
 ];
 
+const EDUCATION_LEVELS = [
+  "Πτυχίο Κτηνιατρικής",
+  "MSc (Μεταπτυχιακό)",
+  "PhD (Διδακτορικό)",
+];
+
+
 function getAvailableSlotsForVetOnDate(vet, dateISO, appointments) {
   if (!dateISO) return POSSIBLE_SLOTS;
 
@@ -175,7 +182,7 @@ function VetCard({ vet, onView }) {
         </Stack>
 
         <Typography sx={{ color: MUTED, fontWeight: 700, fontSize: 12 }}>
-          {vet.clinic || "—"} • {vet.area || "—"}
+          {vet.area || "—"}
         </Typography>
       </Box>
 
@@ -224,6 +231,7 @@ export default function VetSearch() {
   const [spec, setSpec] = useState("");
   const [date, setDate] = useState(""); // ISO "YYYY-MM-DD"
   const [dateObj, setDateObj] = useState(null);
+  const [education, setEducation] = useState("");
 
   const [vets, setVets] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -239,6 +247,7 @@ export default function VetSearch() {
     const p = new URLSearchParams(location.search);
     setArea(p.get("area") || "");
     setSpec(p.get("specialty") || "");
+    setEducation(p.get("education") || "");
 
     const d = p.get("date") || "";
     setDate(d);
@@ -282,6 +291,7 @@ export default function VetSearch() {
   const filtered = useMemo(() => {
     const areaQ = area.trim();
     const specQ = spec.trim();
+    const eduQ = education.trim();
     const dateISO = normalizeDateToISO(date);
 
     if (dateISO && isPastISODate(dateISO)) return [];
@@ -290,6 +300,7 @@ export default function VetSearch() {
       .filter((v) => {
         if (areaQ && String(v.area || "").toLowerCase() !== areaQ.toLowerCase()) return false;
         if (specQ && String(v.specialty || "").toLowerCase() !== specQ.toLowerCase()) return false;
+        if (eduQ && String(v.studies || "").toLowerCase() !== eduQ.toLowerCase()) return false;
 
         if (dateISO) {
           const available = getAvailableSlotsForVetOnDate(v, dateISO, appointments);
@@ -298,7 +309,7 @@ export default function VetSearch() {
         return true;
       })
       .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
-  }, [vets, appointments, area, spec, date]);
+  }, [vets, appointments, area, spec, date, education]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const view = useMemo(() => {
@@ -310,13 +321,14 @@ export default function VetSearch() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const hasFilters = useMemo(() => !!area.trim() || !!spec.trim() || !!date.trim(), [area, spec, date]);
+  const hasFilters = useMemo(() => !!area.trim() || !!spec.trim() || !!date.trim() || !!education.trim(), [area, spec, date, education]);
 
   // ✅ APPLY SEARCH -> PUBLIC route (όπως το είχες)
   function applySearch() {
     const params = new URLSearchParams();
     if (area) params.set("area", area);
     if (spec) params.set("specialty", spec);
+    if (education) params.set("education", education);
     if (date) params.set("date", normalizeDateToISO(date));
     navigate(`/vets?${params.toString()}`);
   }
@@ -325,6 +337,7 @@ export default function VetSearch() {
   function clearFilters() {
     setArea("");
     setSpec("");
+    setEducation("");
     setDate("");
     setDateObj(null);
     setPage(1);
@@ -448,6 +461,23 @@ export default function VetSearch() {
                     <MenuItem value="Δερματολόγος">Δερματολόγος</MenuItem>
                   </Select>
                 </FormControl>
+
+                <FormControl size="small" sx={pillSx}>
+                  <Select
+                    value={education}
+                    displayEmpty
+                    onChange={(e) => setEducation(e.target.value)}
+                    renderValue={(v) => (v ? v : placeholder("Σπουδές"))}
+                  >
+                    <MenuItem value="">Σπουδές</MenuItem>
+                    {EDUCATION_LEVELS.map((s) => (
+                      <MenuItem key={s} value={s}>
+                        {s}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
 
                 <Button
                   variant="contained"

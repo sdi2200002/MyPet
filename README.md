@@ -6,10 +6,10 @@
 
 
 ## Code
-**<u>GitHub Repo:</u>** `git clone https://github.com/sdi2200002/MyPet.git`  
-**<u>Installation:</u>** `npm install`  
-**<u>Run json server:</u>** `npm run server`    
-**<u>Run:</u>** `npm run dev`    
+**GitHub Repo:** `git clone https://github.com/sdi2200002/MyPet.git`  
+**Installation:** `npm install`  
+**Run json server:** `npm run server`    
+**Run:** `npm run dev`    
 
 ## Users/Κωδικοί
 

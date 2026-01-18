@@ -91,9 +91,6 @@ function Panel({ children }) {
 function normalizePhone(raw) {
   return (raw || "").replace(/[^\d+]/g, "").trim();
 }
-function normalizeAfm(raw) {
-  return (raw || "").replace(/[^\d]/g, "").trim();
-}
 function isValidEmail(email) {
   if (!email) return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim());
@@ -209,7 +206,6 @@ export default function TransferWizard({ role = "vet" }) {
     // new owner
     newOwnerFirstName: "",
     newOwnerLastName: "",
-    newOwnerAfm: "",
     newOwnerPhone: "",
     newOwnerEmail: "",
 
@@ -323,10 +319,6 @@ export default function TransferWizard({ role = "vet" }) {
     if (!form.newOwnerFirstName.trim()) e.newOwnerFirstName = "Υποχρεωτικό πεδίο.";
     if (!form.newOwnerLastName.trim()) e.newOwnerLastName = "Υποχρεωτικό πεδίο.";
 
-    const afm = normalizeAfm(form.newOwnerAfm);
-    if (!afm) e.newOwnerAfm = "Υποχρεωτικό πεδίο.";
-    else if (afm.length !== 9) e.newOwnerAfm = "Το ΑΦΜ πρέπει να έχει 9 ψηφία.";
-
     const phone = normalizePhone(form.newOwnerPhone);
     if (!phone) e.newOwnerPhone = "Υποχρεωτικό πεδίο.";
     else if (phone.length < 10) e.newOwnerPhone = "Βάλε έγκυρο τηλέφωνο.";
@@ -342,7 +334,6 @@ export default function TransferWizard({ role = "vet" }) {
     form.petId,
     form.newOwnerFirstName,
     form.newOwnerLastName,
-    form.newOwnerAfm,
     form.newOwnerPhone,
     form.newOwnerEmail,
     form.hasOtherPet,
@@ -351,7 +342,7 @@ export default function TransferWizard({ role = "vet" }) {
 
   const isStep0Valid = !errors.petId;
   const isStep1Valid =
-    !errors.newOwnerFirstName && !errors.newOwnerLastName && !errors.newOwnerAfm && !errors.newOwnerPhone && !errors.newOwnerEmail;
+    !errors.newOwnerFirstName && !errors.newOwnerLastName && !errors.newOwnerPhone && !errors.newOwnerEmail;
   const isStep2Valid = !errors.hasOtherPet && !errors.experience;
 
   function next() {
@@ -360,7 +351,7 @@ export default function TransferWizard({ role = "vet" }) {
       if (!isStep0Valid) return;
     }
     if (activeStep === 1) {
-      ["newOwnerFirstName", "newOwnerLastName", "newOwnerAfm", "newOwnerPhone", "newOwnerEmail"].forEach(touch);
+      ["newOwnerFirstName", "newOwnerLastName", "newOwnerPhone", "newOwnerEmail"].forEach(touch);
       if (!isStep1Valid) return;
     }
     if (activeStep === 2) {
@@ -388,7 +379,6 @@ export default function TransferWizard({ role = "vet" }) {
 
       newOwnerFirstName: form.newOwnerFirstName.trim(),
       newOwnerLastName: form.newOwnerLastName.trim(),
-      newOwnerAfm: normalizeAfm(form.newOwnerAfm),
       newOwnerPhone: normalizePhone(form.newOwnerPhone),
       newOwnerEmail: form.newOwnerEmail.trim(),
 
@@ -402,7 +392,7 @@ export default function TransferWizard({ role = "vet" }) {
   }
 
   async function saveDraft() {
-    ["petId", "newOwnerFirstName", "newOwnerLastName", "newOwnerAfm", "newOwnerPhone", "newOwnerEmail", "hasOtherPet", "experience"].forEach(
+    ["petId", "newOwnerFirstName", "newOwnerLastName", "newOwnerPhone", "newOwnerEmail", "hasOtherPet", "experience"].forEach(
       touch
     );
     if (!isStep0Valid || !isStep1Valid || !isStep2Valid) return;
@@ -436,7 +426,7 @@ export default function TransferWizard({ role = "vet" }) {
   }
 
   async function submitFinal() {
-    ["petId", "newOwnerFirstName", "newOwnerLastName", "newOwnerAfm", "newOwnerPhone", "newOwnerEmail", "hasOtherPet", "experience"].forEach(
+    ["petId", "newOwnerFirstName", "newOwnerLastName", "newOwnerPhone", "newOwnerEmail", "hasOtherPet", "experience"].forEach(
       touch
     );
     if (!isStep0Valid || !isStep1Valid || !isStep2Valid) return;
@@ -602,18 +592,6 @@ export default function TransferWizard({ role = "vet" }) {
                   sx={fieldSx}
                   error={!!errors.newOwnerLastName && !!touched.newOwnerLastName}
                   helperText={touched.newOwnerLastName ? errors.newOwnerLastName || " " : " "}
-                />
-
-                <TextField
-                  label="ΑΦΜ *"
-                  value={form.newOwnerAfm}
-                  onChange={handleChange("newOwnerAfm")}
-                  onBlur={() => touch("newOwnerAfm")}
-                  fullWidth
-                  sx={fieldSx}
-                  inputProps={{ inputMode: "numeric" }}
-                  error={!!errors.newOwnerAfm && !!touched.newOwnerAfm}
-                  helperText={touched.newOwnerAfm ? errors.newOwnerAfm || " " : " "}
                 />
 
                 <TextField
@@ -785,7 +763,6 @@ export default function TransferWizard({ role = "vet" }) {
                 {[
                   ["Όνομα", form.newOwnerFirstName],
                   ["Επώνυμο", form.newOwnerLastName],
-                  ["ΑΦΜ", normalizeAfm(form.newOwnerAfm)],
                   ["Τηλέφωνο", normalizePhone(form.newOwnerPhone)],
                   ["Email", form.newOwnerEmail],
                 ].map(([label, val]) => (
