@@ -6,9 +6,9 @@
 
 ## Code
 GitHub Repo: 'git clone https://github.com/sdi2200002/MyPet.git'  
-Installation: 'npm install'
-Run json server: 'npm run server'
-Run: 'npm run dev'
+Installation: 'npm install'  
+Run json server: 'npm run server'  
+Run: 'npm run dev'  
 
 ## Users/Κωδικοί
 
