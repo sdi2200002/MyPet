@@ -62,6 +62,7 @@ export default function RegisterVet() {
     email: "",
     password: "",
     address: "",
+    city: "", // ✅ ΝΕΟ: πόλη/περιοχή
     phone: "",
     afm: "",
     specialty: "",
@@ -137,6 +138,10 @@ export default function RegisterVet() {
     else if (!isAddressText(form.address))
       e.address = "Επιτρέπονται ελληνικά/αγγλικά, αριθμοί και βασικά σύμβολα (.,-/).";
 
+    // ✅ ΝΕΟ: πόλη/περιοχή
+    if (!form.city.trim()) e.city = "Υποχρεωτικό.";
+    else if (!isNameText(form.city)) e.city = "Μόνο ελληνικοί/αγγλικοί χαρακτήρες.";
+
     const phone = onlyDigits(form.phone);
     if (!phone) e.phone = "Υποχρεωτικό.";
     else if (phone.length < 10) e.phone = "Μη έγκυρο τηλέφωνο.";
@@ -207,11 +212,21 @@ export default function RegisterVet() {
         name: `Δρ. ${form.firstName.trim()} ${form.lastName.trim()}`,
         clinic: "Ιδιωτικό Ιατρείο",
         specialty: form.specialty,
-        area: form.address,
+
+        // ✅ ΕΔΩ Η ΑΛΛΑΓΗ:
+        // area = ΠΟΛΗ/ΠΕΡΙΟΧΗ
+        area: form.city.trim(),
+
         rating: 0,
         reviewsCount: 0,
         priceRange: "—",
-        address: form.address,
+
+        // ✅ address = ΔΙΕΥΘΥΝΣΗ
+        address: form.address.trim(),
+
+        // ✅ προαιρετικό αλλά χρήσιμο για φίλτρα
+        city: form.city.trim(),
+
         phone: onlyDigits(form.phone),
         email,
         experience: form.experience,
@@ -327,6 +342,18 @@ export default function RegisterVet() {
                   onBlur={() => touch("address")}
                   error={!!errors.address && !!touched.address}
                   helperText={touched.address ? errors.address || " " : " "}
+                  sx={fieldSx}
+                />
+
+                {/* ✅ ΝΕΟ ΠΕΔΙΟ: Πόλη / Περιοχή */}
+                <TextField
+                  required
+                  label="Πόλη / Περιοχή"
+                  value={form.city}
+                  onChange={setNameField("city")}
+                  onBlur={() => touch("city")}
+                  error={!!errors.city && !!touched.city}
+                  helperText={touched.city ? errors.city || " " : " "}
                   sx={fieldSx}
                 />
 

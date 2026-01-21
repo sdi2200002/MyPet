@@ -32,6 +32,22 @@ const COLORS = {
   muted: "#6b7a90",
 };
 
+function fmtDDMMYYYY(iso) {
+  // iso: YYYY-MM-DD
+  if (!iso || !iso.includes("-")) return "";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+async function createNotification(payload) {
+  return fetchJSON(`/api/notifications`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+
 const fieldSx = {
   "& .MuiOutlinedInput-root": {
     bgcolor: "#fff",
@@ -478,6 +494,62 @@ export default function PetsNew() {
           body: JSON.stringify(declPayload),
         });
       }
+
+      // ✅ notification (non-blocking) -> στον ιδιοκτήτη
+      try {
+        const when = form.birthDateIso ? fmtDDMMYYYY(form.birthDateIso) : "—";
+
+        await createNotification({
+          userId: String(ownerId),
+          type: "registration_submitted",
+          title: "Νέα καταχώρηση κατοικιδίου",
+          message: `Καταχωρήθηκε το κατοικίδιο ${String(form.name || "—").trim()} (microchip: ${
+            String(form.microchip || "—").trim()
+          }).`,
+          refType: "registrationDeclaration",
+          refId: String(editingId || ""), // αν θες, μπορείς να βάλεις το id της declaration που έφτιαξες
+          createdAt: new Date().toISOString(),
+          meta: {
+            kind: "registration",
+            status: "Οριστική",
+            petId: String(petId || ""),
+            ownerId: String(ownerId || ""),
+            vetId: String(vetId || ""),
+            microchip: String(form.microchip || "").trim(),
+            species: String(form.species || "").trim(),
+            birthDateIso: String(form.birthDateIso || ""),
+          },
+        });
+      } catch (e) {
+        console.warn("Notification failed (ignored):", e);
+      }
+
+     // ✅ notification (non-blocking) -> στον κτηνίατρο
+      try {
+        await createNotification({
+          userId: String(vetId), // 👈 ΕΔΩ η διαφορά
+          type: "registration_submitted_vet",
+          title: "Οριστική καταχώρηση ολοκληρώθηκε",
+          message: `Ολοκληρώθηκε η καταχώρηση για ${String(form.name || "—").trim()} (microchip: ${String(
+            form.microchip || "—"
+          ).trim()}).`,
+          refType: "pet",
+          refId: String(petId || ""),
+          createdAt: new Date().toISOString(),
+          meta: {
+            kind: "registration",
+            status: "Οριστική",
+            petId: String(petId || ""),
+            ownerEmail: String(form.ownerEmail || "").trim(),
+            microchip: String(form.microchip || "").trim(),
+          },
+        });
+      } catch (e) {
+        console.warn("Notification (vet) failed (ignored):", e);
+      }
+
+
+
 
       navigate(`/vet/declarations/success`, {
         state: { type: "registration", status: "Οριστική" },
