@@ -1,108 +1,145 @@
-Επικοινωνία Ανθρώπου–Μηχανής - 2025/26 DiT/UoA
-MyPet
+#  Επικοινωνία Ανθρώπου–Μηχανής  
+## 2025/26 — DiT / UoA  
 
-ΜΕΛΗ ΟΜΑΔΑΣ
-- ΑΓΓΕΛΟΠΟΥΛΟΣ ΝΙΚΟΛΑΟΣ (1115202200002)
-- ΚΑΛΑΪΤΖΗ ΜΥΡΤΩ (1115202200055)
+# MyPet
 
-ΠΕΡΙΓΡΑΦΗ ΕΡΓΑΣΙΑΣ
-Η εφαρμογή MyPet είναι μία web πλατφόρμα διαχείρισης κατοικιδίων, η οποία
-υποστηρίζει διαφορετικούς ρόλους χρηστών (Ιδιοκτήτες και Κτηνιάτρους) και
-παρέχει λειτουργίες για ραντεβού, δηλώσεις, ιατρικές πράξεις και αξιολογήσεις.
+---
 
-ΤΙ ΥΛΟΠΟΙΗΣΑΜΕ
+## Μέλη Ομάδας
 
-ΓΕΝΙΚΑ
-- Authentication & Authorization με AuthContext και Protected Routes
+- **ΑΓΓΕΛΟΠΟΥΛΟΣ ΝΙΚΟΛΑΟΣ** (1115202200002)  
+- **ΚΑΛΑΪΤΖΗ ΜΥΡΤΩ** (1115202200055)
+
+---
+
+## Περιγραφή Εργασίας
+
+Η εφαρμογή **MyPet** είναι μία web πλατφόρμα διαχείρισης κατοικιδίων, η οποία  
+υποστηρίζει διαφορετικούς ρόλους χρηστών (**Ιδιοκτήτες** και **Κτηνιάτρους**) και  
+παρέχει λειτουργίες για:
+
+- ραντεβού  
+- δηλώσεις  
+- ιατρικές πράξεις  
+- αξιολογήσεις  
+
+---
+
+## Τι Υλοποιήσαμε
+
+### Γενικά
+- Authentication & Authorization με **AuthContext** και **Protected Routes**
 - Δημόσιες σελίδες (Home, Login, Register, Contact, Lost/Found προβολές)
-- Navigation με διαφορετικά Navbars (Public / Owner / Vet)
-- Breadcrumbs, Pagination (Pager), Scroll handling
+- Navigation με διαφορετικά **Navbars** (Public / Owner / Vet)
+- **Breadcrumbs**, **Pagination (Pager)**, Scroll handling
 
-ΙΔΙΟΚΤΗΤΗΣ (OWNER)
-- Owner Dashboard με:
+---
+
+### Ιδιοκτήτης (Owner)
+
+- **Owner Dashboard**
   - Προβολή κατοικιδίων
   - Mini Calendar ραντεβού
-  - Τελευταίες Ενημερώσεις (notifications)
-- Διαχείριση κατοικιδίων (MyPets)
-- Ραντεβού:
+  - Τελευταίες Ενημερώσεις (Notifications)
+
+- **Διαχείριση Κατοικιδίων**
+  - MyPets
+
+- **Ραντεβού**
   - Προβολή ραντεβού
   - Λεπτομέρειες ραντεβού
   - Επιτυχής ολοκλήρωση ραντεβού
-- Δηλώσεις:
+
+- **Δηλώσεις**
   - Δήλωση Απώλειας (Lost Wizard)
   - Δήλωση Εύρεσης (Found Wizard)
   - Ιστορικό Δηλώσεων
-- Βιβλιάριο Υγείας:
+
+- **Βιβλιάριο Υγείας**
   - Ιατρικές Πράξεις
   - Εμβολιασμοί
-- Αξιολόγηση Κτηνιάτρου μετά από ολοκληρωμένο ραντεβού
-- Προβολή προφίλ κτηνιάτρου και αξιολογήσεων
 
-ΚΤΗΝΙΑΤΡΟΣ (VET)
-- Vet Dashboard με:
+- **Αξιολογήσεις**
+  - Αξιολόγηση Κτηνιάτρου μετά από ολοκληρωμένο ραντεβού
+  - Προβολή προφίλ κτηνιάτρου και αξιολογήσεων
+
+---
+
+### Κτηνίατρος (Vet)
+
+- **Vet Dashboard**
   - Γρήγορες ενέργειες
-  - Τελευταίες Ενημερώσεις (notifications)
-- Καταγραφή νέου κατοικιδίου (NewPet Wizard)
-- Καταχώρηση ιατρικών πράξεων
-- Καταχώρηση εμβολιασμών
-- Διαχείριση ραντεβού:
+  - Τελευταίες Ενημερώσεις (Notifications)
+
+- **Καταγραφές**
+  - Καταγραφή νέου κατοικιδίου (NewPet Wizard)
+  - Καταχώρηση ιατρικών πράξεων
+  - Καταχώρηση εμβολιασμών
+
+- **Ραντεβού**
   - Λίστα ραντεβού
   - Διαθεσιμότητα
   - Αιτήματα ραντεβού
   - Ενημερώσεις κατάστασης
-- Δηλώσεις:
+
+- **Δηλώσεις**
   - Απώλειας
   - Εύρεσης
   - Υιοθεσίας
   - Αναδοχής
   - Μεταβίβασης
 
-ΑΞΙΟΛΟΓΗΣΕΙΣ & ΒΑΘΜΟΛΟΓΙΕΣ
+---
+
+## Αξιολογήσεις & Βαθμολογίες
+
 - Δημιουργία review από ιδιοκτήτη
-- Αποθήκευση reviews στο db.json
+- Αποθήκευση reviews στο `db.json`
 - Υπολογισμός και ενημέρωση:
-  - Μέσης βαθμολογίας (rating)
-  - Πλήθους αξιολογήσεων (reviewsCount)
-- Εμφάνιση βαθμολογίας σε:
-  - Προφίλ κτηνιάτρου
-  - Προτεινόμενους κτηνιάτρους
+  - **Μέσης βαθμολογίας (rating)**
+  - **Πλήθους αξιολογήσεων (reviewsCount)**
+- Εμφάνιση βαθμολογίας:
+  - Στο προφίλ κτηνιάτρου
+  - Στους προτεινόμενους κτηνιάτρους
 
-ΤΕΧΝΟΛΟΓΙΕΣ
-- React
-- React Router
-- Material UI (MUI)
-- json-server (db.json)
-- Dayjs
+---
 
-ΟΔΗΓΙΕΣ ΕΓΚΑΤΑΣΤΑΣΗΣ
-1) Κλωνοποίηση αποθετηρίου:
-   git clone https://github.com/sdi2200002/MyPet.git
+## 🛠 Τεχνολογίες
 
-2) Εγκατάσταση εξαρτήσεων:
-   npm install
+- **React**
+- **React Router**
+- **Material UI (MUI)**
+- **json-server**
+- **Dayjs**
 
-3) Εκκίνηση json-server:
-   npm run server
+---
 
-4) Εκκίνηση εφαρμογής:
-   npm run dev
+## Οδηγίες Εγκατάστασης
 
-ΔΟΚΙΜΑΣΤΙΚΟΙ ΧΡΗΣΤΕΣ
+```bash
+git clone https://github.com/sdi2200002/MyPet.git
+npm install
+npm run server
+npm run dev
 
+Δοκιμαστικοί Χρήστες
 Owners
-- Email: nikos@test.gr
-  Password: 1234
-- Email: mirto@gmail.gr
-  Password: 1234
+
+Email: nikos@test.gr
+Password: 1234
+
+Email: mirto@gmail.gr
+Password: 1234
 
 Vets
-- Email: ilab@test.gr
-  Password: 1234
-- g.papadopoulos.vet@gmail.com / Vet@2024!
-- n.antoniou.vet@gmail.com / NikosVet!23
-- e.dimitriou.vet@gmail.com / EleniVet@21
-- i.lamprou.vet@gmail.com / IoannisVet#7
 
-PRIVATE GITHUB REPOSITORY
-https://github.com/sdi2200002/MyPet.git
+Email: ilab@test.gr
+Password: 1234
 
+g.papadopoulos.vet@gmail.com / Vet@2024!
+
+n.antoniou.vet@gmail.com / NikosVet!23
+
+e.dimitriou.vet@gmail.com / EleniVet@21
+
+i.lamprou.vet@gmail.com / IoannisVet#7
